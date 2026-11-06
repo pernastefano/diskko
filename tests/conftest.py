@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.db import make_engine, make_session_factory, run_migrations
 from app.main import create_app
 
 PASSWORD = "correct-horse-battery"
@@ -16,7 +17,23 @@ def settings(tmp_path):
         secret_key="test-secret",
         base_url="http://testserver",
         config_dir=tmp_path / "config",
+        jobs_enabled=False,  # tests that need workers start them explicitly
     )
+
+
+@pytest.fixture
+def session_factory(settings):
+    """A migrated database without the web app (for engine/worker tests)."""
+    run_migrations(settings.database_url)
+    engine = make_engine(settings.database_url)
+    yield make_session_factory(engine)
+    engine.dispose()
+
+
+@pytest.fixture
+def jdb(session_factory):
+    with session_factory() as session:
+        yield session
 
 
 @pytest.fixture
