@@ -37,7 +37,7 @@ class JobContext:
         self.payload = payload
         self.attempt = attempt
         self.settings = settings
-        self._factory = session_factory
+        self.session_factory = session_factory
         self._last_progress: tuple[int, str | None] | None = None
         self._last_cancel_check = 0.0
         self._log_count = 0
@@ -46,7 +46,7 @@ class JobContext:
         """Run a short DB operation in a worker thread (never block the event loop)."""
 
         def call() -> Any:
-            with self._factory() as db:
+            with self.session_factory() as db:
                 return func(db)
 
         return await asyncio.to_thread(call)

@@ -28,10 +28,17 @@ class Settings(BaseSettings):
 
     # Job engine
     jobs_enabled: bool = True
-    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2"
+    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2,library:1"
     job_poll_interval: float = 1.0
     job_retention_days: int = 30
     job_log_max_lines: int = 5000
+
+    # Library
+    library_source: str = "filesystem"  # filesystem | plex
+    library_scan_cron: str = "0 2 * * *"  # crontab; empty disables the nightly scan
+    library_max_removal_pct: int = 50  # abort a scan that would drop more than this % of tracks
+    plex_music_section: str = "Music"
+    library_path_map: str = ""  # "plex_prefix=local_prefix;..." (Plex source only)
 
     # Integrations (all optional; connection tests are jobs, see app/integrations)
     plex_url: str = ""

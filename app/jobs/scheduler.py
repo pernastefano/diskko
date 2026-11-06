@@ -33,6 +33,15 @@ SCHEDULES: list[Schedule] = [
 ]
 
 
+def schedules_for(settings: Settings) -> list[Schedule]:
+    """Fixed schedules plus the nightly library scan when LIBRARY_SCAN_CRON is set."""
+    result = list(SCHEDULES)
+    cron = settings.library_scan_cron.strip()
+    if cron:
+        result.append(Schedule("scan_library", cron))
+    return result
+
+
 def _timezone(name: str) -> ZoneInfo:
     try:
         return ZoneInfo(name)
@@ -59,14 +68,19 @@ class JobScheduler:
     ) -> None:
         self._factory = factory
         self._notify = notify
-        self.schedules = SCHEDULES if schedules is None else schedules
+        self.schedules = schedules_for(settings) if schedules is None else schedules
         self._scheduler = AsyncIOScheduler(timezone=_timezone(settings.tz))
 
     def start(self) -> None:
         for schedule in self.schedules:
+            try:
+                trigger = CronTrigger.from_crontab(schedule.cron, timezone=self._scheduler.timezone)
+            except ValueError:
+                log.error("invalid cron %r for %s: not scheduled", schedule.cron, schedule.job_type)
+                continue
             self._scheduler.add_job(
                 self._fire,
-                CronTrigger.from_crontab(schedule.cron, timezone=self._scheduler.timezone),
+                trigger,
                 args=[schedule],
                 id=schedule.dedupe_key,
                 replace_existing=True,
