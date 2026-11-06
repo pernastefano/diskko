@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.env
+.claude
+CLAUDE.md
+PLAN.md
+tests
+config
+music-test
+downloads-test
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+*.db*

@@ -12,3 +12,9 @@ downloads-test/
 *.db-wal
 *.db-shm
 .DS_Store
+
+# Claude files (not versioned)
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+PLAN.md

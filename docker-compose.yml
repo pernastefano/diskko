@@ -1,0 +1,38 @@
+# Deploy on the NAS: `docker compose pull && docker compose up -d`
+services:
+  diskko:
+    image: ghcr.io/pernastefano/diskko:latest
+    container_name: diskko
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Europe/Rome}
+      PORT: "8000"
+      BASE_URL: ${BASE_URL:-http://localhost:8000}
+      SLSKD_URL: http://slskd:5030
+    volumes:
+      - ./config:/config
+      - /path/to/music:/music
+      - ./downloads:/downloads   # shared with slskd
+    depends_on:
+      - slskd
+
+  slskd:
+    image: slskd/slskd:latest
+    container_name: slskd
+    restart: unless-stopped
+    ports:
+      - "5030:5030"
+      - "5031:5031"
+      - "50300:50300"
+    environment:
+      SLSKD_REMOTE_CONFIGURATION: "true"
+      SLSKD_DOWNLOADS_DIR: /downloads
+      SLSKD_API_KEY: ${SLSKD_API_KEY:-}
+    volumes:
+      - ./slskd:/app
+      - ./downloads:/downloads   # same host folder as diskko
