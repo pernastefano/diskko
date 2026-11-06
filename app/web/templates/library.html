@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set main_width = 'max-w-7xl' %}
+{% block title %}{{ t('nav.browse') }}{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+  <h1 class="text-2xl font-semibold">{{ t('nav.browse') }}</h1>
+  <span class="text-sm text-slate-500" id="lib-total">{{ t('lib.count', n=total) }}</span>
+</div>
+
+<form id="filters" method="get" action="/library" class="mb-3 flex flex-wrap items-end gap-3 text-sm"
+      x-data>
+  <div class="min-w-[12rem] flex-1">
+    <label for="q" class="sr-only">{{ t('lib.search') }}</label>
+    <input id="q" name="q" type="search" value="{{ p.q }}" placeholder="{{ t('lib.search') }}" autocomplete="off"
+           class="w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+           hx-get="/library/items" hx-trigger="input changed delay:300ms, search" hx-target="#tiles" hx-swap="innerHTML"
+           hx-include="#filters" hx-sync="this:replace">
+  </div>
+  <input type="hidden" name="letter" value="{{ p.letter }}">
+  <input type="hidden" name="view" value="{{ p.view }}">
+  <div>
+    <label for="sort" class="block text-xs text-slate-500">{{ t('lib.sort') }}</label>
+    <select id="sort" name="sort" @change="$el.form.submit()" class="rounded-md border border-slate-300 bg-white px-2 py-2">
+      {% for s in ('name', 'missing', 'recent') %}<option value="{{ s }}" {% if p.sort == s %}selected{% endif %}>{{ t('lib.sort.' ~ s) }}</option>{% endfor %}
+    </select>
+  </div>
+  <label class="flex items-center gap-2 py-2"><input type="checkbox" name="missing" value="1" {% if p.only_missing %}checked{% endif %} @change="$el.form.submit()"> {{ t('lib.only_missing') }}</label>
+  <div class="flex overflow-hidden rounded-md border border-slate-300" role="group" aria-label="{{ t('lib.view') }}">
+    <a href="/library?{{ p.query(view='', page='') }}" class="px-3 py-2 {{ 'bg-indigo-600 text-white' if p.view == 'grid' else 'bg-white hover:bg-slate-100' }}">{{ t('lib.view.grid') }}</a>
+    <a href="/library?{{ p.query(view='list', page='') }}" class="px-3 py-2 {{ 'bg-indigo-600 text-white' if p.view == 'list' else 'bg-white hover:bg-slate-100' }}">{{ t('lib.view.list') }}</a>
+  </div>
+  <noscript><button type="submit" class="rounded-md border border-slate-300 px-3 py-2">{{ t('action.filter') }}</button></noscript>
+</form>
+
+<nav class="mb-4 flex flex-wrap gap-1 text-xs" aria-label="{{ t('lib.letters') }}">
+  <a href="/library?{{ p.query(letter='', page='') }}" class="rounded px-2 py-1 {{ 'bg-indigo-600 text-white' if not p.letter else 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200' }}">{{ t('lib.all') }}</a>
+  {% for ch in alphabet %}
+    {% if ch in letters %}
+      <a href="/library?{{ p.query(letter=ch, page='') }}" class="rounded px-2 py-1 {{ 'bg-indigo-600 text-white' if p.letter == ch else 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200' }}">{{ ch }}</a>
+    {% else %}
+      <span class="rounded border border-slate-100 px-2 py-1 text-slate-300">{{ ch }}</span>
+    {% endif %}
+  {% endfor %}
+</nav>
+
+<div id="tiles" class="{{ 'grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6' if p.view == 'grid' else 'grid grid-cols-1 gap-2' }}">
+  {% include "_library_items.html" %}
+</div>
+
+<noscript>
+  <div class="mt-4 flex justify-between text-sm">
+    {% if prev_query is not none %}<a class="text-indigo-600 hover:underline" href="/library?{{ prev_query }}">{{ t('action.previous') }}</a>{% else %}<span></span>{% endif %}
+    {% if next_query %}<a class="text-indigo-600 hover:underline" href="/library?{{ next_query }}">{{ t('action.next') }}</a>{% endif %}
+  </div>
+</noscript>
+{% endblock %}

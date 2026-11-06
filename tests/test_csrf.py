@@ -37,7 +37,7 @@ def test_header_token_is_accepted(admin_client, new_client):
 
 def test_logged_in_post_without_token_rejected(admin_client):
     assert admin_client.post("/logout").status_code == 403
-    assert admin_client.get("/").status_code == 200  # still logged in
+    assert admin_client.get("/library").status_code == 200  # still logged in
 
 
 def test_admin_actions_without_token_rejected(admin_client, db):
@@ -48,23 +48,23 @@ def test_admin_actions_without_token_rejected(admin_client, db):
 
 
 def test_token_is_bound_to_session(admin_client, user_client):
-    admin_token = csrf_of(admin_client, "/")
-    bob_token = csrf_of(user_client, "/")
+    admin_token = csrf_of(admin_client, "/library")
+    bob_token = csrf_of(user_client, "/library")
     assert admin_token != bob_token
     r = user_client.post("/logout", data={"csrf_token": admin_token})
     assert r.status_code == 403
 
 
 def test_token_rotates_on_login(admin_client):
-    before = csrf_of(admin_client, "/")
-    login(admin_client, "admin", page="/")
-    assert csrf_of(admin_client, "/") != before
+    before = csrf_of(admin_client, "/library")
+    login(admin_client, "admin", page="/library")
+    assert csrf_of(admin_client, "/library") != before
 
 
 def test_html_exposes_token_for_htmx(admin_client):
-    token = csrf_of(admin_client, "/")
-    assert token in admin_client.get("/").text
-    assert "X-CSRF-Token" in admin_client.get("/").text
+    token = csrf_of(admin_client, "/library")
+    assert token in admin_client.get("/library").text
+    assert "X-CSRF-Token" in admin_client.get("/library").text
 
 
 def test_csrf_error_page_message(admin_client):

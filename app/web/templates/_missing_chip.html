@@ -1,0 +1,8 @@
+{# needs `r` (ArtistRow) #}
+{% if r.artist.metadata_synced_at is none %}
+  <span class="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500" title="{{ t('lib.no_metadata_hint') }}">{{ t('lib.no_metadata') }}</span>
+{% elif r.missing %}
+  <span class="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800">{{ t('lib.missing_count', n=r.missing) }}</span>
+{% else %}
+  <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-800">{{ t('lib.complete') }}</span>
+{% endif %}

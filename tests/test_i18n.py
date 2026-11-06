@@ -81,7 +81,7 @@ def test_translate_fallbacks():
     assert translate("it", "action.save") == "Salva"
     assert translate("fr", "action.save") == "Save"  # unknown language -> English
     assert translate("it", "does.not.exist") == "does.not.exist"
-    assert translate("en", "home.welcome", username="ann") == "Hello, ann!"
+    assert translate("en", "jobs.detail_title", id=7) == "Job #7"
 
 
 def test_parse_accept_language():
@@ -137,7 +137,7 @@ def test_user_preference_is_saved_and_follows_login(admin_client, new_client, db
     assert db.scalar(select(User)).language == "it"
     fresh = new_client()  # no cookie, English browser
     login(fresh, "admin")
-    assert "Ciao, admin!" in fresh.get("/", headers={"Accept-Language": "en"}).text
+    assert "Esci" in fresh.get("/library", headers={"Accept-Language": "en"}).text
 
 
 def test_setup_stores_detected_language(client, db):

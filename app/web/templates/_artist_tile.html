@@ -1,0 +1,16 @@
+{# Grid tile of one artist: needs `r` (ArtistRow) #}
+{% set a = r.artist %}
+<a href="/artist/{{ a.id }}" class="group block overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-indigo-300 hover:shadow focus:outline-none focus:ring-2 focus:ring-indigo-500">
+  {% if r.cover %}
+    <img src="/covers/{{ r.cover }}" alt="" loading="lazy" class="aspect-square w-full object-cover">
+  {% else %}
+    <div class="flex aspect-square w-full items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 text-4xl font-semibold text-slate-500" aria-hidden="true">{{ (a.name[:1] or '?')|upper }}</div>
+  {% endif %}
+  <div class="p-3">
+    <div class="truncate font-medium group-hover:text-indigo-700" title="{{ a.name }}">{{ a.name }}</div>
+    <div class="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+      <span>{{ t('lib.albums_count', n=r.albums) }}</span>
+      {% include "_missing_chip.html" %}
+    </div>
+  </div>
+</a>

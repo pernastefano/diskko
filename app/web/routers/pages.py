@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
+from fastapi.responses import RedirectResponse
 
 from app.auth.deps import UserAuth
-from app.web.templating import render
 
 router = APIRouter()
 
 
 @router.get("/")
-def home(request: Request, auth: UserAuth):
-    return render(request, "home.html")
+def home(auth: UserAuth):
+    """The library is the home page."""
+    return RedirectResponse("/library", status_code=303)

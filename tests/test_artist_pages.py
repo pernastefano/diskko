@@ -501,9 +501,9 @@ def test_pages_in_italian(admin_client, band):
 
 
 def test_menu_links(admin_client, user_client):
-    assert 'href="/admin/artists"' in page(admin_client, "/")
-    assert 'href="/admin/artists"' not in page(user_client, "/")
-    assert 'href="/account/preferences"' in page(user_client, "/")
+    assert 'href="/admin/artists"' in page(admin_client, "/library")
+    assert 'href="/admin/artists"' not in page(user_client, "/library")
+    assert 'href="/account/preferences"' in page(user_client, "/library")
 
 
 def test_sync_button_exists_only_when_logged_in_as_admin(user_client, band):

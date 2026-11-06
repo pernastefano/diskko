@@ -87,11 +87,11 @@ def test_admin_cannot_act_on_self(admin_client, db, action, data):
 
 def test_disable_user_revokes_sessions_and_blocks_login(admin_client, user_client, db):
     bob = _user(db, "bob")
-    assert user_client.get("/").status_code == 200
+    assert user_client.get("/library").status_code == 200
     r = post(admin_client, f"/admin/users/{bob.id}/active", {"active": "0"}, headers=HX)
     assert r.status_code == 200
     assert not _user(db, "bob").is_active
-    assert user_client.get("/").status_code == 303  # session gone
+    assert user_client.get("/library").status_code == 303  # session gone
     assert db.scalar(select(func.count(UserSession.id)).where(UserSession.user_id == bob.id)) == 0
 
 
@@ -108,7 +108,7 @@ def test_reset_password_revokes_sessions(admin_client, user_client, db, new_clie
     new_password = "a-brand-new-password"
     r = post(admin_client, f"/admin/users/{bob.id}/password", {"new_password": new_password})
     assert r.status_code == 303
-    assert user_client.get("/").status_code == 303
+    assert user_client.get("/library").status_code == 303
     assert login(new_client(), "bob", PASSWORD).status_code == 400
     assert login(new_client(), "bob", new_password).status_code == 303
 
@@ -126,7 +126,7 @@ def test_delete_user_removes_sessions_too(admin_client, user_client, db):
     assert r.status_code == 200 and r.text == ""
     assert _user(db, "bob") is None
     assert db.scalar(select(func.count(UserSession.id)).where(UserSession.user_id == bob_id)) == 0
-    assert user_client.get("/").status_code == 303
+    assert user_client.get("/library").status_code == 303
 
 
 def test_unknown_user_is_404(admin_client):

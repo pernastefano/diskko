@@ -72,7 +72,7 @@ def csrf_of(client, path="/login"):
     return match.group(1)
 
 
-def post(client, path, data=None, page="/", headers=None):
+def post(client, path, data=None, page="/library", headers=None):
     """POST with a valid CSRF token taken from `page`."""
     payload = dict(data or {})
     payload["csrf_token"] = csrf_of(client, page)

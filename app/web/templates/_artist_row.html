@@ -1,0 +1,16 @@
+{# List row of one artist: needs `r` (ArtistRow) #}
+{% set a = r.artist %}
+<a href="/artist/{{ a.id }}" class="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+  {% if r.cover %}
+    <img src="/covers/{{ r.cover }}" alt="" loading="lazy" class="h-10 w-10 shrink-0 rounded object-cover">
+  {% else %}
+    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-slate-200 text-lg font-semibold text-slate-500" aria-hidden="true">{{ (a.name[:1] or '?')|upper }}</div>
+  {% endif %}
+  <span class="min-w-0 flex-1">
+    <span class="block truncate font-medium">{{ a.name }}</span>
+    {# narrow screens: the details go under the name instead of squeezing it #}
+    <span class="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-slate-500 sm:hidden">{{ t('lib.albums_count', n=r.albums) }} {% include "_missing_chip.html" %}</span>
+  </span>
+  <span class="hidden shrink-0 text-xs text-slate-500 sm:inline">{{ t('lib.albums_count', n=r.albums) }}</span>
+  <span class="hidden w-28 shrink-0 text-right text-xs sm:inline">{% include "_missing_chip.html" %}</span>
+</a>
