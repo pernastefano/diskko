@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% set main_width = 'max-w-7xl' %}
+{% block title %}{{ artist.name }}{% endblock %}
+{% block content %}
+<a href="/library" class="text-sm text-indigo-600 hover:underline">← {{ t('nav.browse') }}</a>
+<div class="mt-2 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="text-3xl font-semibold">{{ artist.name }}</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      {% if artist.mbid %}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/artist/{{ artist.mbid }}">MusicBrainz ↗</a>{% endif %}
+      {% if artist.metadata_synced_at %}{% if artist.mbid %} · {% endif %}{{ t('artist.synced', when=artist.metadata_synced_at|fmt_dt) }}{% endif %}
+    </p>
+  </div>
+  {% if user.is_admin %}
+    <div class="flex flex-wrap gap-2">
+      <form method="post" action="/admin/artists/{{ artist.id }}/sync">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="force" value="1">
+        <button type="submit" {% if not mb_configured %}disabled title="{{ t('error.mb_not_configured') }}"{% endif %}
+                class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">{{ t('artist.refresh') }}</button>
+      </form>
+      <a href="/admin/artists/{{ artist.id }}" class="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100">{{ t('artist.manage') }}</a>
+    </div>
+  {% endif %}
+</div>
+
+{% if artist.mb_status == 'review' %}
+  <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800" role="note">{{ t('artist.notice.review') }}</p>
+{% elif artist.mb_status == 'unmatched' %}
+  <p class="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600" role="note">{{ t('artist.notice.unmatched') }}</p>
+{% elif not artist.metadata_synced_at %}
+  <p class="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600" role="note">{{ t('artist.notice.not_synced') }}</p>
+{% endif %}
+
+{% include "_artist_sections.html" %}
+
+<h2 class="mb-2 mt-10 text-xl font-semibold">{{ t('artist.similar') }}</h2>
+<p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">{{ t('artist.similar_soon') }}</p>
+{% endblock %}

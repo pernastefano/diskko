@@ -1,7 +1,7 @@
-{% macro cover(group, size='h-12 w-12') %}
+{% macro cover(group, size='h-12 w-12', label='') %}
   {% if group and group.cover_path %}
     <img src="/covers/{{ group.cover_path }}" alt="" loading="lazy" class="{{ size }} rounded object-cover">
   {% else %}
-    <div class="{{ size }} rounded bg-slate-200"></div>
+    <div class="{{ size }} flex items-center justify-center rounded bg-gradient-to-br from-slate-200 to-slate-300 font-semibold text-slate-500" aria-hidden="true">{{ (label[:1] or '')|upper }}</div>
   {% endif %}
 {% endmacro %}

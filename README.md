@@ -71,3 +71,13 @@ secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
 
 I dati di MusicBrainz sono di pubblico dominio (CC0); le copertine del Cover Art Archive hanno
 licenze proprie e restano solo nella tua cache locale.
+
+## Libreria e pagina artista
+
+`/library` (la pagina iniziale) mostra gli artisti a griglia o a elenco, con ricerca mentre scrivi,
+barra A–Z, filtro "solo con album mancanti" e ordinamento per nome, mancanti o aggiunti di recente.
+Le pagine da 48 artisti si caricano scorrendo, e funziona anche senza JavaScript con i link
+Precedente/Successiva. `/artist/<id>` mostra gli album posseduti (con badge di qualità, formato e
+copertina) e quelli mancanti, raggruppati per tipo secondo le preferenze dell'utente. Il pulsante
+"Richiedi download" è per ora solo un segnaposto: i download arrivano con le fasi successive.
+Le copertine mancanti si scaricano in background quando si apre la pagina.

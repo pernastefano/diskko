@@ -67,6 +67,21 @@ def test_all_used_keys_exist():
             f"review.reason.{r}" for r in ("ambiguous", "low_score", "no_match", "invalid_mbid")
         }
         used |= {f"artists.source.{s}" for s in ("tag", "auto", "manual")}
+        used |= {
+            f"request.status.{s}"
+            for s in (
+                "queued",
+                "searching",
+                "candidate_found",
+                "downloading",
+                "postprocessing",
+                "importing",
+                "completed",
+                "failed",
+                "cancelled",
+                "no_results",
+            )
+        }
         used |= {"library.source.filesystem", "library.source.plex"}
         used |= {f"integration.name.{n}" for n in INTEGRATION_NAMES}
         used |= {

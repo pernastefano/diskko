@@ -1,0 +1,45 @@
+{% from "_covers.html" import cover %}
+{# The two lists. While covers are downloading the element polls itself and then stops. #}
+<div id="artist-sections"
+     {% if covers_active %}hx-get="/artist/{{ artist.id }}/sections{{ '?all=1' if show_all else '' }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+
+  <h2 class="mb-3 mt-8 text-xl font-semibold">{{ t('artist.owned') }} <span class="text-sm font-normal text-slate-500">({{ sections.owned_total }})</span></h2>
+  {% for category, items in sections.owned %}
+    <section class="mb-4" x-data="{ open: true }" data-group="owned-{{ category }}">
+      <button type="button" @click="open = !open" :aria-expanded="open" class="mb-2 flex w-full items-center gap-2 text-left font-medium text-slate-700">
+        <span class="text-xs text-slate-400" x-text="open ? '▾' : '▸'"></span>
+        {{ t('category.' ~ category) if category != 'unmatched' else t('artist.unmatched_group') }}
+        <span class="text-sm font-normal text-slate-500">({{ items|length }})</span>
+      </button>
+      <ul x-show="open" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        {% for item in items %}{% include "_album_card.html" %}{% endfor %}
+      </ul>
+    </section>
+  {% else %}
+    <p class="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-slate-500">{{ t('artist.no_owned') }}</p>
+  {% endfor %}
+
+  <h2 class="mb-1 mt-8 text-xl font-semibold">{{ t('artist.missing') }} <span class="text-sm font-normal text-slate-500">({{ sections.missing_total }})</span></h2>
+  <p class="mb-3 text-sm text-slate-500">
+    {% if show_all %}{{ t('artist.showing_all') }}{% else %}{{ t('artist.showing') }}: {% for c in types %}{{ t('category.' ~ c) }}{{ ', ' if not loop.last }}{% else %}—{% endfor %}{% endif %}
+    · <a class="text-indigo-600 hover:underline" href="/account/preferences">{{ t('artist.change_types') }}</a>
+    {% if sections.hidden_missing %}
+      · <a class="text-indigo-600 hover:underline" href="/artist/{{ artist.id }}?all=1">{{ t('artist.hidden_missing', n=sections.hidden_missing) }}</a>
+    {% elif show_all %}
+      · <a class="text-indigo-600 hover:underline" href="/artist/{{ artist.id }}">{{ t('artist.show_selected') }}</a>
+    {% endif %}
+  </p>
+  {% for category, groups in sections.missing %}
+    <section class="mb-4" x-data="{ open: true }" data-group="missing-{{ category }}">
+      <button type="button" @click="open = !open" :aria-expanded="open" class="mb-2 flex w-full items-center gap-2 text-left font-medium text-slate-700">
+        <span class="text-xs text-slate-400" x-text="open ? '▾' : '▸'"></span>
+        {{ t('category.' ~ category) }} <span class="text-sm font-normal text-slate-500">({{ groups|length }})</span>
+      </button>
+      <ul x-show="open" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        {% for g in groups %}{% include "_missing_card.html" %}{% endfor %}
+      </ul>
+    </section>
+  {% else %}
+    <p class="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-slate-500">{{ t('artist.nothing_missing') }}</p>
+  {% endfor %}
+</div>

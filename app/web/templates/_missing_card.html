@@ -1,0 +1,10 @@
+{# needs: g (release group), artist, statuses, unavailable #}
+<li class="flex flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+  {{ cover(g, 'aspect-square w-full', g.title) }}
+  <div class="mt-2 flex-1">
+    <div class="line-clamp-2 text-sm font-medium" title="{{ g.title }}">{{ g.title }}</div>
+    <div class="text-xs text-slate-500">{{ g.year or '—' }}{% if g.disambiguation %} · {{ g.disambiguation }}{% endif %}</div>
+  </div>
+  {% set status = statuses.get(g.id) %}
+  {% include "_request_control.html" %}
+</li>

@@ -27,7 +27,10 @@ def duration(job: Any) -> str:
     return f"{minutes}m {secs:02d}s" if minutes else f"{secs}s"
 
 
+from app.services.library_views import describe_format  # noqa: E402
+
 templates.env.filters["fmt_dt"] = fmt_dt
+templates.env.filters["album_format"] = describe_format
 templates.env.globals["duration"] = duration
 
 
