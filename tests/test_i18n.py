@@ -15,8 +15,9 @@ from app.i18n import (
     translate,
 )
 from app.integrations.status import INTEGRATION_NAMES
-from app.models import JOB_STATUSES, User
+from app.models import JOB_STATUSES, MATCH_STATUSES, MB_STATUSES, User
 from app.services.library.quality import QUALITY_TIERS
+from app.services.musicbrainz.categories import CATEGORIES
 from tests.conftest import login, post
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
@@ -59,6 +60,13 @@ def test_all_used_keys_exist():
         used |= {f"role.{r}" for r in ("admin", "user")}
         used |= {f"job.status.{s}" for s in JOB_STATUSES}
         used |= {f"quality.{t}" for t in QUALITY_TIERS}
+        used |= {f"category.{c}" for c in CATEGORIES}
+        used |= {f"mb.status.{s}" for s in MB_STATUSES}
+        used |= {f"match.status.{s}" for s in MATCH_STATUSES}
+        used |= {
+            f"review.reason.{r}" for r in ("ambiguous", "low_score", "no_match", "invalid_mbid")
+        }
+        used |= {f"artists.source.{s}" for s in ("tag", "auto", "manual")}
         used |= {"library.source.filesystem", "library.source.plex"}
         used |= {f"integration.name.{n}" for n in INTEGRATION_NAMES}
         used |= {

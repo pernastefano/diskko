@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ t('nav.preferences') }}{% endblock %}
+{% block content %}
+<h1 class="mb-2 text-2xl font-semibold">{{ t('nav.preferences') }}</h1>
+<p class="mb-4 max-w-2xl text-sm text-slate-600">{{ t('preferences.intro') }}</p>
+<form method="post" action="/account/preferences" class="max-w-2xl space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      x-data="{ custom: {{ 'true' if custom else 'false' }} }">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label class="flex items-start gap-2">
+    <input type="radio" name="mode" value="default" @change="custom = false" {% if not custom %}checked{% endif %} class="mt-1">
+    <span>{{ t('preferences.use_default') }}
+      <span class="block text-xs text-slate-500">{% for c in shared %}{{ t('category.' ~ c) }}{{ ', ' if not loop.last }}{% else %}—{% endfor %}</span></span>
+  </label>
+  <label class="flex items-start gap-2">
+    <input type="radio" name="mode" value="custom" @change="custom = true" {% if custom %}checked{% endif %} class="mt-1">
+    <span>{{ t('preferences.use_custom') }}</span>
+  </label>
+  <fieldset class="grid grid-cols-2 gap-2 pl-6 md:grid-cols-3" :class="custom ? '' : 'opacity-50'">
+    {% for c in categories %}
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="types" value="{{ c }}" {% if c in selected %}checked{% endif %}> {{ t('category.' ~ c) }}
+      </label>
+    {% endfor %}
+  </fieldset>
+  <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700">{{ t('action.save') }}</button>
+</form>
+{% endblock %}

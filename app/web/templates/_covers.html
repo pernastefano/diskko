@@ -1,0 +1,7 @@
+{% macro cover(group, size='h-12 w-12') %}
+  {% if group and group.cover_path %}
+    <img src="/covers/{{ group.cover_path }}" alt="" loading="lazy" class="{{ size }} rounded object-cover">
+  {% else %}
+    <div class="{{ size }} rounded bg-slate-200"></div>
+  {% endif %}
+{% endmacro %}

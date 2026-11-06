@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "_covers.html" import cover %}
+{% block title %}{{ artist.name }}{% endblock %}
+{% block content %}
+<a href="/admin/artists" class="text-sm text-indigo-600 hover:underline">← {{ t('nav.artists') }}</a>
+<h1 class="mb-1 mt-2 text-2xl font-semibold">{{ artist.name }}</h1>
+
+<section class="mb-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+  <div class="flex flex-wrap items-center gap-3 text-sm">
+    {% set a = artist %}{% include "admin/_mb_status.html" %}
+    {% if artist.mb_source %}<span class="text-slate-500">{{ t('artists.source.' ~ artist.mb_source) }}{% if artist.mb_confidence %} · {{ (artist.mb_confidence * 100)|round|int }}%{% endif %}</span>{% endif %}
+    <span class="text-slate-500">{{ t('artists.col.synced') }}: {{ artist.metadata_synced_at|fmt_dt }}</span>
+    <span class="text-slate-500">{{ t('artists.release_groups', n=group_count) }}</span>
+  </div>
+  {% if review %}
+    <p class="mt-3 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">{{ t('artists.in_review') }}: {{ t('review.reason.' ~ review.reason) }}
+      — <a class="underline" href="/admin/artists/review">{{ t('artists.review_queue') }}</a></p>
+  {% endif %}
+  {% if not mb_configured %}
+    <p class="mt-3 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">{{ t('error.mb_not_configured') }}</p>
+  {% endif %}
+  <div class="mt-4 flex flex-wrap gap-2">
+    <form method="post" action="/admin/artists/{{ artist.id }}/sync">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="force" value="1">
+      <button type="submit" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('artists.refresh') }}</button>
+    </form>
+    <form method="post" action="/admin/artists/{{ artist.id }}/reset" onsubmit="return confirm('{{ t('artists.confirm_reset')|e }}')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100">{{ t('artists.reset') }}</button>
+    </form>
+    <form method="post" action="/admin/artists/{{ artist.id }}/resolve" class="flex gap-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input name="mbid" placeholder="{{ t('artists.mbid_placeholder') }}" class="w-72 rounded border border-slate-300 px-2 py-1 text-sm">
+      <button type="submit" class="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100">{{ t('artists.set_mbid') }}</button>
+    </form>
+  </div>
+</section>
+
+<h2 class="mb-2 text-lg font-semibold">{{ t('artists.owned') }}</h2>
+<div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+  <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+      <tr><th class="px-3 py-2"></th><th class="px-3 py-2">{{ t('artists.col.album') }}</th><th class="px-3 py-2">{{ t('library.quality') }}</th>
+          <th class="px-3 py-2">{{ t('artists.col.match') }}</th><th class="px-3 py-2">{{ t('artists.col.override') }}</th></tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for row in rows %}
+        {% set album = row.album %}{% set group = row.group %}
+        <tr>
+          <td class="px-3 py-2">{{ cover(group) }}</td>
+          <td class="px-3 py-2"><div class="font-medium">{{ album.title }}</div><div class="text-xs text-slate-500">{{ album.year or '—' }} · {{ album.format or '' }}</div></td>
+          <td class="px-3 py-2 text-xs">{{ t('quality.' ~ album.quality_tier) }}</td>
+          <td class="px-3 py-2 text-xs">
+            {% set colors = {'matched': 'bg-green-100 text-green-800', 'tentative': 'bg-amber-100 text-amber-800', 'manual': 'bg-blue-100 text-blue-800', 'unmatched': 'bg-slate-200 text-slate-700', 'none': 'bg-slate-200 text-slate-700'} %}
+            <span class="rounded px-2 py-0.5 {{ colors[album.match_status] }}">{{ t('match.status.' ~ album.match_status) }}</span>
+            {% if group %}<div class="mt-1 text-slate-600">{{ group.title }}{% if group.year %} ({{ group.year }}){% endif %}{% if album.matched_confidence %} · {{ (album.matched_confidence * 100)|round|int }}%{% endif %}</div>{% endif %}
+          </td>
+          <td class="px-3 py-2">
+            <form method="post" action="/admin/artists/{{ artist.id }}/albums/{{ album.id }}/match" class="flex gap-1">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <select name="choice" class="max-w-xs rounded border border-slate-300 bg-white px-1 py-1 text-xs">
+                <option value="auto">{{ t('artists.override.auto') }}</option>
+                <option value="none" {% if album.match_status == 'none' %}selected{% endif %}>{{ t('artists.override.none') }}</option>
+                {% for g, pct in row.choices %}
+                  <option value="{{ g.id }}" {% if album.release_group_id == g.id and album.match_status == 'manual' %}selected{% endif %}>{{ g.title }}{% if g.year %} ({{ g.year }}){% endif %} · {{ t('category.' ~ g.category) }} · {{ pct }}%</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100">{{ t('action.save') }}</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="px-3 py-6 text-center text-slate-500">{{ t('artists.no_albums') }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 class="mb-1 mt-8 text-lg font-semibold">{{ t('artists.missing') }} <span class="text-sm font-normal text-slate-500">({{ missing|length }})</span></h2>
+<p class="mb-2 text-sm text-slate-500">{{ t('artists.missing_types') }}: {% for c in types %}{{ t('category.' ~ c) }}{{ ', ' if not loop.last }}{% else %}—{% endfor %}
+  · <a class="text-indigo-600 hover:underline" href="/account/preferences">{{ t('nav.preferences') }}</a></p>
+<ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm">
+  {% for g in missing %}
+    <li class="flex items-center gap-3 px-3 py-2 text-sm">
+      {{ cover(g, 'h-10 w-10') }}
+      <div><div class="font-medium">{{ g.title }}</div>
+        <div class="text-xs text-slate-500">{{ g.year or '—' }} · {{ t('category.' ~ g.category) }}{% if g.disambiguation %} · {{ g.disambiguation }}{% endif %}</div></div>
+    </li>
+  {% else %}
+    <li class="px-3 py-6 text-center text-slate-500">{{ t('artists.nothing_missing') }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

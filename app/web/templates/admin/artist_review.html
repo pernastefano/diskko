@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ t('artists.review_queue') }}{% endblock %}
+{% block content %}
+<a href="/admin/artists" class="text-sm text-indigo-600 hover:underline">← {{ t('nav.artists') }}</a>
+<h1 class="mb-1 mt-2 text-2xl font-semibold">{{ t('artists.review_queue') }}</h1>
+<p class="mb-4 text-sm text-slate-600">{{ t('artists.review_intro') }}</p>
+
+{% for item in items %}
+  {% set artist = item.artist %}
+  <section class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="font-semibold"><a class="text-indigo-600 hover:underline" href="/admin/artists/{{ artist.id }}">{{ artist.name }}</a></h2>
+      <span class="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">{{ t('review.reason.' ~ item.review.reason) }}</span>
+    </div>
+    {% if item.candidates %}
+      <table class="mt-3 min-w-full text-sm">
+        <thead class="text-left text-xs uppercase tracking-wide text-slate-500">
+          <tr><th class="py-1 pr-3">{{ t('artists.cand.name') }}</th><th class="pr-3">{{ t('artists.cand.details') }}</th>
+              <th class="pr-3">{{ t('artists.cand.score') }}</th><th class="pr-3">{{ t('artists.cand.overlap') }}</th><th></th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for c in item.candidates %}
+            <tr>
+              <td class="py-2 pr-3"><a class="text-indigo-600 hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/artist/{{ c.mbid }}">{{ c.name }}</a></td>
+              <td class="pr-3 text-xs text-slate-600">{{ [c.disambiguation, c.country, c.type]|select|join(' · ') }}</td>
+              <td class="pr-3 tabular-nums">{{ c.score }}{% if c.similarity is defined %} / {{ c.similarity }}{% endif %}</td>
+              <td class="pr-3 tabular-nums">{{ c.overlap if c.overlap is defined else '—' }}</td>
+              <td class="py-2 text-right">
+                <form method="post" action="/admin/artists/{{ artist.id }}/resolve">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <input type="hidden" name="mbid" value="{{ c.mbid }}"><input type="hidden" name="next" value="review">
+                  <button type="submit" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100">{{ t('artists.choose') }}</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="mt-2 text-sm text-slate-500">{{ t('artists.no_candidates') }}</p>
+    {% endif %}
+    <div class="mt-3 flex flex-wrap gap-3">
+      <form method="post" action="/admin/artists/{{ artist.id }}/resolve" class="flex gap-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="review">
+        <input name="mbid" placeholder="{{ t('artists.mbid_placeholder') }}" class="w-72 rounded border border-slate-300 px-2 py-1 text-sm">
+        <button type="submit" class="rounded border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100">{{ t('artists.set_mbid') }}</button>
+      </form>
+      <form method="post" action="/admin/artists/{{ artist.id }}/dismiss">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="review">
+        <button type="submit" class="rounded border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100">{{ t('artists.not_on_mb') }}</button>
+      </form>
+    </div>
+  </section>
+{% else %}
+  <p class="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-slate-500 shadow-sm">{{ t('artists.review_empty') }}</p>
+{% endfor %}
+{% endblock %}

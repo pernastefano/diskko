@@ -19,6 +19,7 @@
         {% if user and user.is_admin %}
           <a href="/admin/users" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.users') }}</a>
           <a href="/admin/library" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.library') }}</a>
+          <a href="/admin/artists" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.artists') }}</a>
           <a href="/admin/jobs" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.jobs') }}</a>
           <a href="/admin/status" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.status') }}</a>
         {% endif %}
@@ -42,6 +43,7 @@
               {{ user.username }} <span class="text-xs text-slate-500">({{ t('role.' ~ user.role) }})</span>
             </button>
             <div x-show="open" x-cloak class="absolute right-0 z-10 mt-1 w-48 rounded-md border border-slate-200 bg-white py-1 shadow">
+              <a href="/account/preferences" class="block px-3 py-2 hover:bg-slate-100">{{ t('nav.preferences') }}</a>
               <a href="/account/password" class="block px-3 py-2 hover:bg-slate-100">{{ t('nav.change_password') }}</a>
               <form method="post" action="/logout">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

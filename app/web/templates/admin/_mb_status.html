@@ -1,0 +1,4 @@
+{# needs `a` (artist) #}
+{% set colors = {'pending': 'bg-slate-200 text-slate-700', 'resolved': 'bg-green-100 text-green-800', 'review': 'bg-amber-100 text-amber-800', 'unmatched': 'bg-slate-200 text-slate-700', 'ignored': 'bg-slate-100 text-slate-500'} %}
+<span class="rounded px-2 py-0.5 text-xs {{ colors[a.mb_status] }}">{{ t('mb.status.' ~ a.mb_status) }}</span>
+{% if a.mbid %}<a class="ml-1 font-mono text-xs text-slate-500 hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/artist/{{ a.mbid }}">{{ a.mbid[:8] }}</a>{% endif %}

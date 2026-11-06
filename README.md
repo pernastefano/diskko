@@ -48,3 +48,26 @@ scansione, e permette di avviarne una (o una riscansione completa). La scansione
   (es. `/data/music=/music`). Qualità e bit depth vengono dai metadati di Plex.
 - **Protezione**: una scansione che toglierebbe più del 50% delle tracce note (`LIBRARY_MAX_REMOVAL_PCT`)
   si ferma senza modificare nulla, tipico caso del volume non montato.
+
+## Album mancanti (MusicBrainz)
+
+Con `MB_USER_AGENT` impostato (nome/versione e un contatto, richiesti da MusicBrainz) ogni
+scansione accoda la sincronizzazione degli artisti nuovi, e una volta al giorno si aggiornano
+quelli con metadati vecchi (`MB_REFRESH_DAYS`). Si rispetta il limite di **1 richiesta al
+secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
+
+- **Artisti**: l'MBID dei tag viene usato per primo; altrimenti si cerca per nome. Gli omonimi
+  (ci sono cinque "Nirvana") si distinguono confrontando i tuoi album con le loro discografie.
+  Quello che resta dubbio finisce nella **coda di revisione** (`/admin/artists/review`), dove si
+  sceglie il candidato giusto, si incolla un MBID o si segna l'artista come "non su MusicBrainz".
+- **Album**: ogni album posseduto è abbinato a un release-group (le edizioni deluxe e i remaster
+  finiscono sullo stesso). Gli abbinamenti probabili contano come posseduti e si possono correggere
+  a mano in `/admin/artists/<id>`; la scelta manuale non viene mai sovrascritta.
+- **Mancanti**: i release-group dell'artista non posseduti, filtrati per tipo. Il default
+  condiviso (album ed EP) si cambia in `/admin/library`; ogni utente può scegliere i propri tipi in
+  `/account/preferences`.
+- **Copertine**: scaricate dal Cover Art Archive in `CONFIG_DIR/covers` solo per gli album
+  posseduti e per i tipi attivi (`COVERART_ENABLED=false` per disattivarle).
+
+I dati di MusicBrainz sono di pubblico dominio (CC0); le copertine del Cover Art Archive hanno
+licenze proprie e restano solo nella tua cache locale.

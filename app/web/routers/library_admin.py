@@ -9,6 +9,8 @@ from app.jobs import engine
 from app.models import ACTIVE_STATUSES, Artist, Job, LibraryAlbum, LibraryTrack
 from app.services.library.quality import QUALITY_TIERS
 from app.services.library.scan import last_scan
+from app.services.musicbrainz.categories import CATEGORIES
+from app.services.musicbrainz.missing import get_missing_types
 from app.web.routers.jobs import notify_worker
 from app.web.templating import render
 
@@ -41,6 +43,8 @@ def library_page(request: Request, db: DB):
         "tiers": [(t, tiers.get(t, 0)) for t in reversed(QUALITY_TIERS)],
         "last": last_scan(db),
         "active_job": active_job,
+        "categories": CATEGORIES,
+        "shared_types": get_missing_types(db),
     }
     return render(request, "admin/library.html", ctx)
 

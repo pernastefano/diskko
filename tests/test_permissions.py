@@ -3,7 +3,15 @@ from tests.conftest import csrf_of, post
 
 def _fill(path):
     """Replace path parameters with plausible values."""
-    return path.replace("{name}", "plex").replace("{user_id}", "1").replace("{job_id}", "1")
+    for param, value in (
+        ("name", "plex"),
+        ("user_id", "1"),
+        ("job_id", "1"),
+        ("artist_id", "1"),
+        ("album_id", "1"),
+    ):
+        path = path.replace("{" + param + "}", value)
+    return path
 
 
 def _admin_routes(app):
@@ -23,7 +31,7 @@ def _call(client, method, path):
 
 def test_admin_routes_are_discovered(app):
     # Guards the dynamic tests below against silently testing nothing.
-    assert len(_admin_routes(app)) >= 19
+    assert len(_admin_routes(app)) >= 28
 
 
 def test_every_admin_route_denies_regular_users(app, user_client):
