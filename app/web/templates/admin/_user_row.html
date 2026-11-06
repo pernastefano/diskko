@@ -1,0 +1,46 @@
+{# Variables: u (target user), user (current admin), row_error (i18n key or None) #}
+{% set is_self = (u.id == user.id) %}
+<tr id="user-{{ u.id }}" x-data="{ reset: false }">
+  <td class="px-4 py-2 align-top">
+    <span class="font-medium">{{ u.username }}</span>
+    {% if is_self %}<span class="text-xs text-slate-500">({{ t('users.you') }})</span>{% endif %}
+    {% if row_error %}<p role="alert" class="mt-1 text-xs text-red-700">{{ t(row_error) }}</p>{% endif %}
+  </td>
+  <td class="px-4 py-2 align-top">
+    <form hx-post="/admin/users/{{ u.id }}/role" hx-trigger="change" hx-target="#user-{{ u.id }}" hx-swap="outerHTML">
+      <select name="role" {% if is_self %}disabled{% endif %} class="rounded border border-slate-300 bg-white px-2 py-1">
+        {% for r in ('admin', 'user') %}<option value="{{ r }}" {% if r == u.role %}selected{% endif %}>{{ t('role.' ~ r) }}</option>{% endfor %}
+      </select>
+    </form>
+  </td>
+  <td class="px-4 py-2 align-top">
+    {% if u.is_active %}
+      <span class="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">{{ t('status.active') }}</span>
+    {% else %}
+      <span class="rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-700">{{ t('status.disabled') }}</span>
+    {% endif %}
+  </td>
+  <td class="px-4 py-2 align-top">
+    <div class="flex flex-wrap items-center gap-2">
+      {% if not is_self %}
+        <button type="button" hx-post="/admin/users/{{ u.id }}/active" hx-vals='{"active": "{{ 0 if u.is_active else 1 }}"}'
+                hx-target="#user-{{ u.id }}" hx-swap="outerHTML" class="rounded border border-slate-300 px-2 py-1 hover:bg-slate-100">
+          {{ t('action.disable') if u.is_active else t('action.enable') }}
+        </button>
+      {% endif %}
+      <button type="button" @click="reset = !reset" class="rounded border border-slate-300 px-2 py-1 hover:bg-slate-100">{{ t('users.reset_password') }}</button>
+      {% if not is_self %}
+        <button type="button" hx-post="/admin/users/{{ u.id }}/delete" hx-confirm="{{ t('users.confirm_delete', username=u.username) }}"
+                hx-target="#user-{{ u.id }}" hx-swap="outerHTML" class="rounded border border-red-300 px-2 py-1 text-red-700 hover:bg-red-50">
+          {{ t('action.delete') }}
+        </button>
+      {% endif %}
+    </div>
+    <form x-show="reset" x-cloak class="mt-2 flex gap-2" hx-post="/admin/users/{{ u.id }}/password"
+          hx-target="#user-{{ u.id }}" hx-swap="outerHTML">
+      <input type="password" name="new_password" required autocomplete="new-password" placeholder="{{ t('field.new_password') }}"
+             class="rounded border border-slate-300 px-2 py-1">
+      <button type="submit" class="rounded bg-indigo-600 px-2 py-1 text-white hover:bg-indigo-700">{{ t('action.save') }}</button>
+    </form>
+  </td>
+</tr>

@@ -29,6 +29,8 @@ RUN apt-get update \
 COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
 COPY app ./app
+COPY alembic.ini ./alembic.ini
+COPY migrations ./migrations
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field %}
+{% block title %}{{ t('setup.title') }}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+  <h1 class="text-xl font-semibold">{{ t('setup.title') }}</h1>
+  <p class="mb-4 mt-1 text-sm text-slate-600">{{ t('setup.intro') }}</p>
+  <form method="post" action="/setup" class="space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {{ field("username", t('field.username'), value=username, autocomplete="username", hint=t('hint.username')) }}
+    {{ field("password", t('field.password'), type="password", autocomplete="new-password", hint=t('hint.password', min=min_password_length)) }}
+    {{ field("password_confirm", t('field.password_confirm'), type="password", autocomplete="new-password") }}
+    <button type="submit" class="w-full rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700">{{ t('setup.submit') }}</button>
+  </form>
+</div>
+{% endblock %}

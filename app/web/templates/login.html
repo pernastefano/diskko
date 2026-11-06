@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field %}
+{% block title %}{{ t('login.title') }}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+  <h1 class="mb-4 text-xl font-semibold">{{ t('login.title') }}</h1>
+  <form method="post" action="/login" class="space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    {{ field("username", t('field.username'), value=username, autocomplete="username") }}
+    {{ field("password", t('field.password'), type="password", autocomplete="current-password") }}
+    <button type="submit" class="w-full rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700">{{ t('login.submit') }}</button>
+  </form>
+</div>
+{% endblock %}

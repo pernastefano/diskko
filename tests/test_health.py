@@ -2,22 +2,22 @@ from fastapi.testclient import TestClient
 
 from app import __version__
 from app.config import Settings
-from app.main import app
-
-client = TestClient(app)
 
 
-def test_health():
+def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json() == {"status": "ok", "version": __version__}
 
 
-def test_index_is_html():
-    r = client.get("/")
-    assert r.status_code == 200
-    assert "text/html" in r.headers["content-type"]
-    assert "DISKKO" in r.text
+def test_security_headers(client):
+    r = client.get("/health")
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["x-frame-options"] == "DENY"
+
+
+def test_html_not_cached(client):
+    assert client.get("/setup").headers["cache-control"] == "no-store"
 
 
 def test_settings_from_env(monkeypatch, tmp_path):
@@ -29,7 +29,14 @@ def test_settings_from_env(monkeypatch, tmp_path):
 
 
 def test_settings_defaults(monkeypatch):
-    for var in ("MUSIC_DIR", "SECRET_KEY", "BASE_URL"):
+    for var in ("MUSIC_DIR", "SECRET_KEY", "BASE_URL", "ENV"):
         monkeypatch.delenv(var, raising=False)
     s = Settings(_env_file=None)
     assert s.base_url == "http://localhost:8080"
+    assert not s.is_production
+    assert not s.cookie_secure
+
+
+def test_static_mount_exists(app):
+    with TestClient(app) as c:
+        assert c.get("/static/missing.js").status_code == 404
