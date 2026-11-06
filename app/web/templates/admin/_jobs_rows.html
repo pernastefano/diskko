@@ -1,0 +1,3 @@
+{% for job in jobs %}{% include "admin/_job_row.html" %}{% else %}
+<tr><td colspan="8" class="px-3 py-6 text-center text-slate-500">{{ t('jobs.empty') }}</td></tr>
+{% endfor %}

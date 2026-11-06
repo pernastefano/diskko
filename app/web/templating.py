@@ -1,3 +1,4 @@
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -7,9 +8,27 @@ from fastapi.templating import Jinja2Templates
 
 from app.auth.csrf import CSRF_COOKIE, get_csrf_token
 from app.i18n import LANG_COOKIE, LANG_NAMES, has_key, resolve_lang, translate
+from app.models import utcnow
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
+
+
+def fmt_dt(value: datetime | None) -> str:
+    return value.strftime("%Y-%m-%d %H:%M:%S") + " UTC" if value else "—"
+
+
+def duration(job: Any) -> str:
+    """Elapsed time of a job as '12s' or '3m 04s'."""
+    if not job.started_at:
+        return "—"
+    seconds = int(((job.finished_at or utcnow()) - job.started_at).total_seconds())
+    minutes, secs = divmod(max(seconds, 0), 60)
+    return f"{minutes}m {secs:02d}s" if minutes else f"{secs}s"
+
+
+templates.env.filters["fmt_dt"] = fmt_dt
+templates.env.globals["duration"] = duration
 
 
 def is_htmx(request: Request) -> bool:

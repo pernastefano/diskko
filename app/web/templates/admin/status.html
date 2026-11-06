@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ t('nav.status') }}{% endblock %}
+{% block content %}
+<h1 class="mb-4 text-2xl font-semibold">{{ t('nav.status') }}</h1>
+
+<h2 class="mb-2 text-lg font-semibold">{{ t('status.integrations') }}</h2>
+<div class="grid gap-4 md:grid-cols-3">
+  {% for card in cards %}{% include "admin/_status_card.html" %}{% endfor %}
+</div>
+
+<h2 class="mb-2 mt-8 text-lg font-semibold">{{ t('status.workers') }}</h2>
+{% if not workers_enabled %}
+  <p class="mb-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{{ t('status.workers_disabled') }}</p>
+{% endif %}
+<div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+  <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+      <tr><th class="px-3 py-2">{{ t('jobs.queue') }}</th><th class="px-3 py-2">{{ t('status.concurrency') }}</th>
+          <th class="px-3 py-2">{{ t('job.status.queued') }}</th><th class="px-3 py-2">{{ t('job.status.running') }}</th></tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for q in queues %}
+        <tr><td class="px-3 py-2 font-mono text-xs">{{ q.name }}</td><td class="px-3 py-2">{{ q.concurrency }}</td>
+            <td class="px-3 py-2">{{ q.queued }}</td><td class="px-3 py-2">{{ q.running }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

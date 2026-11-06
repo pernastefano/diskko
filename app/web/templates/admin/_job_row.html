@@ -1,0 +1,18 @@
+<tr id="job-{{ job.id }}">
+  <td class="px-3 py-2 align-top"><a class="text-indigo-600 hover:underline" href="/admin/jobs/{{ job.id }}">#{{ job.id }}</a></td>
+  <td class="px-3 py-2 align-top font-mono text-xs">{{ job.type }}</td>
+  <td class="px-3 py-2 align-top">{% include "admin/_job_status_badge.html" %}</td>
+  <td class="px-3 py-2 align-top">{% include "admin/_job_progress.html" %}</td>
+  <td class="px-3 py-2 align-top text-xs tabular-nums">{{ job.attempts }}/{{ job.max_attempts }}</td>
+  <td class="px-3 py-2 align-top text-xs">{{ job.created_at|fmt_dt }}</td>
+  <td class="px-3 py-2 align-top text-xs tabular-nums">{{ duration(job) }}</td>
+  <td class="px-3 py-2 align-top">
+    {% if job.is_active and not job.cancel_requested %}
+      <button type="button" hx-post="/admin/jobs/{{ job.id }}/cancel" hx-confirm="{{ t('jobs.confirm_cancel', id=job.id) }}"
+              hx-target="#job-{{ job.id }}" hx-swap="outerHTML" class="rounded border border-amber-300 px-2 py-1 text-xs text-amber-800 hover:bg-amber-50">{{ t('action.cancel') }}</button>
+    {% elif job.status in ('failed', 'cancelled') %}
+      <button type="button" hx-post="/admin/jobs/{{ job.id }}/retry"
+              hx-target="#job-{{ job.id }}" hx-swap="outerHTML" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100">{{ t('action.retry') }}</button>
+    {% endif %}
+  </td>
+</tr>

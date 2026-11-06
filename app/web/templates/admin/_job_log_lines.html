@@ -1,0 +1,1 @@
+{% for line in lines %}<div class="log-{{ line.level }}"><span class="text-slate-400">{{ line.ts.strftime('%H:%M:%S') }}</span> <span class="{{ {'error': 'text-red-600', 'warning': 'text-amber-600'}.get(line.level, '') }}">{{ line.message }}</span></div>{% endfor %}

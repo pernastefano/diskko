@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ t('jobs.detail_title', id=job.id) }}{% endblock %}
+{% block content %}
+<a href="/admin/jobs" class="text-sm text-indigo-600 hover:underline">← {{ t('jobs.back') }}</a>
+<h1 class="mb-4 mt-2 text-2xl font-semibold">{{ t('jobs.detail_title', id=job.id) }}</h1>
+{% include "admin/_job_summary.html" %}
+
+<h2 class="mb-2 mt-6 text-lg font-semibold">{{ t('jobs.logs') }}</h2>
+<div id="job-logs" class="max-h-96 overflow-auto rounded-lg border border-slate-200 bg-slate-900 p-3 font-mono text-xs leading-5 text-slate-100">
+  {% include "admin/_job_log_lines.html" %}
+</div>
+<div id="log-poller"
+     {% if job.is_active or lines|length >= 500 %}hx-get="/admin/jobs/{{ job.id }}/logs?after={{ last_id }}" hx-trigger="every 1s" hx-target="#job-logs" hx-swap="beforeend"{% endif %}></div>
+{% endblock %}

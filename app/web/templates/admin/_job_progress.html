@@ -1,0 +1,8 @@
+{# Progress bar: needs `job` #}
+<div class="flex items-center gap-2">
+  <div class="h-2 w-28 overflow-hidden rounded bg-slate-200" role="progressbar" aria-valuenow="{{ job.progress_pct|int }}" aria-valuemin="0" aria-valuemax="100">
+    <div class="h-2 {{ 'bg-red-500' if job.status == 'failed' else 'bg-indigo-600' }}" style="width: {{ job.progress_pct|round(0)|int }}%"></div>
+  </div>
+  <span class="text-xs tabular-nums text-slate-600">{{ job.progress_pct|round(0)|int }}%</span>
+</div>
+{% if job.step %}<div class="mt-0.5 text-xs text-slate-500">{{ job.step }}</div>{% endif %}

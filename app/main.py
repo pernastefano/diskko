@@ -13,7 +13,7 @@ from app.db import make_engine, make_session_factory, run_migrations
 from app.jobs.scheduler import JobScheduler
 from app.jobs.worker import JobWorker
 from app.web.errors import register_error_handlers
-from app.web.routers import auth, pages, setup, users
+from app.web.routers import auth, jobs, pages, setup, status, users
 
 STATIC_DIR = Path(__file__).parent / "web" / "static"
 
@@ -79,6 +79,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         setup.router,
         auth.router,
         users.router,
+        jobs.router,
+        status.router,
         pages.router,
     ):
         app.include_router(router)

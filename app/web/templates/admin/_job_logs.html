@@ -1,0 +1,5 @@
+{# Response of the log poller: new lines are appended; the poller is replaced out-of-band
+   with the updated cursor (and loses its trigger when the job is over). #}
+{% include "admin/_job_log_lines.html" %}
+<div id="log-poller" hx-swap-oob="true"
+     {% if keep_polling %}hx-get="/admin/jobs/{{ job.id }}/logs?after={{ last_id }}" hx-trigger="every 1s" hx-target="#job-logs" hx-swap="beforeend"{% endif %}></div>

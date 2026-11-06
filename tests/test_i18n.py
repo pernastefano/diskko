@@ -14,7 +14,8 @@ from app.i18n import (
     resolve_lang,
     translate,
 )
-from app.models import User
+from app.integrations.status import INTEGRATION_NAMES
+from app.models import JOB_STATUSES, User
 from tests.conftest import login, post
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
@@ -52,9 +53,15 @@ def test_all_used_keys_exist():
         text = path.read_text(encoding="utf-8")
         used |= set(re.findall(r"\bt\(\s*'([\w.]+)'", text))
         used |= {f"error.{c}" for c in re.findall(r'UserError\(\s*"(\w+)"', text)}
-        used |= {f"error.{c}" for c in re.findall(r'detail="(\w+)"', text)}
+        used |= {f"error.{c}" for c in re.findall(r'detail\s*=\s*"(\w+)"', text)}
         used |= {f"flash.{c}" for c in re.findall(r"flash=(\w+)", text)}
         used |= {f"role.{r}" for r in ("admin", "user")}
+        used |= {f"job.status.{s}" for s in JOB_STATUSES}
+        used |= {f"integration.name.{n}" for n in INTEGRATION_NAMES}
+        used |= {
+            f"integration.result.{c}"
+            for c in ("ok", "not_configured", "unreachable", "auth_failed", "http_error")
+        } | {"integration.result.rate_limited", "integration.result.invalid_response"}
     missing = sorted(k for k in used if not k.endswith(".") and k not in en)
     assert not missing, missing
 
