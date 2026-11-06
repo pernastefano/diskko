@@ -10,6 +10,8 @@ from app.auth.csrf import csrf_protect
 from app.auth.sessions import set_session_cookie
 from app.config import DEFAULT_SECRET_KEY, Settings, get_settings
 from app.db import make_engine, make_session_factory, run_migrations
+from app.jobs.scheduler import JobScheduler
+from app.jobs.worker import JobWorker
 from app.web.errors import register_error_handlers
 from app.web.routers import auth, pages, setup, users
 
@@ -27,7 +29,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         engine = make_engine(settings.database_url)
         app.state.engine = engine
         app.state.session_factory = make_session_factory(engine)
+        app.state.worker = None
+        app.state.scheduler = None
+        if settings.jobs_enabled:
+            worker = JobWorker(settings, app.state.session_factory)
+            await worker.start()
+            scheduler = JobScheduler(settings, app.state.session_factory, notify=worker.notify)
+            scheduler.start()
+            app.state.worker, app.state.scheduler = worker, scheduler
         yield
+        if app.state.scheduler:
+            app.state.scheduler.shutdown()
+        if app.state.worker:
+            await app.state.worker.stop()
         engine.dispose()
 
     app = FastAPI(
@@ -61,7 +75,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     register_error_handlers(app)
-    for router in (setup.router, auth.router, users.router, pages.router):
+    for router in (
+        setup.router,
+        auth.router,
+        users.router,
+        pages.router,
+    ):
         app.include_router(router)
     return app
 

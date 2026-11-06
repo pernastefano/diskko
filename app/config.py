@@ -26,6 +26,38 @@ class Settings(BaseSettings):
     session_ttl_hours: int = 24 * 14
     min_password_length: int = 10
 
+    # Job engine
+    jobs_enabled: bool = True
+    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2"
+    job_poll_interval: float = 1.0
+    job_retention_days: int = 30
+    job_log_max_lines: int = 5000
+
+    # Integrations (all optional; connection tests are jobs, see app/integrations)
+    plex_url: str = ""
+    plex_token: str = ""
+    slskd_url: str = ""
+    slskd_api_key: str = ""
+    mb_user_agent: str = ""
+    musicbrainz_url: str = "https://musicbrainz.org/ws/2"
+
+    @property
+    def queue_concurrency(self) -> dict[str, int]:
+        """Parse 'name:n,name:n'. Invalid entries are ignored; MusicBrainz is capped at 1."""
+        result: dict[str, int] = {}
+        for part in self.job_queue_concurrency.split(","):
+            name, _, count = part.strip().partition(":")
+            if name and count.strip().isdigit() and int(count) >= 1:
+                result[name.strip()] = int(count)
+        result["musicbrainz"] = 1  # MusicBrainz allows 1 request/second: never parallel
+        return result
+
+    @property
+    def secret_values(self) -> list[str]:
+        """Values that must never appear in logs or error messages."""
+        values = [self.secret_key, self.plex_token, self.slskd_api_key]
+        return [v for v in values if v and len(v) >= 4]
+
     @property
     def database_url(self) -> str:
         return f"sqlite:///{(self.config_dir / 'app.db').resolve()}"
