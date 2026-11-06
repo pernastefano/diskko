@@ -23,7 +23,7 @@ def _call(client, method, path):
 
 def test_admin_routes_are_discovered(app):
     # Guards the dynamic tests below against silently testing nothing.
-    assert len(_admin_routes(app)) >= 17
+    assert len(_admin_routes(app)) >= 19
 
 
 def test_every_admin_route_denies_regular_users(app, user_client):

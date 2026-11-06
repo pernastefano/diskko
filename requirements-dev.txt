@@ -5,3 +5,4 @@ httpx==0.28.1
 respx==0.23.1
 ruff==0.17.4
 pre-commit==4.7.0
+responses==0.26.3

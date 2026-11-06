@@ -16,6 +16,7 @@ from app.i18n import (
 )
 from app.integrations.status import INTEGRATION_NAMES
 from app.models import JOB_STATUSES, User
+from app.services.library.quality import QUALITY_TIERS
 from tests.conftest import login, post
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
@@ -57,6 +58,8 @@ def test_all_used_keys_exist():
         used |= {f"flash.{c}" for c in re.findall(r"flash=(\w+)", text)}
         used |= {f"role.{r}" for r in ("admin", "user")}
         used |= {f"job.status.{s}" for s in JOB_STATUSES}
+        used |= {f"quality.{t}" for t in QUALITY_TIERS}
+        used |= {"library.source.filesystem", "library.source.plex"}
         used |= {f"integration.name.{n}" for n in INTEGRATION_NAMES}
         used |= {
             f"integration.result.{c}"

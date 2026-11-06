@@ -18,6 +18,7 @@
         <a href="/" class="text-lg font-bold tracking-tight text-indigo-600">DISKKO</a>
         {% if user and user.is_admin %}
           <a href="/admin/users" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.users') }}</a>
+          <a href="/admin/library" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.library') }}</a>
           <a href="/admin/jobs" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.jobs') }}</a>
           <a href="/admin/status" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.status') }}</a>
         {% endif %}

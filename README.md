@@ -33,3 +33,18 @@ riprovare i job; `/admin/status` mostra le integrazioni (Plex, SLSKD, MusicBrain
 "Test connessione" e lo stato delle code. I job interrotti da un riavvio riprendono da soli.
 La concorrenza per coda si imposta con `JOB_QUEUE_CONCURRENCY`. Esegui **un solo processo** uvicorn
 (niente `--workers N`), altrimenti lo scheduler partirebbe più volte.
+
+## Libreria musicale
+
+`/admin/library` mostra artisti, album e tracce trovati, la qualità degli album e l'ultima
+scansione, e permette di avviarne una (o una riscansione completa). La scansione gira come job
+(`scan_library`, coda `library`) ed è notturna di default (`LIBRARY_SCAN_CRON`).
+
+- **Filesystem** (default): legge `MUSIC_DIR` con mutagen. Il rescan guarda solo dimensione e data
+  dei file e rilegge i tag solo di quelli nuovi o modificati. Si ignorano cartelle nascoste e di
+  sistema (`@eaDir`, `#recycle`, ...) e i link simbolici che escono dalla libreria.
+- **Plex** (`LIBRARY_SOURCE=plex`): usa `PLEX_URL`, `PLEX_TOKEN` e `PLEX_MUSIC_SECTION`.
+  Se Plex vede i file con percorsi diversi da quelli dell'app, imposta `LIBRARY_PATH_MAP`
+  (es. `/data/music=/music`). Qualità e bit depth vengono dai metadati di Plex.
+- **Protezione**: una scansione che toglierebbe più del 50% delle tracce note (`LIBRARY_MAX_REMOVAL_PCT`)
+  si ferma senza modificare nulla, tipico caso del volume non montato.
