@@ -121,3 +121,61 @@ def user_client(admin_client, new_client):
     c = new_client()
     assert login(c, "bob").status_code == 303
     return c
+
+
+# ----------------------------------------------------------------- MusicBrainz helpers
+
+MB_BASE = "https://musicbrainz.test/ws/2"
+MB_UA = "Diskko/0.1 ( test@example.com )"
+
+
+@pytest.fixture
+def ft():
+    from tests.mbdata import FakeTime
+
+    return FakeTime()
+
+
+@pytest.fixture
+def clock():
+    """Mutable 'now' for the cache TTL."""
+    from app.models import utcnow
+
+    state = {"now": utcnow()}
+
+    def now():
+        return state["now"]
+
+    now.state = state
+    return now
+
+
+@pytest.fixture
+def mbsettings(settings):
+    return settings.model_copy(
+        update={
+            "musicbrainz_url": MB_BASE,
+            "mb_user_agent": MB_UA,
+            "mb_min_interval": 0.0,
+            "job_poll_interval": 0.02,
+        }
+    )
+
+
+@pytest.fixture
+def make_client(mbsettings, session_factory, ft, clock):
+    from app.integrations.musicbrainz_client import MusicBrainzClient
+    from app.integrations.ratelimit import RateLimiter
+
+    def make(**kw):
+        limiter = RateLimiter(1.1, clock=ft.clock, sleep=ft.sleep)
+        return MusicBrainzClient(
+            kw.pop("settings", mbsettings),
+            session_factory,
+            limiter=limiter,
+            sleep=ft.sleep,
+            now=clock,
+            **kw,
+        )
+
+    return make

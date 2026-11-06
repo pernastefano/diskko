@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +34,12 @@ class Artist(Base):
     country: Mapped[str | None] = mapped_column(String(8), nullable=True)
     disambiguation: Mapped[str | None] = mapped_column(String(255), nullable=True)
     metadata_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # MusicBrainz identity (see models/musicbrainz.py for the statuses).
+    mb_status: Mapped[str] = mapped_column(
+        String(16), default="pending", server_default=text("'pending'")
+    )
+    mb_source: Mapped[str | None] = mapped_column(String(8), nullable=True)  # tag|auto|manual
+    mb_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     in_library: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
@@ -64,6 +71,14 @@ class LibraryAlbum(Base):
     mbid_release: Mapped[str | None] = mapped_column(String(36), nullable=True)
     mbid_release_group: Mapped[str | None] = mapped_column(String(36), nullable=True)
     is_compilation: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Link to MusicBrainz (filled by the matching step, see services/musicbrainz/matching.py).
+    release_group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("release_groups.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    matched_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    match_status: Mapped[str] = mapped_column(
+        String(16), default="unmatched", server_default=text("'unmatched'")
+    )
     scanned_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     artist: Mapped[Artist] = relationship(back_populates="albums")

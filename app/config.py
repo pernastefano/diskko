@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # Job engine
     jobs_enabled: bool = True
-    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2,library:1"
+    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2,library:1,coverart:2"
     job_poll_interval: float = 1.0
     job_retention_days: int = 30
     job_log_max_lines: int = 5000
@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     slskd_api_key: str = ""
     mb_user_agent: str = ""
     musicbrainz_url: str = "https://musicbrainz.org/ws/2"
+    coverart_url: str = "https://coverartarchive.org"
+    coverart_min_interval: float = 0.5  # seconds between Cover Art Archive requests
+    mb_cache_ttl_days: int = 7
+    mb_min_interval: float = 1.1  # seconds between requests (MusicBrainz allows 1 per second)
+    mb_max_retries: int = 3
+    mb_refresh_days: int = 30
+    coverart_enabled: bool = True  # re-sync artists whose metadata is older than this
 
     @property
     def queue_concurrency(self) -> dict[str, int]:
