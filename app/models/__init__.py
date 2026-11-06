@@ -11,6 +11,13 @@ from app.models.job import (
     Job,
     JobLog,
 )
+from app.models.library import (
+    SOURCE_FILESYSTEM,
+    SOURCE_PLEX,
+    Artist,
+    LibraryAlbum,
+    LibraryTrack,
+)
 from app.models.user import ROLE_ADMIN, ROLE_USER, ROLES, Setting, User, UserSession
 
 __all__ = [
@@ -19,15 +26,20 @@ __all__ = [
     "ROLES",
     "ROLE_ADMIN",
     "ROLE_USER",
+    "SOURCE_FILESYSTEM",
+    "SOURCE_PLEX",
     "STATUS_CANCELLED",
     "STATUS_FAILED",
     "STATUS_QUEUED",
     "STATUS_RUNNING",
     "STATUS_SUCCEEDED",
     "TERMINAL_STATUSES",
+    "Artist",
     "Base",
     "Job",
     "JobLog",
+    "LibraryAlbum",
+    "LibraryTrack",
     "Setting",
     "User",
     "UserSession",

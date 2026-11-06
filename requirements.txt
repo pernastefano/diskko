@@ -8,3 +8,4 @@ argon2-cffi==25.1.0
 itsdangerous==2.2.0
 python-multipart==0.0.33
 apscheduler==3.11.3
+mutagen==1.48.1

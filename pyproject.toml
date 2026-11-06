@@ -12,6 +12,9 @@ extend-exclude = [".venv", "config", "music-test", "downloads-test"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]  # long XML/fixture strings
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
