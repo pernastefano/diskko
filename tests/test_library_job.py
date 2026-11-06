@@ -200,3 +200,29 @@ async def test_scheduler_registers_the_scan_and_survives_a_bad_cron(settings, se
 def test_no_job_row_leaks_between_tests(session_factory):
     with session_factory() as db:
         assert db.scalar(select(func.count(Job.id))) == 0
+
+
+async def test_a_scan_queues_the_musicbrainz_sync_when_it_is_configured(
+    lib_settings, session_factory
+):
+    fill(lib_settings.music_dir)
+    settings = lib_settings.model_copy(update={"mb_user_agent": "Diskko/0.1 ( test )"})
+    worker, job_id = await run_job(settings, session_factory)
+    await wait_for_status(session_factory, job_id, STATUS_SUCCEEDED)
+    await worker.stop()
+    with session_factory() as db:
+        job = db.scalar(select(Job).where(Job.type == "sync_pending_artists"))
+    assert job is not None and job.dedupe_key == "sync_pending_artists"
+
+
+async def test_a_scan_does_not_queue_the_sync_without_a_user_agent(lib_settings, session_factory):
+    fill(lib_settings.music_dir)
+    worker, job_id = await run_job(lib_settings, session_factory)  # mb_user_agent is empty
+    await wait_for_status(session_factory, job_id, STATUS_SUCCEEDED)
+    await worker.stop()
+    with session_factory() as db:
+        assert db.scalar(select(func.count(Job.id)).where(Job.type == "sync_pending_artists")) == 0
+
+
+def test_the_musicbrainz_refresh_is_scheduled_daily(settings):
+    assert Schedule("sync_pending_artists", "30 4 * * *") in schedules_for(settings)

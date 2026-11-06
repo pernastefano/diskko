@@ -30,6 +30,7 @@ class Schedule:
 # Later phases append here (nightly library scan, metadata refresh, ...).
 SCHEDULES: list[Schedule] = [
     Schedule("housekeeping", "30 3 * * *"),
+    Schedule("sync_pending_artists", "30 4 * * *"),
 ]
 
 

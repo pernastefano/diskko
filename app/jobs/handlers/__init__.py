@@ -2,7 +2,10 @@
 
 from app.jobs.handlers import (  # noqa: F401
     demo,
+    fetch_covers,
     housekeeping,
     integration_check,
     scan_library,
+    sync_artist,
+    sync_pending,
 )

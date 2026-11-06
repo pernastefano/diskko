@@ -2,6 +2,7 @@
 
 import asyncio
 
+from app.jobs import engine
 from app.jobs.context import JobContext
 from app.jobs.errors import PermanentJobError
 from app.jobs.registry import job_handler
@@ -29,6 +30,12 @@ async def scan_library(ctx: JobContext) -> None:
         )
     except LibraryError as exc:  # configuration/mount problems: retrying will not help
         raise PermanentJobError(str(exc)) from exc
+    if ctx.settings.mb_user_agent.strip():  # new artists get their MusicBrainz identity
+        await ctx.run_db(
+            lambda db: engine.enqueue(
+                db, "sync_pending_artists", {}, dedupe_key="sync_pending_artists"
+            )
+        )
     await ctx.log(
         f"Scan finished in {summary.duration_s}s: {summary.files_seen} file(s), "
         f"{summary.files_read} read, {summary.files_skipped} unchanged, "
