@@ -191,3 +191,24 @@ def test_write_atomic_replaces_and_cleans_up(tmp_path):
     write_atomic(directory, "x.jpg", b"two")
     assert (directory / "x.jpg").read_bytes() == b"two"
     assert [p.name for p in directory.iterdir()] == ["x.jpg"]
+
+
+async def test_the_job_also_fetches_the_types_a_user_asked_for(mbsettings, session_factory):
+    """A user who selected singles gets those covers too, on top of the shared choice."""
+    settings = cover_settings(mbsettings)
+    artist_id, mbids = seed_discography(session_factory)
+    with respx.mock(assert_all_called=False) as mock:
+        for key in ("wanted", "ep", "owned_comp", "single", "other_comp"):
+            front(
+                mock,
+                mbids[key],
+                httpx.Response(200, content=JPEG, headers={"content-type": "image/jpeg"}),
+            )
+        worker, job_id = await run_covers(
+            settings, session_factory, artist_id, types=["single", "bogus"]
+        )
+        await wait_for_status(session_factory, job_id, "succeeded")
+        await worker.stop()
+    covers = covers_of(session_factory, artist_id)
+    assert covers["A Single"][0] == "ok"  # asked for
+    assert covers["More Hits"] == ("unknown", None)  # compilation nobody asked for and nobody owns

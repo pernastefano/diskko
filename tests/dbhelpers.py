@@ -75,3 +75,68 @@ def load_discography(db, artist, *fixture_pages):
 
 
 __all__ = ["album_key", "load_discography", "make_album", "make_artist", "make_rg"]
+
+
+def bulk_library(db, artists=100, rgs_per_artist=6, albums_per_artist=3, seed=7, prefix="Artist"):
+    """A large synthetic library: artists with release groups (mixed types) and some owned albums."""
+    import random
+
+    rnd = random.Random(seed)
+    kinds = [
+        ("Album", ()),
+        ("Album", ()),
+        ("EP", ()),
+        ("Single", ()),
+        ("Album", ("Live",)),
+        ("Album", ("Compilation",)),
+    ]
+    made = []
+    for i in range(artists):
+        name = f"{prefix} {i:04}"
+        artist = Artist(
+            name=name,
+            sort_name=name,
+            name_key=name_key(name),
+            mb_status="resolved",
+            mbid=str(uuid.uuid5(uuid.NAMESPACE_URL, name)),
+        )
+        db.add(artist)
+        db.flush()
+        groups = []
+        for j in range(rgs_per_artist):
+            primary, secondary = kinds[j % len(kinds)]
+            year = 1980 + rnd.randrange(40)
+            rg = ReleaseGroup(
+                mbid=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{name}-{j}")),
+                artist_id=artist.id,
+                title=f"{name} Record {j}",
+                primary_type=primary,
+                secondary_types_json=json.dumps(list(secondary)),
+                first_release_date=str(year),
+                year=year,
+                category=category_for(primary, list(secondary)),
+                cover_status="ok" if rnd.random() < 0.5 else "unknown",
+            )
+            rg.cover_path = f"{rg.mbid}.jpg" if rg.cover_status == "ok" else None
+            groups.append(rg)
+        db.add_all(groups)
+        db.flush()
+        for rg in rnd.sample(groups, min(albums_per_artist, len(groups))):
+            status = rnd.choice(["matched", "matched", "tentative", "unmatched", "manual", "none"])
+            db.add(
+                LibraryAlbum(
+                    artist_id=artist.id,
+                    source="filesystem",
+                    path=f"{name}/{rg.title}",
+                    title=rg.title,
+                    year=rg.year,
+                    track_count=10,
+                    release_group_id=None if status in ("unmatched", "none") else rg.id,
+                    match_status=status,
+                    quality_tier=rnd.choice(["any", "mp3_320", "lossless", "lossless_24"]),
+                    format="flac",
+                )
+            )
+        made.append(artist)
+    db.commit()
+    return made
