@@ -20,6 +20,7 @@ from app.services.library.provider import (
     ScanReporter,
     track_fields,
 )
+from app.services.musicbrainz.matching import match_artist_albums
 
 LAST_SCAN_KEY = "library.last_scan"
 MIN_TRACKS_FOR_REMOVAL_GUARD = 20
@@ -43,6 +44,7 @@ class ScanSummary:
     tracks_removed: int = 0
     albums_removed: int = 0
     artists_deactivated: int = 0
+    other_source_albums_removed: int = 0  # rows of the source that is no longer the active one
     duration_s: float = 0.0
     finished_at: str = ""
 
@@ -103,6 +105,20 @@ def _persist_artist(
     for album in scanned.albums:
         row = _find_album(db, source, album, album_of, claimed)
         if row is None:
+            twin = db.scalar(
+                select(LibraryAlbum).where(
+                    LibraryAlbum.source == source,
+                    LibraryAlbum.path == album.path,
+                    LibraryAlbum.title == album.title,
+                )
+            )
+            if twin is not None:
+                # Another album of this very scan has the same folder and title (the key of an
+                # album): they are one album. Its tracks join it instead of breaking the key.
+                added += _persist_tracks(db, source, twin, album)
+                db.flush()
+                _refresh_totals(db, twin)
+                continue
             row = LibraryAlbum(
                 source=source, path=album.path, title=album.title, artist_id=artist.id
             )
@@ -112,6 +128,15 @@ def _persist_artist(
         claimed.add(row.id)
         added += _persist_tracks(db, source, row, album)
     return len(scanned.albums), added
+
+
+def _refresh_totals(db: Session, album: LibraryAlbum) -> None:
+    """The counts of an album that took tracks from another album of the same scan."""
+    count = func.count(LibraryTrack.id)
+    size = func.coalesce(func.sum(LibraryTrack.file_size), 0)
+    album.track_count, album.total_size = db.execute(
+        select(count, size).where(LibraryTrack.album_id == album.id)
+    ).one()
 
 
 def _find_album(
@@ -182,7 +207,13 @@ def _remove_stale(db: Session, source: str, stale_paths: list[str]) -> tuple[int
             ~select(LibraryTrack.id).where(LibraryTrack.album_id == LibraryAlbum.id).exists(),
         )
     ).rowcount
-    deactivated = db.execute(
+    deactivated = _deactivate_empty_artists(db)
+    db.commit()
+    return len(stale_paths), empty_albums, deactivated
+
+
+def _deactivate_empty_artists(db: Session) -> int:
+    return db.execute(
         update(Artist)
         .where(
             Artist.in_library.is_(True),
@@ -190,8 +221,34 @@ def _remove_stale(db: Session, source: str, stale_paths: list[str]) -> tuple[int
         )
         .values(in_library=False)
     ).rowcount
-    db.commit()
-    return len(stale_paths), empty_albums, deactivated
+
+
+def _purge_other_sources(
+    db: Session, source: str, max_removal_pct: int, reporter: Reporter
+) -> tuple[int, int]:
+    """The source that was scanned is the one that counts: what the other sources left behind
+    (an earlier folder scan after switching to Plex, or the reverse) goes, so that every album
+    is listed once. Artists, their MusicBrainz data and manual decisions stay.
+
+    Not when the scanned source is much smaller than what would go (an unmounted folder looks
+    like that): the rows stay and the log says why. Returns (albums removed, tracks removed)."""
+    other_tracks = db.scalar(
+        select(func.count(LibraryTrack.id)).where(LibraryTrack.source != source)
+    )
+    if not other_tracks:
+        return 0, 0
+    own_tracks = db.scalar(select(func.count(LibraryTrack.id)).where(LibraryTrack.source == source))
+    if own_tracks * 100 < other_tracks * (100 - max_removal_pct):
+        reporter.log(
+            f"The {source} library has {own_tracks} track(s) and an earlier source {other_tracks}: "
+            "the earlier rows were kept (is the library mounted and complete?)",
+            "warning",
+        )
+        return 0, 0
+    tracks = db.execute(delete(LibraryTrack).where(LibraryTrack.source != source)).rowcount
+    albums = db.execute(delete(LibraryAlbum).where(LibraryAlbum.source != source)).rowcount
+    reporter.log(f"Removed {albums} album(s) and {tracks} track(s) left by another library source")
+    return albums, tracks
 
 
 def save_artists(db: Session, source: str, artists: list[ScannedArtist]) -> list[int]:
@@ -240,12 +297,15 @@ def run_scan(
         errors=output.stats.errors,
     )
     claimed: set[int] = set()
+    changed: list[int] = []  # artists that got new tracks: their albums are matched again
     total = len(output.artists)
     for i, artist in enumerate(output.artists, start=1):
         reporter.checkpoint()
         reporter.progress(60 + 40 * i / total, f"Artist {i}/{total}: {artist.name}")
         with factory() as db:
             albums, added = _persist_artist(db, source, artist, album_of, claimed)
+            if added:
+                changed.append(_find_artist(db, artist).id)
             db.commit()
         summary.albums += albums
         summary.tracks_added += added
@@ -256,7 +316,16 @@ def run_scan(
     with factory() as db:
         removed, albums_removed, deactivated = _remove_stale(db, source, stale)
         summary.tracks_removed, summary.albums_removed = removed, albums_removed
-        summary.artists_deactivated = deactivated
+        summary.other_source_albums_removed, _ = _purge_other_sources(
+            db, source, max_removal_pct, reporter
+        )
+        summary.artists_deactivated = deactivated + _deactivate_empty_artists(db)
+        # New albums of artists we already know from MusicBrainz are matched right away (it is
+        # local work); the others wait for their first sync.
+        for artist_id in changed:
+            artist = db.get(Artist, artist_id)
+            if artist is not None and artist.metadata_synced_at is not None:
+                match_artist_albums(db, artist_id)
         summary.artists = db.scalar(
             select(func.count(Artist.id)).where(Artist.in_library.is_(True))
         )

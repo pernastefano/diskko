@@ -32,6 +32,7 @@ from app.services.library.provider import (
     LibraryError,
     LibraryProvider,
     RecordingReporter,
+    ScannedAlbum,
     ScannedArtist,
     ScannedTrack,
     ScanOutput,
@@ -113,6 +114,32 @@ def _timestamp_ns(value: Any) -> int:
         return int(value.timestamp() * 1_000_000_000)
     except (AttributeError, OSError, ValueError):
         return 0
+
+
+def merge_same_folder_albums(artists: list[ScannedArtist], profiles) -> int:
+    """Plex may list one folder as two albums with the same title (a split release, or the same
+    album under two spellings of the artist). They are one album here: the library knows an
+    album by its folder and title. Returns how many albums were merged into another."""
+    first: dict[tuple[str, str], tuple[ScannedArtist, ScannedAlbum]] = {}
+    merged = 0
+    for artist in artists:
+        for album in list(artist.albums):
+            if album.path.startswith("plex:"):  # no folder known: the Plex id is unique
+                continue
+            key = (album.path, name_key(album.title))
+            if key not in first:
+                first[key] = (artist, album)
+                continue
+            _, keeper = first[key]
+            rebuilt = build_album(keeper.path, [*keeper.tracks, *album.tracks], profiles)
+            keeper.format, keeper.quality_tier = rebuilt.format, rebuilt.quality_tier
+            keeper.bitrate, keeper.disc_count = rebuilt.bitrate, rebuilt.disc_count
+            keeper.total_size, keeper.tracks = rebuilt.total_size, rebuilt.tracks
+            keeper.year = keeper.year or album.year
+            keeper.mbid_release = keeper.mbid_release or album.mbid_release
+            artist.albums.remove(album)
+            merged += 1
+    return merged
 
 
 class PlexProvider(LibraryProvider):
@@ -244,6 +271,10 @@ class PlexProvider(LibraryProvider):
                         albums=built,
                     )
                 )
+        merged = merge_same_folder_albums(result, self.profiles)
+        if merged:
+            reporter.log(f"Merged {merged} Plex album(s) that share a folder and a title")
+        result = [a for a in result if a.albums]
         result.sort(key=lambda a: name_key(a.sort_name))
         return ScanOutput(artists=result, stats=stats)
 

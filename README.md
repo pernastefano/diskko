@@ -48,6 +48,12 @@ scansione, e permette di avviarne una (o una riscansione completa). La scansione
   (es. `/data/music=/music`). Qualità e bit depth vengono dai metadati di Plex.
 - **Protezione**: una scansione che toglierebbe più del 50% delle tracce note (`LIBRARY_MAX_REMOVAL_PCT`)
   si ferma senza modificare nulla, tipico caso del volume non montato.
+- **La sorgente scelta comanda**: dopo una scansione riuscita le righe lasciate da un'altra sorgente
+  (per esempio la scansione da cartella dopo il passaggio a Plex) vengono tolte, così ogni album è
+  elencato una volta. Restano gli artisti, i loro dati MusicBrainz e le decisioni manuali sugli
+  abbinamenti; gli album nuovi di artisti già noti vengono abbinati subito. Se la sorgente
+  scansionata ha meno della metà delle tracce dell'altra, nulla viene tolto e il log lo dice. Plex
+  può elencare come due album una cartella con lo stesso titolo: si uniscono in uno.
 
 ## Album mancanti (MusicBrainz)
 

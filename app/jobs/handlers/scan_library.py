@@ -46,4 +46,9 @@ async def scan_library(ctx: JobContext) -> None:
         f"{summary.files_read} read, {summary.files_skipped} unchanged, "
         f"{summary.errors} error(s); {summary.artists} artist(s), {summary.albums} album(s) "
         f"in this scan, {summary.tracks} track(s) total; removed {summary.tracks_removed} track(s)"
+        + (
+            f" and {summary.other_source_albums_removed} album(s) of another library source"
+            if summary.other_source_albums_removed
+            else ""
+        )
     )

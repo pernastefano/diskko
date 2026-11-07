@@ -381,27 +381,116 @@ def test_an_empty_plex_answer_does_not_wipe_the_library(plex, psettings, session
         assert db.scalar(select(func.count(LibraryTrack.id))) == 25
 
 
-def test_filesystem_and_plex_rows_coexist_without_interfering(
-    plex, psettings, session_factory, tmp_path
-):
+def local_album(tmp_path, name="Local Album", artist="Aretha Franklin"):
     from app.services.library.filesystem import FilesystemProvider
 
     root = tmp_path / "music"
-    make_track(
-        root / "Aretha Franklin/Local Album/01.flac",
-        artist="Aretha Franklin",
-        albumartist="Aretha Franklin",
-        album="Local Album",
-    )
-    run_scan(session_factory, FilesystemProvider(root), RecordingReporter())
+    make_track(root / f"{artist}/{name}/01.flac", artist=artist, albumartist=artist, album=name)
+    return FilesystemProvider(root)
+
+
+def test_the_source_that_was_scanned_is_the_only_one_left(
+    plex, psettings, session_factory, tmp_path
+):
+    """Switching from the folder to Plex: the folder's rows go, every album is listed once."""
+    run_scan(session_factory, local_album(tmp_path), RecordingReporter())
     basic_library(plex)
-    run_scan(session_factory, PlexProvider(psettings), RecordingReporter())
+    summary = run_scan(session_factory, PlexProvider(psettings), RecordingReporter())
+    assert summary.other_source_albums_removed == 1
+    with session_factory() as db:
+        assert {t.source for t in db.scalars(select(LibraryTrack))} == {"plex"}
+        assert {a.source for a in db.scalars(select(LibraryAlbum))} == {"plex"}
+        assert db.scalar(select(func.count(LibraryAlbum.id))) == 3
+        aretha = db.scalars(select(Artist).where(Artist.name == "Aretha Franklin")).all()
+        assert len(aretha) == 1 and aretha[0].in_library  # the same artist, still ours
+    # and back: Plex is gone from the point of view of a folder scan
     plex.tracks, plex.albums, plex.artists = [], [], []
     run_scan(session_factory, PlexProvider(psettings), RecordingReporter(), max_removal_pct=100)
     with session_factory() as db:
-        sources = {t.source for t in db.scalars(select(LibraryTrack))}
-        assert sources == {"filesystem"}  # the Plex rows went away, the local ones did not
-        assert len(db.scalars(select(Artist).where(Artist.name == "Aretha Franklin")).all()) == 1
+        assert db.scalar(select(func.count(LibraryTrack.id))) == 0
+
+
+def test_an_artist_only_the_old_source_had_is_no_longer_in_the_library(
+    plex, psettings, session_factory, tmp_path
+):
+    run_scan(session_factory, local_album(tmp_path, artist="Only Local"), RecordingReporter())
+    basic_library(plex)
+    run_scan(session_factory, PlexProvider(psettings), RecordingReporter())
+    with session_factory() as db:
+        gone = db.scalar(select(Artist).where(Artist.name == "Only Local"))
+        assert gone is not None and gone.in_library is False  # kept, but not listed
+        assert db.scalar(select(Artist).where(Artist.name == "Aretha Franklin")).in_library
+
+
+def test_what_was_known_about_the_artist_survives_the_switch(
+    plex, psettings, session_factory, tmp_path
+):
+    from app.models import AlbumMatchOverride, utcnow
+    from tests.dbhelpers import make_rg
+
+    run_scan(session_factory, local_album(tmp_path), RecordingReporter())
+    with session_factory() as db:
+        artist = db.scalar(select(Artist).where(Artist.name == "Aretha Franklin"))
+        artist.mbid, artist.mb_status, artist.metadata_synced_at = MBID_A, "resolved", utcnow()
+        group = make_rg(db, artist, "Lady Soul", 1968)
+        db.add(
+            AlbumMatchOverride(
+                artist_id=artist.id, album_key="somethingelse", release_group_id=None
+            )
+        )
+        db.commit()
+        artist_id, group_id = artist.id, group.id
+    basic_library(plex)
+    run_scan(session_factory, PlexProvider(psettings), RecordingReporter())
+    with session_factory() as db:
+        artist = db.get(Artist, artist_id)
+        assert (artist.mbid, artist.mb_status) == (MBID_A, "resolved")  # its identity stays
+        assert db.query(AlbumMatchOverride).count() == 1  # so do the manual decisions
+        album = db.scalar(select(LibraryAlbum).where(LibraryAlbum.title == "Lady Soul"))
+        # the Plex album is matched to the release group at once (no wait for the next sync)
+        assert (album.release_group_id, album.match_status) == (group_id, "matched")
+
+
+def test_a_much_smaller_scan_does_not_remove_the_other_source(
+    plex, psettings, session_factory, tmp_path
+):
+    """A folder that is not mounted looks like a tiny library: nothing is removed for it."""
+    basic_library(plex)
+    run_scan(session_factory, PlexProvider(psettings), RecordingReporter())
+    reporter = RecordingReporter()
+    summary = run_scan(session_factory, local_album(tmp_path), reporter)
+    assert summary.other_source_albums_removed == 0
+    assert any("earlier rows were kept" in m for m in reporter.messages("warning"))
+    with session_factory() as db:
+        assert {t.source for t in db.scalars(select(LibraryTrack))} == {"plex", "filesystem"}
+
+
+def test_new_albums_of_a_known_artist_are_matched_without_waiting_for_a_sync(
+    session_factory, tmp_path
+):
+    from app.models import utcnow
+    from app.services.library.filesystem import FilesystemProvider
+    from tests.dbhelpers import make_rg
+
+    provider = local_album(tmp_path, "First", "Band")
+    run_scan(session_factory, provider, RecordingReporter())
+    with session_factory() as db:
+        artist = db.scalar(select(Artist).where(Artist.name == "Band"))
+        artist.mb_status, artist.metadata_synced_at = "resolved", utcnow()
+        first = make_rg(db, artist, "First", 2000)
+        second = make_rg(db, artist, "Second", 2001)
+        db.commit()
+        ids = (first.id, second.id)
+    make_track(
+        tmp_path / "music/Band/Second/01.flac", artist="Band", albumartist="Band", album="Second"
+    )
+    run_scan(session_factory, FilesystemProvider(tmp_path / "music"), RecordingReporter())
+    with session_factory() as db:
+        matched = {
+            a.title: (a.release_group_id, a.match_status) for a in db.scalars(select(LibraryAlbum))
+        }
+    assert matched["Second"] == (ids[1], "matched")
+    assert matched["First"][0] == ids[0]
 
 
 # ---------------------------------------------------------------------- errors
@@ -462,3 +551,126 @@ async def test_scan_job_with_the_plex_source(plex, psettings, session_factory):
     await worker.stop()
     assert job.attempts == 1 and TOKEN not in job.error and "rejected the token" in job.error
     await asyncio.sleep(0)
+
+
+# --------------------------------------------- two Plex albums in one folder with one title
+
+
+def split_album_library(plex, second_artist=None):
+    """Plex lists "Third Round" twice: 5 tracks and 2 tracks, same folder, same title."""
+    plex.artists = [PArtist(1, "Manu Katche")] + (
+        [PArtist(2, second_artist)] if second_artist else []
+    )
+    plex.albums = [
+        PAlbum(10, 1, "Third Round", 2010),
+        PAlbum(11, 2 if second_artist else 1, "Third Round", 2010),
+    ]
+    folder = "/data/music/Manu Katche/Third Round"
+    plex.tracks = [
+        PTrack(100 + i, 10, 1, f"Song {i}", i, path=f"{folder}/{i:02d}.flac") for i in range(1, 6)
+    ] + [
+        PTrack(
+            200 + i,
+            11,
+            2 if second_artist else 1,
+            f"Extra {i}",
+            5 + i,
+            path=f"{folder}/{5 + i:02d}.flac",
+        )
+        for i in range(1, 3)
+    ]
+
+
+def test_albums_of_one_folder_with_one_title_are_merged(plex, psettings):
+    split_album_library(plex)
+    output = scan_plex(psettings)
+    (artist,) = output.artists
+    (album,) = artist.albums
+    assert album.title == "Third Round" and len(album.tracks) == 7
+    assert album.path == "Manu Katche/Third Round" and album.plex_rating_key == "10"
+    assert [t.track_no for t in album.tracks] == list(range(1, 8))
+
+
+def test_the_merge_also_works_across_two_spellings_of_the_artist(plex, psettings):
+    split_album_library(plex, second_artist="manu katche")
+    output = scan_plex(psettings)
+    assert [a.name for a in output.artists] == ["Manu Katche"]  # the empty one is dropped
+    (album,) = output.artists[0].albums
+    assert len(album.tracks) == 7
+
+
+def test_albums_with_different_titles_in_one_folder_stay_apart(plex, psettings):
+    split_album_library(plex)
+    plex.albums[1] = PAlbum(11, 1, "Third Round (Bonus)", 2010)
+    output = scan_plex(psettings)
+    assert sorted(a.title for a in output.artists[0].albums) == [
+        "Third Round",
+        "Third Round (Bonus)",
+    ]
+
+
+def test_the_scan_no_longer_fails_on_the_duplicate_and_stays_stable(
+    plex, psettings, session_factory
+):
+    split_album_library(plex, second_artist="manu katche")
+    provider = PlexProvider(psettings)
+    summary = run_scan(session_factory, provider, RecordingReporter())
+    assert summary.tracks == 7
+    again = run_scan(session_factory, provider, RecordingReporter())
+    assert (again.files_read, again.tracks_added) == (0, 0)
+    with session_factory() as db:
+        album = db.scalar(select(LibraryAlbum).where(LibraryAlbum.title == "Third Round"))
+        assert (album.track_count, album.source) == (7, "plex")
+        assert db.scalar(select(func.count(LibraryAlbum.id))) == 1
+
+
+def test_a_provider_that_repeats_an_album_key_does_not_break_the_scan(session_factory):
+    """Safety net in the saving step, whatever the provider: the same folder and title twice
+    (even under two artists) is one album."""
+    from app.services.library.provider import (
+        LibraryProvider,
+        ScannedAlbum,
+        ScannedArtist,
+        ScannedTrack,
+        ScanOutput,
+        ScanStats,
+    )
+
+    def album(first, count):
+        tracks = [
+            ScannedTrack(path=f"X/Same/{first + i:02d}.flac", title=f"t{first + i}", file_size=10)
+            for i in range(count)
+        ]
+        return ScannedAlbum(
+            "X/Same",
+            "Same",
+            None,
+            "flac",
+            "flac_standard",
+            None,
+            1,
+            10 * count,
+            False,
+            None,
+            None,
+            None,
+            tracks,
+        )
+
+    class Twice(LibraryProvider):
+        source = "plex"
+
+        def scan(self, known, reporter, *, force=False):
+            return ScanOutput(
+                artists=[
+                    ScannedArtist("One", "One", None, [album(1, 3)]),
+                    ScannedArtist("Two", "Two", None, [album(10, 2)]),
+                ],
+                stats=ScanStats(files_seen=5),
+            )
+
+    summary = run_scan(session_factory, Twice(), RecordingReporter())
+    assert summary.tracks == 5
+    with session_factory() as db:
+        (row,) = db.scalars(select(LibraryAlbum)).all()
+        assert (row.track_count, row.total_size) == (5, 50)
