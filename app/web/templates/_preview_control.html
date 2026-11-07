@@ -1,5 +1,0 @@
-{# needs: preview_group (a release group). The player replaces the button when it is ready. #}
-<div id="preview-{{ preview_group.id }}" class="mt-2">
-  <button type="button" hx-post="/previews/{{ preview_group.id }}" hx-target="#preview-{{ preview_group.id }}" hx-swap="outerHTML"
-          class="w-full rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100" data-preview-button>▶ {{ t('preview.play') }}</button>
-</div>
