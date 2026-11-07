@@ -23,6 +23,7 @@ import httpx
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
+from app.integrations import breaker
 from app.integrations.ratelimit import RateLimiter, get_limiter
 from app.models import ApiCache, utcnow
 from app.services.musicbrainz.categories import category_for, year_of
@@ -191,6 +192,7 @@ class MusicBrainzClient:
                 return None if status == 404 else json.loads(body)
 
         assert self._http is not None, "use the client as an async context manager"
+        breaker.check(self.settings, "musicbrainz")  # paused: the job waits (RetryLater)
         url = f"{self.settings.musicbrainz_url.rstrip('/')}/{path.lstrip('/')}"
         headers = {"User-Agent": self.settings.mb_user_agent, "Accept": "application/json"}
         ttl = timedelta(days=self.settings.mb_cache_ttl_days)
@@ -204,6 +206,8 @@ class MusicBrainzClient:
                 last = type(exc).__name__  # never the message: it can contain the URL
                 await self._backoff(attempt, None)
                 continue
+            if resp.status_code < 500 and resp.status_code != 429:
+                breaker.record_success("musicbrainz")
             if resp.status_code == 200:
                 try:
                     data = resp.json()
@@ -221,6 +225,7 @@ class MusicBrainzClient:
                 await self._backoff(attempt, resp.headers.get("Retry-After"))
                 continue
             raise MusicBrainzError(f"Unexpected answer from MusicBrainz (HTTP {resp.status_code})")
+        breaker.record_failure(self.settings, "musicbrainz")
         raise MusicBrainzError(f"MusicBrainz is not answering ({last}) after retries")
 
     async def _backoff(self, attempt: int, retry_after: str | None) -> None:

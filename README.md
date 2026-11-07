@@ -71,6 +71,15 @@ secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
   apri la pagina di un artista e, per gli artisti che nessuno apre, con una passata notturna
   (alle 4:50, 200 artisti a notte) che riprova anche le copertine rimaste da scaricare, per esempio
   dopo un job annullato; quelle che l'archivio non ha non vengono richieste di nuovo.
+- **Servizi di riserva**: per copertine, anteprime e artisti simili c'è un provider predefinito e
+  una lista ordinata di fallback (copertine: Cover Art Archive poi Deezer; anteprime: iTunes poi
+  Deezer; simili: Last.fm poi ListenBrainz), configurabile in Impostazioni → Integrazioni →
+  *Servizi di riserva* (o con `PROVIDERS_COVERS`, `PROVIDERS_PREVIEWS`, `PROVIDERS_SIMILAR`). Le
+  copertine di Deezer si accettano solo se artista e titolo corrispondono quasi esattamente. Un
+  servizio che fallisce 5 volte di fila (`PROVIDER_BREAKER_THRESHOLD`) viene messo in pausa per 10
+  minuti (`PROVIDER_BREAKER_COOLDOWN_MINUTES`): nel frattempo si usano i fallback; se nessuno
+  risponde il job torna in coda dopo la pausa **senza consumare un tentativo** e senza bloccare gli
+  altri job. I metadati (MusicBrainz) non hanno alternative: hanno solo pausa e nuovo tentativo.
 
 I dati di MusicBrainz sono di pubblico dominio (CC0); le copertine del Cover Art Archive hanno
 licenze proprie e restano solo nella tua cache locale.
@@ -173,7 +182,7 @@ riavviare:
 
 - **Libreria**: cartella della musica (con "Verifica cartella"), sorgente predefinita (Filesystem o
   Plex) e frequenza della scansione (mai, ogni ora, ogni giorno, settimana, mese...).
-- **Integrazioni**: Plex, SLSKD, MusicBrainz, Cover Art Archive e Last.fm, ciascuna con il proprio
+- **Integrazioni**: Plex, SLSKD, MusicBrainz, Cover Art Archive, Last.fm e i servizi di riserva, ciascuna con il proprio
   modulo e, dove esiste, il "Test connessione". I token e le chiavi non vengono mai mostrati dopo il
   salvataggio: lasciando il campo vuoto si mantiene il valore attuale.
 - **Job**: quanti job di ogni tipo girano insieme (MusicBrainz resta sempre a 1).

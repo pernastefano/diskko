@@ -11,11 +11,15 @@ import re
 import httpx
 
 from app.config import Settings
+from app.integrations import breaker
 from app.integrations.ratelimit import RateLimiter, get_limiter
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 _IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png"}
+
+
+SERVICE = "coverart"
 
 
 class CoverArtError(Exception):
@@ -57,13 +61,19 @@ class CoverArtClient:
             f"{self.settings.coverart_url.rstrip('/')}/release-group/"
             f"{release_group_mbid}/front-{size}"
         )
+        breaker.check(self.settings, SERVICE)
         await self._limiter.wait()
         try:
             resp = await self._http.get(
                 url, headers={"User-Agent": self.settings.mb_user_agent or "Diskko"}
             )
         except httpx.HTTPError as exc:
+            breaker.record_failure(self.settings, SERVICE)
             raise CoverArtError(f"Cover Art Archive unreachable ({type(exc).__name__})") from exc
+        if resp.status_code >= 500 or resp.status_code == 429:
+            breaker.record_failure(self.settings, SERVICE)
+        else:
+            breaker.record_success(SERVICE)
         if resp.status_code == 404:
             return None
         if resp.status_code != 200:

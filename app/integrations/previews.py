@@ -155,6 +155,7 @@ class DeezerClient(CachedJsonClient):
                     str((raw.get("artist") or {}).get("name") or ""),
                     raw.get("nb_tracks"),
                     url=store_url(raw.get("link")),
+                    cover_url=picture_url(raw.get("cover_medium")),
                 )
             )
         return found

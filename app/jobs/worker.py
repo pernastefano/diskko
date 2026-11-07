@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.config import Settings
 from app.jobs import engine, registry
 from app.jobs.context import JobContext, redact
-from app.jobs.errors import JobCancelled, PermanentJobError
+from app.jobs.errors import JobCancelled, PermanentJobError, RetryLater
 from app.models import Job
 
 log = logging.getLogger("diskko.jobs")
@@ -131,6 +131,9 @@ class JobWorker:
                 self._call, engine.requeue_interrupted, job.id, "Interrupted by shutdown"
             )
             raise
+        except RetryLater as exc:
+            message = redact(str(exc) or "service unavailable", secrets)
+            await asyncio.to_thread(self._call, engine.requeue_later, job.id, message, exc.delay)
         except PermanentJobError as exc:
             await asyncio.to_thread(self._fail, job.id, redact(str(exc) or "failed", secrets))
         except Exception as exc:

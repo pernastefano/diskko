@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.auth.deps import DB, AdminAuth, require_admin
 from app.config import Settings
 from app.i18n import has_key
+from app.integrations.providers import CAPABILITIES
 from app.jobs import engine
 from app.models import ACTIVE_STATUSES, ROLE_USER, ROLES, Job, QualityProfile, User
 from app.quality import BIT_DEPTHS, BITRATES_KBPS, COLORS, KINDS, SAMPLE_RATES_HZ
@@ -40,9 +41,13 @@ router = APIRouter(prefix="/settings", dependencies=[Depends(require_admin)])
 
 SECTIONS = ("library", "integrations", "jobs", "albums", "quality", "users")
 RECLASSIFY_KEY = "reclassify_quality"
-GROUPS = ("plex", "slskd", "musicbrainz", "coverart", "lastfm")
+GROUPS = ("plex", "slskd", "musicbrainz", "coverart", "lastfm", "providers")
 TESTABLE = ("plex", "slskd", "musicbrainz", "lastfm")  # integrations with a connection test
-CHOICE_LABELS = {"library_source": "library.source.", "slskd_mode": "slskd.mode."}
+CHOICE_LABELS = {
+    "library_source": "library.source.",
+    "slskd_mode": "slskd.mode.",
+    **{key: "provider." for key, _ in CAPABILITIES.values()},
+}
 FOLDER_LISTING_CAP = 100_000
 
 
@@ -97,6 +102,13 @@ def field_view(
         view["value"] = str(current)
     if field.kind == "bool" and submitted is not None:
         view["value"] = field.key in submitted
+    if field.kind == "providers":
+        picked = [p for p in str(current).split(",") if p]
+        if submitted is not None and any(f"{field.key}_{i}" in submitted for i in (1, 2, 3)):
+            picked = [str(submitted.get(f"{field.key}_{i}", "")) for i in range(1, 4)]
+        slots = len(field.choices)
+        picked += [""] * slots
+        view["slots"] = [(i, picked[i - 1]) for i in range(1, slots + 1)]
     if field.kind == "cron":
         view["value"] = " ".join(str(view["value"]).split())
         view["presets"] = [(cron, f"settings.schedule.{i}") for i, cron in SCHEDULE_PRESETS]

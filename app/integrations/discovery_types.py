@@ -18,6 +18,7 @@ class AlbumCandidate:
     track_count: int | None
     year: int | None = None
     url: str | None = None  # the album's page at the provider (for the attribution link)
+    cover_url: str | None = None  # a 250 px front cover, when the provider gives one
 
 
 @dataclass(frozen=True)

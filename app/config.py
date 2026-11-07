@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     mb_max_retries: int = 3
     mb_refresh_days: int = 30  # re-sync artists whose metadata is older than this
     coverart_enabled: bool = True
+    # Providers per capability: the first is the default, the others are fallbacks, in order
+    providers_covers: str = "coverartarchive,deezer"
+    providers_previews: str = "itunes,deezer"
+    providers_similar: str = "lastfm,listenbrainz"
+    provider_breaker_threshold: int = 5  # consecutive failures that pause a service
+    provider_breaker_cooldown_minutes: int = 10
     lastfm_api_key: str = ""
 
     # Downloads: key of the quality profile a request must reach unless it says otherwise

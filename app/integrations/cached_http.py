@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app import __version__
 from app.config import Settings
+from app.integrations import breaker
 from app.integrations.ratelimit import RateLimiter, get_limiter
 from app.models import ApiCache, utcnow
 
@@ -131,6 +132,7 @@ class CachedJsonClient:
                 return None if status == 404 else json.loads(body)
 
         assert self._http is not None, "use the client as an async context manager"
+        breaker.check(self.settings, self.service)  # paused services are not asked (cache is)
         headers = {"User-Agent": self.user_agent, "Accept": "application/json"}
         last = "no attempt"
         for attempt in range(self._max_retries + 1):
@@ -156,6 +158,7 @@ class CachedJsonClient:
                 last = str(exc) or "temporary error"
                 await self._backoff(attempt, None)
                 continue
+            breaker.record_success(self.service)
             if outcome == MISSING:
                 if ttl is not None:
                     await asyncio.to_thread(self._cache_put, key, 404, "", NEGATIVE_TTL)
@@ -165,6 +168,7 @@ class CachedJsonClient:
             if ttl is not None:
                 await asyncio.to_thread(self._cache_put, key, 200, resp.text, ttl)
             return data
+        breaker.record_failure(self.settings, self.service)
         raise ServiceError(f"{self.service} is not answering ({last}) after retries")
 
     async def _backoff(self, attempt: int, retry_after: str | None) -> None:

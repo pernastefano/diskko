@@ -1,18 +1,31 @@
-"""Download front covers (250 px) of an artist's release groups into DATA_DIR/covers."""
+"""Download front covers (250 px) of an artist's release groups into DATA_DIR/covers.
+
+Providers come from the settings (Cover Art Archive first, Deezer as the fallback by default).
+A cover is looked up at each provider in turn until one has it. When a provider fails the next
+one is tried; a cover that could not be looked up everywhere stays "unknown" and is retried by
+a later job. When no provider answers for a few covers in a row, the job goes back in the
+queue after a pause (the attempt is not used) so the rest of the queue keeps moving.
+"""
 
 import os
 import tempfile
+from contextlib import AsyncExitStack
 from pathlib import Path
 
 from sqlalchemy import select, update
 
-from app.integrations.coverart import CoverArtClient, CoverArtError
+from app.integrations.breaker import ServiceBreakerOpen
+from app.integrations.cached_http import ServiceError
+from app.integrations.cover_sources import LABELS, SOURCES
+from app.integrations.providers import provider_order
 from app.jobs.context import JobContext
+from app.jobs.errors import RetryLater
 from app.jobs.registry import job_handler
 from app.models import Artist, ReleaseGroup
 from app.services.musicbrainz.missing import get_missing_types, owned_release_group_ids
 
 MAX_CONSECUTIVE_ERRORS = 3
+DEFAULT_PAUSE = 120.0  # seconds, when no service says how long it will be paused
 
 
 def covers_dir(data_dir: Path) -> Path:
@@ -37,7 +50,7 @@ async def fetch_covers(ctx: JobContext) -> None:
     artist_id = int(ctx.payload["artist_id"])
     force = bool(ctx.payload.get("force", False))
 
-    def wanted(db) -> list[tuple[int, str, str]]:
+    def wanted(db) -> list[tuple[int, str, str, int | None]]:
         if force:  # retry covers that were missing
             db.execute(
                 update(ReleaseGroup)
@@ -49,12 +62,16 @@ async def fetch_covers(ctx: JobContext) -> None:
         owned = owned_release_group_ids(db, artist_id)
         rows = db.execute(
             select(
-                ReleaseGroup.id, ReleaseGroup.mbid, ReleaseGroup.category, ReleaseGroup.title
+                ReleaseGroup.id,
+                ReleaseGroup.mbid,
+                ReleaseGroup.category,
+                ReleaseGroup.title,
+                ReleaseGroup.track_count_hint,
             ).where(ReleaseGroup.artist_id == artist_id, ReleaseGroup.cover_status == "unknown")
         )
         return [
-            (rid, mbid, title)
-            for rid, mbid, category, title in rows
+            (rid, mbid, title, hint)
+            for rid, mbid, category, title, hint in rows
             if category in types or rid in owned
         ]
 
@@ -71,36 +88,71 @@ async def fetch_covers(ctx: JobContext) -> None:
     )
     directory = covers_dir(ctx.settings.data_dir)
     saved = missing = errors = consecutive = 0
-    async with CoverArtClient(ctx.settings) as client:
-        for i, (rg_id, mbid, title) in enumerate(todo, start=1):
+    paused: set[str] = set()  # providers already reported as paused in this job's log
+    pause = 0.0  # the longest pause reported by a paused provider
+    async with AsyncExitStack() as stack:
+        sources = [
+            await stack.enter_async_context(SOURCES[name](ctx.settings, ctx.session_factory))
+            for name in provider_order(ctx.settings, "covers")
+        ]
+        for i, (rg_id, mbid, title, hint) in enumerate(todo, start=1):
             await ctx.checkpoint()
             await ctx.progress(100 * (i - 1) / len(todo), f"{title} ({i}/{len(todo)})")
-            try:
-                result = await client.fetch_front(mbid)
-            except ValueError:  # not a valid MBID: nothing to look up
-                result = None
-            except CoverArtError as exc:
+            found: tuple[bytes, str, str] | None = None
+            answered = failed = 0  # providers that gave a definite answer / could not answer
+            for source in sources:
+                label = LABELS[source.name]
+                try:
+                    result = await source.fetch(mbid, artist_name, title, hint)
+                except ServiceBreakerOpen as exc:
+                    failed += 1
+                    pause = max(pause, exc.delay)
+                    if source.name not in paused:
+                        paused.add(source.name)
+                        await ctx.log(
+                            f"{label} is paused after repeated failures"
+                            f" ({exc.delay:.0f}s left): using the other providers",
+                            "warning",
+                        )
+                    continue
+                except ServiceError as exc:
+                    failed += 1
+                    await ctx.log(f"{artist_name} – {title}: {label} failed ({exc})", "warning")
+                    continue
+                answered += 1
+                if result is not None:
+                    found = (*result, label)
+                    break
+            if found is not None:
+                consecutive = 0
+                data, extension, label = found
+                name = f"{mbid}{extension}"
+                write_atomic(directory, name, data)
+                saved += 1
+                await ctx.run_db(_set_cover(rg_id, name, "ok"))
+                await ctx.log(
+                    f"{artist_name} – {title}: cover saved ({len(data) // 1024} KB, {label})"
+                )
+            elif failed:  # somebody could not answer: do not conclude "no cover"
                 errors += 1
-                consecutive += 1
-                await ctx.log(f"{artist_name} – {title}: cover failed ({exc})", "warning")
+                consecutive = consecutive + 1 if not answered else 0
                 if consecutive >= MAX_CONSECUTIVE_ERRORS:
-                    raise  # let the job engine retry later
-                continue
-            consecutive = 0
-            if result is None:
+                    await ctx.log(
+                        f"{artist_name}: no provider is answering, {saved} cover(s) saved so far",
+                        "warning",
+                    )
+                    raise RetryLater("No cover provider is answering", pause or DEFAULT_PAUSE)
+            else:
+                consecutive = 0
                 missing += 1
                 await ctx.run_db(_set_cover(rg_id, None, "missing"))
-                await ctx.log(f"{artist_name} – {title}: no cover at the Cover Art Archive")
-                continue
-            data, extension = result
-            name = f"{mbid}{extension}"
-            write_atomic(directory, name, data)
-            saved += 1
-            await ctx.run_db(_set_cover(rg_id, name, "ok"))
-            await ctx.log(f"{artist_name} – {title}: cover saved ({len(data) // 1024} KB)")
+                names = " or ".join(LABELS[s.name] for s in sources)
+                await ctx.log(f"{artist_name} – {title}: no cover at {names}")
     await ctx.log(
         f"{artist_name}: {saved} cover(s) saved, {missing} without cover, {errors} error(s)"
     )
+    if errors and not saved and not missing:  # nothing could be looked up: retry with backoff
+        raise ServiceError(f"{artist_name}: no cover could be looked up ({errors} error(s))")
     await ctx.progress(100, "Done")
 
 

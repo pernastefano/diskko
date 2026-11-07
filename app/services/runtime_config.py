@@ -19,6 +19,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
+from app.integrations.providers import CAPABILITIES
 from app.models import Setting
 from app.services.app_settings import set_setting
 from app.services.quality_profiles import load_profiles
@@ -76,6 +77,22 @@ FIELDS: dict[str, Field] = {
         Field("mb_refresh_days", "int", "integrations", "musicbrainz", minimum=1, maximum=365),
         Field("coverart_enabled", "bool", "integrations", "coverart"),
         Field("lastfm_api_key", "secret", "integrations", "lastfm"),
+        # which service answers what (default first, then the fallbacks)
+        *(
+            Field(key, "providers", "integrations", "providers", choices=known, required=True)
+            for key, known in CAPABILITIES.values()
+        ),
+        Field(
+            "provider_breaker_threshold", "int", "integrations", "providers", minimum=1, maximum=100
+        ),
+        Field(
+            "provider_breaker_cooldown_minutes",
+            "int",
+            "integrations",
+            "providers",
+            minimum=1,
+            maximum=1440,
+        ),
         # jobs
         Field("job_queue_concurrency", "concurrency", "jobs", "jobs"),
         Field("job_retention_routine_days", "int", "jobs", "retention", minimum=1, maximum=3650),
@@ -219,6 +236,18 @@ def parse_concurrency(raw: Mapping[str, str]) -> str:
     return ",".join(parts)
 
 
+def parse_providers(field: Field, items: list[str]) -> str:
+    """Ordered provider names -> 'a,b'. Blanks are skipped, the first one is required."""
+    names = [i.strip().lower() for i in items if i.strip()]
+    if not names:
+        raise FieldError("required")
+    if any(n not in field.choices for n in names):
+        raise FieldError("choice_invalid")
+    if len(set(names)) != len(names):
+        raise FieldError("providers_duplicate")
+    return ",".join(names)
+
+
 def parse_value(field: Field, raw: Any) -> Any:
     """Validate one submitted value and return what gets stored. Raises FieldError."""
     if field.kind == "bool":
@@ -228,6 +257,8 @@ def parse_value(field: Field, raw: Any) -> Any:
         if value not in field.choices:
             raise FieldError("choice_invalid")
         return value
+    if field.kind == "providers":
+        return parse_providers(field, str(raw).split(","))
     if field.kind == "secret":
         value = str(raw).strip()
         if not value:
@@ -294,6 +325,15 @@ def save_values(
             raw = {q: str(form.get(f"queue_{q}", "")) for q in QUEUES}
             try:
                 values[field.key] = parse_concurrency(raw)
+            except FieldError as exc:
+                errors[field.key] = exc.code
+            continue
+        if field.kind == "providers":
+            slots = [form.get(f"{field.key}_{i}") for i in range(1, len(field.choices) + 1)]
+            if all(slot is None for slot in slots):
+                continue
+            try:
+                values[field.key] = parse_providers(field, [str(s or "") for s in slots])
             except FieldError as exc:
                 errors[field.key] = exc.code
             continue

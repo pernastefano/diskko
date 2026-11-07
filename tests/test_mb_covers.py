@@ -39,7 +39,13 @@ async def run_covers(settings, factory, artist_id, **payload):
 
 
 def cover_settings(mbsettings):
-    return mbsettings.model_copy(update={"coverart_url": CAA, "coverart_min_interval": 0.0})
+    return mbsettings.model_copy(
+        update={
+            "coverart_url": CAA,
+            "coverart_min_interval": 0.0,
+            "providers_covers": "coverartarchive",  # the fallback has its own tests
+        }
+    )
 
 
 def covers_of(factory, artist_id):
@@ -212,5 +218,5 @@ async def test_the_log_says_which_artist_and_album_each_cover_is_for(mbsettings,
         m.startswith("The Band: looking for the cover of 3 album(s)") for m in messages
     ) or any("looking for the cover of" in m for m in messages)
     assert any(" – " in m and ": cover saved (" in m for m in messages)
-    assert any(" – " in m and "no cover at the Cover Art Archive" in m for m in messages)
+    assert any(" – " in m and "no cover at Cover Art Archive" in m for m in messages)
     assert any("cover(s) saved" in m and "without cover" in m for m in messages)

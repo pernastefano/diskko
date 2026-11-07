@@ -11,6 +11,15 @@ from tests import stepjob  # noqa: F401  (registers the test-only "test.steps" j
 PASSWORD = "correct-horse-battery"
 
 
+@pytest.fixture(autouse=True)
+def _fresh_circuit_breakers():
+    from app.integrations.breaker import BREAKERS
+
+    BREAKERS.reset()
+    yield
+    BREAKERS.reset()
+
+
 @pytest.fixture
 def settings(tmp_path):
     return Settings(

@@ -360,6 +360,21 @@ def requeue_interrupted(db: Session, job_id: int, message: str) -> None:
     add_log(db, job_id, "warning", message)
 
 
+def requeue_later(db: Session, job_id: int, message: str, delay: float) -> None:
+    """Put a running job back in the queue after `delay` seconds without using an attempt."""
+    db.execute(
+        update(Job)
+        .where(Job.id == job_id, Job.status == STATUS_RUNNING)
+        .values(
+            status=STATUS_QUEUED,
+            attempts=func.max(Job.attempts - 1, 0),
+            next_run_at=utcnow() + timedelta(seconds=delay),
+        )
+    )
+    db.commit()
+    add_log(db, job_id, "warning", f"{message}. Trying again in {delay:.0f}s (attempt not used)")
+
+
 # --------------------------------------------------------- user-driven actions
 
 

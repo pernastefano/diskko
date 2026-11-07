@@ -86,7 +86,12 @@ def test_it_runs_every_night_and_counts_as_routine():
 
 async def run_pass(settings, factory, **update):
     s = settings.model_copy(
-        update={"job_poll_interval": 0.02, "coverart_min_interval": 0.0, **update}
+        update={
+            "job_poll_interval": 0.02,
+            "coverart_min_interval": 0.0,
+            "providers_covers": "coverartarchive",
+            **update,
+        }
     )
     worker = JobWorker(s, factory)
     await worker.start()
