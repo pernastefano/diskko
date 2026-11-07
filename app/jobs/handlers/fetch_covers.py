@@ -1,4 +1,4 @@
-"""Download front covers (250 px) of an artist's release groups into CONFIG_DIR/covers."""
+"""Download front covers (250 px) of an artist's release groups into DATA_DIR/covers."""
 
 import os
 import tempfile
@@ -15,8 +15,8 @@ from app.services.musicbrainz.missing import get_missing_types, owned_release_gr
 MAX_CONSECUTIVE_ERRORS = 3
 
 
-def covers_dir(config_dir: Path) -> Path:
-    return config_dir / "covers"
+def covers_dir(data_dir: Path) -> Path:
+    return data_dir / "covers"
 
 
 def write_atomic(directory: Path, name: str, data: bytes) -> None:
@@ -60,7 +60,7 @@ async def fetch_covers(ctx: JobContext) -> None:
         await ctx.progress(100, "Done")
         return
 
-    directory = covers_dir(ctx.settings.config_dir)
+    directory = covers_dir(ctx.settings.data_dir)
     saved = missing = errors = consecutive = 0
     async with CoverArtClient(ctx.settings) as client:
         for i, (rg_id, mbid) in enumerate(todo, start=1):

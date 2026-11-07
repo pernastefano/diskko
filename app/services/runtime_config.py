@@ -1,7 +1,7 @@
 """Settings editable from the web UI.
 
 Two layers: environment variables (and .env) give the defaults and the bootstrap values
-(SECRET_KEY, CONFIG_DIR, ...); what an administrator saves in the UI is stored in the
+(SECRET_KEY, DATA_DIR, ...); what an administrator saves in the UI is stored in the
 `settings` table under `config.<name>` and wins over the environment. After a change the
 effective settings are rebuilt and applied to the running app without a restart.
 """

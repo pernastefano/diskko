@@ -17,14 +17,14 @@ ENV PYTHONUNBUFFERED=1 \
     PUID=1000 \
     PGID=1000 \
     PORT=8000 \
-    CONFIG_DIR=/config \
+    DATA_DIR=/data \
     MUSIC_DIR=/music \
     DOWNLOADS_DIR=/downloads
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gosu curl \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /config /music /downloads
+    && mkdir -p /data /music /downloads
 
 COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
@@ -35,7 +35,7 @@ COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000
-VOLUME ["/config"]
+VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -fsS "http://127.0.0.1:${PORT}/health" || exit 1

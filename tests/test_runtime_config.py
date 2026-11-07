@@ -167,7 +167,7 @@ def test_only_runtime_safe_settings_are_editable():
     for key in (
         "secret_key",
         "base_url",
-        "config_dir",
+        "data_dir",
         "tz",
         "jobs_enabled",
         "env",

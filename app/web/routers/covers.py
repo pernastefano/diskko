@@ -18,7 +18,7 @@ _TYPES = {"jpg": "image/jpeg", "png": "image/png"}
 def cover(request: Request, auth: UserAuth, filename: str):
     if not _NAME.match(filename):
         raise HTTPException(status_code=404, detail="not_found")
-    directory = covers_dir(request.app.state.settings.config_dir).resolve()
+    directory = covers_dir(request.app.state.settings.data_dir).resolve()
     path = (directory / filename).resolve()
     if path.parent != directory or not path.is_file():
         raise HTTPException(status_code=404, detail="not_found")

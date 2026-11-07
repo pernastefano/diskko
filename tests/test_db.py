@@ -67,13 +67,13 @@ def test_invalid_role_rejected_by_db(db):
 
 
 def test_default_secret_key_refused_in_production(tmp_path):
-    settings = Settings(_env_file=None, base_url="https://diskko.example", config_dir=tmp_path)
+    settings = Settings(_env_file=None, base_url="https://diskko.example", data_dir=tmp_path)
     with pytest.raises(RuntimeError):
         create_app(settings)
-    Settings(_env_file=None, env="production", config_dir=tmp_path)  # constructing is fine
+    Settings(_env_file=None, env="production", data_dir=tmp_path)  # constructing is fine
     with pytest.raises(RuntimeError):
-        create_app(Settings(_env_file=None, env="production", config_dir=tmp_path))
+        create_app(Settings(_env_file=None, env="production", data_dir=tmp_path))
 
 
 def test_default_secret_key_allowed_in_development(tmp_path):
-    create_app(Settings(_env_file=None, config_dir=tmp_path))
+    create_app(Settings(_env_file=None, data_dir=tmp_path))

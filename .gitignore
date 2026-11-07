@@ -7,7 +7,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-config/
+/data/
 music-test/
 downloads-test/
 downloads/

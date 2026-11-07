@@ -12,7 +12,7 @@ if ! getent passwd "$PUID" >/dev/null 2>&1; then
     useradd -u "$PUID" -g "$PGID" -M -s /usr/sbin/nologin diskko
 fi
 
-# Only the config dir is chowned: /music and /downloads are user data, never touched.
-chown "$PUID:$PGID" /config 2>/dev/null || echo "warning: cannot chown /config" >&2
+# Only the data dir is chowned: /music and /downloads are user data, never touched.
+chown "$PUID:$PGID" /data 2>/dev/null || echo "warning: cannot chown /data" >&2
 
 exec gosu "$PUID:$PGID" "$@"

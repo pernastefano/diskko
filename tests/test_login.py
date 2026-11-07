@@ -25,7 +25,7 @@ def test_session_cookie_is_secure_on_https(tmp_path):
         _env_file=None,
         secret_key="test-secret",
         base_url="https://diskko.example",
-        config_dir=tmp_path / "config",
+        data_dir=tmp_path / "data",
     )
     app = create_app(settings)
     with TestClient(app, base_url="https://diskko.example", follow_redirects=False) as c:

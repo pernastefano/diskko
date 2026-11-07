@@ -66,7 +66,7 @@ secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
 - **Mancanti**: i release-group dell'artista non posseduti, filtrati per tipo. Il default
   condiviso (album ed EP) si cambia in `/admin/library`; ogni utente può scegliere i propri tipi in
   `/account/preferences`.
-- **Copertine**: scaricate dal Cover Art Archive in `CONFIG_DIR/covers` solo per gli album
+- **Copertine**: scaricate dal Cover Art Archive in `DATA_DIR/covers` solo per gli album
   posseduti e per i tipi attivi (`COVERART_ENABLED=false` per disattivarle).
 
 I dati di MusicBrainz sono di pubblico dominio (CC0); le copertine del Cover Art Archive hanno
@@ -104,7 +104,7 @@ riavviare:
   eliminazione.
 
 Le variabili d'ambiente (`.env`) restano i valori **predefiniti** e quelli di avvio (`SECRET_KEY`,
-`BASE_URL`, `CONFIG_DIR`...); ciò che si salva dalle Impostazioni li sostituisce, e "Usa il
+`BASE_URL`, `DATA_DIR`...); ciò che si salva dalle Impostazioni li sostituisce, e "Usa il
 predefinito" li ripristina. I token salvati stanno nel database dell'app (nella cartella di
 configurazione): trattala come riservata.
 

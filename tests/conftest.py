@@ -16,7 +16,7 @@ def settings(tmp_path):
         _env_file=None,
         secret_key="test-secret",
         base_url="http://testserver",
-        config_dir=tmp_path / "config",
+        data_dir=tmp_path / "data",
         jobs_enabled=False,  # tests that need workers start them explicitly
     )
 

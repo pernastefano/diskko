@@ -100,7 +100,7 @@ async def test_covers_are_saved_for_wanted_and_owned_release_groups(mbsettings, 
     assert covers["Best Of"][0] == "ok"  # owned, even though compilations are not a wanted type
     assert covers["A Single"] == ("unknown", None) and covers["More Hits"] == ("unknown", None)
     assert all(route.call_count == 0 for route in skipped)  # no requests for unwanted types
-    directory = settings.config_dir / "covers"
+    directory = settings.data_dir / "covers"
     assert (directory / f"{mbids['wanted']}.jpg").read_bytes() == JPEG
     assert (directory / f"{mbids['ep']}.png").read_bytes() == PNG
     assert (

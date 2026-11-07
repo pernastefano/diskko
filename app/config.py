@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     tz: str = "UTC"
 
     # All paths come from configuration, never hardcoded.
-    config_dir: Path = Path("./config")
+    data_dir: Path = Path("./data")
     music_dir: Path = Path("./music-test")
     downloads_dir: Path = Path("./downloads-test")
 
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        return f"sqlite:///{(self.config_dir / 'app.db').resolve()}"
+        return f"sqlite:///{(self.data_dir / 'app.db').resolve()}"
 
     @property
     def cookie_secure(self) -> bool:

@@ -569,7 +569,7 @@ def test_nothing_secret_is_stored_outside_the_settings_table(app, admin_client, 
     )
     with app.state.session_factory() as db:
         keys = {s.key for s in db.scalars(select(Setting))}
-    assert "config.plex_token" in keys and Path(app.state.settings.config_dir).exists()
+    assert "config.plex_token" in keys and Path(app.state.settings.data_dir).exists()
 
 
 def test_defaults_are_shown_with_readable_names(app, admin_client):

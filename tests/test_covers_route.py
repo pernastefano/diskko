@@ -8,11 +8,11 @@ PNG = b"\x89PNG" + b"\0" * 16
 
 @pytest.fixture
 def covers(app, admin_client):
-    directory = app.state.settings.config_dir / "covers"
+    directory = app.state.settings.data_dir / "covers"
     directory.mkdir(parents=True, exist_ok=True)
     (directory / f"{LADY_SOUL_RG}.jpg").write_bytes(JPEG)
     (directory / "05571372-5b11-39b7-89c5-1c02589a28c9.png").write_bytes(PNG)
-    (app.state.settings.config_dir / "secret.txt").write_text("top secret")
+    (app.state.settings.data_dir / "secret.txt").write_text("top secret")
     return directory
 
 

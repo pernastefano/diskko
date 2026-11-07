@@ -15,7 +15,7 @@ services:
       BASE_URL: ${BASE_URL:-http://localhost:8000}
       SLSKD_URL: http://slskd:5030
     volumes:
-      - ./config:/config
+      - ./data:/data
       - /path/to/music:/music
       - ./downloads:/downloads   # shared with slskd
     depends_on:
