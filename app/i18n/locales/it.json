@@ -188,9 +188,7 @@
   "review.reason.low_score": "Nessuna corrispondenza vicina",
   "review.reason.no_match": "Non trovato",
   "review.reason.invalid_mbid": "MBID non riconosciuto da MusicBrainz",
-  "preferences.intro": "Scegli quali tipi di uscite contano come album mancanti. La scelta vale solo per te.",
-  "preferences.use_default": "Usa il predefinito condiviso",
-  "preferences.use_custom": "Scelgo io",
+  "preferences.intro": "Le tue impostazioni personali.",
   "library.missing_types": "Tipi di album mancanti (predefinito condiviso)",
   "library.missing_types_hint": "Gli utenti possono cambiarlo nelle proprie preferenze.",
   "flash.sync_queued": "Sincronizzazione accodata.",
@@ -375,5 +373,15 @@
   "settings.error.cron_invalid": "Non è un'espressione crontab valida.",
   "settings.error.path_map_invalid": "Ogni regola deve avere la forma /percorso/plex=/percorso/locale.",
   "settings.error.secret_invalid": "Valore non valido (senza spazi, al massimo 512 caratteri).",
-  "flash.settings_saved": "Impostazioni salvate."
+  "flash.settings_saved": "Impostazioni salvate.",
+  "preferences.language": "Lingua",
+  "preferences.language_hint": "La lingua dell'interfaccia, a ogni accesso.",
+  "preferences.theme": "Tema",
+  "preferences.theme.auto": "Automatico",
+  "preferences.theme.auto.hint": "Segue l'impostazione chiaro o scuro del tuo dispositivo.",
+  "preferences.theme.light": "Chiaro",
+  "preferences.theme.light.hint": "Sempre chiaro.",
+  "preferences.theme.dark": "Scuro",
+  "preferences.theme.dark.hint": "Sempre scuro.",
+  "error.preferences_invalid": "Scegli una lingua e un tema dagli elenchi."
 }

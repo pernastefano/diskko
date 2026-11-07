@@ -24,7 +24,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    engine = make_engine(_url())
+    engine = make_engine(_url(), foreign_keys=False)  # see make_engine: tables get recreated
     with engine.connect() as connection:
         context.configure(
             connection=connection,

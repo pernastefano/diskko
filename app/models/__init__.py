@@ -39,7 +39,7 @@ from app.models.musicbrainz import (
     ArtistReview,
     ReleaseGroup,
 )
-from app.models.user import ROLE_ADMIN, ROLE_USER, ROLES, Setting, User, UserSession
+from app.models.user import ROLE_ADMIN, ROLE_USER, ROLES, THEMES, Setting, User, UserSession
 
 __all__ = [
     "MATCH_MANUAL",
@@ -64,6 +64,7 @@ __all__ = [
     "ACTIVE_STATUSES",
     "JOB_STATUSES",
     "ROLES",
+    "THEMES",
     "ROLE_ADMIN",
     "ROLE_USER",
     "SOURCE_FILESYSTEM",

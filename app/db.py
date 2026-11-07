@@ -11,8 +11,12 @@ from sqlalchemy.orm import Session, sessionmaker
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def make_engine(url: str) -> Engine:
-    """Create an engine; SQLite gets WAL, foreign keys and a busy timeout."""
+def make_engine(url: str, *, foreign_keys: bool = True) -> Engine:
+    """Create an engine; SQLite gets WAL, foreign keys and a busy timeout.
+
+    Migrations pass foreign_keys=False: SQLite recreates a table to alter it, and with foreign keys
+    on, dropping the old table would cascade-delete the rows that point to it.
+    """
     if url.startswith("sqlite"):
         db_path = make_url(url).database
         if db_path and db_path != ":memory:":
@@ -25,7 +29,7 @@ def make_engine(url: str) -> Engine:
         def _sqlite_pragmas(dbapi_conn, _record) -> None:
             cur = dbapi_conn.cursor()
             cur.execute("PRAGMA journal_mode=WAL")
-            cur.execute("PRAGMA foreign_keys=ON")
+            cur.execute(f"PRAGMA foreign_keys={'ON' if foreign_keys else 'OFF'}")
             cur.execute("PRAGMA busy_timeout=5000")
             cur.execute("PRAGMA synchronous=NORMAL")
             cur.close()

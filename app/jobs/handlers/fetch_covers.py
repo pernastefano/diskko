@@ -10,7 +10,6 @@ from app.integrations.coverart import CoverArtClient, CoverArtError
 from app.jobs.context import JobContext
 from app.jobs.registry import job_handler
 from app.models import ReleaseGroup
-from app.services.musicbrainz.categories import CATEGORIES
 from app.services.musicbrainz.missing import get_missing_types, owned_release_group_ids
 
 MAX_CONSECUTIVE_ERRORS = 3
@@ -37,7 +36,6 @@ def write_atomic(directory: Path, name: str, data: bytes) -> None:
 async def fetch_covers(ctx: JobContext) -> None:
     artist_id = int(ctx.payload["artist_id"])
     force = bool(ctx.payload.get("force", False))
-    extra_types = [str(t) for t in ctx.payload.get("types") or []]
 
     def wanted(db) -> list[tuple[int, str]]:
         if force:  # retry covers that were missing
@@ -47,8 +45,7 @@ async def fetch_covers(ctx: JobContext) -> None:
                 .values(cover_status="unknown")
             )
             db.commit()
-        # the shared choice plus the types of the user who opened the page, if any
-        types = set(get_missing_types(db)) | {t for t in extra_types if t in CATEGORIES}
+        types = set(get_missing_types(db))
         owned = owned_release_group_ids(db, artist_id)
         rows = db.execute(
             select(ReleaseGroup.id, ReleaseGroup.mbid, ReleaseGroup.category).where(

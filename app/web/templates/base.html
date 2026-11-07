@@ -1,19 +1,31 @@
+{% from "_icons.html" import icon %}
 <!doctype html>
-<html lang="{{ lang }}" class="h-full bg-slate-50">
+<html lang="{{ lang }}" class="h-full bg-slate-50{{ ' dark' if theme == 'dark' }}" data-theme="{{ theme }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
+  {# Apply the theme before the first paint (no flash). "auto" follows the operating system. #}
+  <script>
+    (function () {
+      var root = document.documentElement, theme = root.dataset.theme || 'auto';
+      var media = window.matchMedia('(prefers-color-scheme: dark)');
+      function apply() { root.classList.toggle('dark', theme === 'dark' || (theme === 'auto' && media.matches)); }
+      apply();
+      if (theme === 'auto' && media.addEventListener) { media.addEventListener('change', apply); }
+    })();
+  </script>
   {# Let HTMX swap 4xx/5xx bodies so inline errors are shown #}
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
   <title>{% block title %}DISKKO{% endblock %} · DISKKO</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/theme.css">
 </head>
 <body class="min-h-full text-slate-800" hx-headers='{{ {"X-CSRF-Token": csrf_token}|tojson }}'>
   <header class="border-b border-slate-200 bg-white">
-    <nav class="mx-auto flex {{ main_width|default('max-w-5xl') }} flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3" x-data="{ open: false }">
+    <nav class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3" x-data="{ open: false }">
       <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
         <a href="/" class="text-lg font-bold tracking-tight text-indigo-600">DISKKO</a>
         {% if user %}
@@ -21,37 +33,47 @@
         {% endif %}
         {% if user and user.is_admin %}
           <a href="/admin/users" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.users') }}</a>
-          <a href="/admin/library" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.library') }}</a>
           <a href="/admin/artists" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.artists') }}</a>
-          <a href="/admin/jobs" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.jobs') }}</a>
-          <a href="/settings" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('settings.title') }}</a>
-          <a href="/admin/status" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.status') }}</a>
+          <a href="/admin/library" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.library') }}</a>
         {% endif %}
       </div>
-      <div class="flex items-center gap-3 text-sm">
-        <form method="post" action="/lang" class="flex items-center">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <input type="hidden" name="next" value="{{ current_path }}">
-          <label class="sr-only" for="lang-select">{{ t('nav.language') }}</label>
-          <select id="lang-select" name="lang" @change="$el.form.submit()"
-                  class="rounded border border-slate-300 bg-white px-2 py-1 text-sm">
-            {% for code, name in lang_names.items() %}
-              <option value="{{ code }}" {% if code == lang %}selected{% endif %}>{{ name }}</option>
-            {% endfor %}
-          </select>
-        </form>
+      <div class="flex items-center gap-1 text-sm">
+        {% if user and user.is_admin %}
+          {# Jobs, status and settings sit together on the right, next to the user menu #}
+          {% for href, name, label in (('/admin/jobs', 'jobs', t('nav.jobs')), ('/admin/status', 'status', t('nav.status')), ('/settings', 'settings', t('settings.title'))) %}
+            <a href="{{ href }}" title="{{ label }}" aria-label="{{ label }}" data-nav="{{ name }}"
+               {% if current_path.startswith(href) %}aria-current="page"{% endif %}
+               class="rounded-md p-2 {{ 'bg-indigo-50 text-indigo-700' if current_path.startswith(href) else 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }} focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              {{ icon(name) }}<span class="sr-only">{{ label }}</span>
+            </a>
+          {% endfor %}
+        {% endif %}
+        {% if not user %}
+          {# before logging in there is no user preference yet #}
+          <form method="post" action="/lang" class="flex items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            <label class="sr-only" for="lang-select">{{ t('nav.language') }}</label>
+            <select id="lang-select" name="lang" @change="$el.form.submit()"
+                    class="rounded border border-slate-300 bg-white px-2 py-1 text-sm">
+              {% for code, name in lang_names.items() %}
+                <option value="{{ code }}" {% if code == lang %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        {% endif %}
         {% if user %}
-          <div class="relative">
-            <button type="button" @click="open = !open" @click.outside="open = false"
+          <div class="relative ml-1">
+            <button type="button" @click="open = !open" @click.outside="open = false" aria-haspopup="menu" :aria-expanded="open"
                     class="rounded px-2 py-1 font-medium text-slate-700 hover:bg-slate-100">
               {{ user.username }} <span class="text-xs text-slate-500">({{ t('role.' ~ user.role) }})</span>
             </button>
-            <div x-show="open" x-cloak class="absolute right-0 z-10 mt-1 w-48 rounded-md border border-slate-200 bg-white py-1 shadow">
-              <a href="/account/preferences" class="block px-3 py-2 hover:bg-slate-100">{{ t('nav.preferences') }}</a>
-              <a href="/account/password" class="block px-3 py-2 hover:bg-slate-100">{{ t('nav.change_password') }}</a>
+            <div x-show="open" x-cloak role="menu" class="absolute right-0 z-10 mt-1 w-48 rounded-md border border-slate-200 bg-white py-1 shadow">
+              <a href="/account/preferences" role="menuitem" class="block px-3 py-2 hover:bg-slate-100">{{ t('nav.preferences') }}</a>
+              <a href="/account/password" role="menuitem" class="block px-3 py-2 hover:bg-slate-100">{{ t('nav.change_password') }}</a>
               <form method="post" action="/logout">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="block w-full px-3 py-2 text-left hover:bg-slate-100">{{ t('nav.logout') }}</button>
+                <button type="submit" role="menuitem" class="block w-full px-3 py-2 text-left hover:bg-slate-100">{{ t('nav.logout') }}</button>
               </form>
             </div>
           </div>
@@ -59,7 +81,7 @@
       </div>
     </nav>
   </header>
-  <main class="mx-auto {{ main_width|default('max-w-5xl') }} px-4 py-8">
+  <main class="mx-auto max-w-5xl px-4 py-8">
     {% if flash %}
       <div role="status" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">{{ t(flash) }}</div>
     {% endif %}

@@ -70,7 +70,7 @@ def _params(
 def _context(db: DB, auth: UserAuth, params: LibraryParams) -> dict:
     rows, total = list_artists(
         db,
-        types=get_missing_types(db, auth.user.id),
+        types=get_missing_types(db),
         q=params.q,
         letter=params.letter,
         sort=params.sort,
@@ -153,7 +153,7 @@ def _ensure_covers(
     engine.enqueue(
         db,
         "fetch_covers",
-        {"artist_id": artist.id, "types": list(types)},
+        {"artist_id": artist.id},
         dedupe_key=key,
         created_by=auth.user.id,
     )
@@ -161,7 +161,7 @@ def _ensure_covers(
 
 
 def _artist_context(db: DB, auth: UserAuth, artist: Artist, show_all: bool) -> dict:
-    types = get_missing_types(db, auth.user.id)
+    types = get_missing_types(db)
     sections = build_artist_sections(db, artist.id, types, show_all=show_all)
     group_ids = [g.id for _, items in sections.missing for g in items]
     group_ids += [i.group.id for _, items in sections.owned for i in items if i.group]

@@ -116,11 +116,14 @@ def test_artist_names_are_escaped(app, admin_client):
     assert "<script>alert" not in text and "&lt;script&gt;" in text
 
 
-def test_missing_counts_depend_on_the_users_types(admin_client, user_client, lib):
-    assert "2 missing" in page(admin_client, "/library")
-    post(user_client, "/account/preferences", {"mode": "custom", "types": ["live"]})
-    bob = page(user_client, "/library")
-    assert "1 missing" in bob and "2 missing" not in bob
+def test_missing_counts_follow_the_system_wide_types(admin_client, user_client, lib):
+    assert "2 missing" in page(admin_client, "/library") and "2 missing" in page(
+        user_client, "/library"
+    )
+    post(admin_client, "/settings/albums/types", {"types": ["live"]}, page="/settings/albums")
+    for client in (admin_client, user_client):  # the same for everybody
+        text = page(client, "/library")
+        assert "1 missing" in text and "2 missing" not in text
 
 
 # ---------------------------------------------------------------- filtering

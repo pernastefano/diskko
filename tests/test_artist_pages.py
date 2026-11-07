@@ -12,14 +12,12 @@ from app.models import (
     Job,
     LibraryAlbum,
     ReleaseGroup,
-    User,
     utcnow,
 )
 from app.services.musicbrainz import sync
 from app.services.musicbrainz.matching import match_artist_albums
 from app.services.musicbrainz.missing import (
     get_missing_types,
-    missing_release_groups,
     set_missing_types,
 )
 from tests.conftest import MB_UA, add_user, login, post
@@ -421,63 +419,12 @@ def test_an_album_of_another_artist_is_not_found(app, admin_client, band):
 # --------------------------------------------------------------- preferences
 
 
-def test_preferences_start_with_the_shared_default(admin_client):
-    text = page(admin_client, "/account/preferences")
-    assert "Use the shared default" in text and "Albums" in text and "EPs" in text
-    assert 'value="album" checked' in text and 'value="live" checked' not in text
-
-
-def test_a_user_can_choose_their_own_types(admin_client, user_client, db):
-    r = post(
-        user_client, "/account/preferences", {"mode": "custom", "types": ["live", "compilation"]}
-    )
-    assert (
-        r.status_code == 303
-        and r.headers["location"] == "/account/preferences?flash=preferences_saved"
-    )
-    text = page(user_client, "/account/preferences")
-    assert 'value="live" checked' in text and 'value="album" checked' not in text
-    assert "Preferences saved." in user_client.get(r.headers["location"]).text
-    bob = db.scalar(select(User).where(User.username == "bob"))
-    assert get_missing_types(db, bob.id) == ["compilation", "live"]
-    assert get_missing_types(db) == ["album", "ep"]  # the shared default is untouched
-
-
-def test_two_users_with_different_preferences_see_different_missing_albums(
-    app, admin_client, user_client, band, db
-):
-    post(user_client, "/account/preferences", {"mode": "custom", "types": ["single"]})
-    with app.state.session_factory() as s:
-        bob = s.scalar(select(User).where(User.username == "bob")).id
-        admin = s.scalar(select(User).where(User.username == "admin")).id
-        assert [
-            g.title for g in missing_release_groups(s, band["artist"], get_missing_types(s, bob))
-        ] == ["Hit Single"]
-        assert [
-            g.title for g in missing_release_groups(s, band["artist"], get_missing_types(s, admin))
-        ] == ["Second Record", "Little EP"]
-
-
-def test_going_back_to_the_default(user_client, db):
-    post(user_client, "/account/preferences", {"mode": "custom", "types": ["live"]})
-    post(user_client, "/account/preferences", {"mode": "default"})
-    assert "Use the shared default" in page(user_client, "/account/preferences")
-    assert 'value="album" checked' in page(user_client, "/account/preferences")
-
-
-def test_choosing_nothing_is_allowed(user_client):
-    post(user_client, "/account/preferences", {"mode": "custom"})
-    assert 'type="checkbox" name="types" value="album" checked' not in page(
-        user_client, "/account/preferences"
-    )
-
-
 def test_unknown_types_are_dropped(admin_client, db):
     post(
         admin_client,
         "/settings/albums/types",
         {"types": ["live", "bogus"]},
-        page="/admin/library",
+        page="/settings/albums",
     )
     assert get_missing_types(db) == ["live"]
 
@@ -496,8 +443,6 @@ def test_pages_in_italian(admin_client, band):
     post(admin_client, "/lang", {"lang": "it", "next": "/"})
     assert "Coda di revisione" in page(admin_client, "/admin/artists")
     assert "Album mancanti" in page(admin_client, f"/admin/artists/{band['artist']}")
-    assert "Scelgo io" in page(admin_client, "/account/preferences")
-    assert "Raccolte" in page(admin_client, "/account/preferences")
 
 
 def test_menu_links(admin_client, user_client):

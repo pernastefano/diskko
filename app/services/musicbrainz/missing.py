@@ -27,36 +27,15 @@ def _clean(types: Iterable[str]) -> list[str]:
     return [c for c in CATEGORIES if c in wanted]  # canonical order, unknown values dropped
 
 
-def get_missing_types(db: Session, user_id: int | None = None) -> list[str]:
-    """The user's own choice, else the global one, else the default."""
-    if user_id is not None:
-        own = get_setting(db, SETTING_KEY, None, user_id=user_id)
-        if own is not None:
-            return _clean(own)
+def get_missing_types(db: Session) -> list[str]:
+    """The system-wide choice (set by an administrator), else the default."""
     shared = get_setting(db, SETTING_KEY, None)
     return _clean(shared if shared is not None else DEFAULT_MISSING_TYPES)
 
 
-def has_user_override(db: Session, user_id: int) -> bool:
-    return get_setting(db, SETTING_KEY, None, user_id=user_id) is not None
-
-
-def set_missing_types(db: Session, types: Iterable[str], user_id: int | None = None) -> None:
-    """Save the global (user_id=None) or a personal list. The caller commits."""
-    set_setting(db, SETTING_KEY, _clean(types), user_id=user_id)
-
-
-def clear_user_missing_types(db: Session, user_id: int) -> None:
-    """Go back to the global choice."""
-    from sqlalchemy import delete
-
-    from app.models import Setting
-
-    db.execute(
-        delete(Setting).where(
-            Setting.key == SETTING_KEY, Setting.scope == "user", Setting.user_id == user_id
-        )
-    )
+def set_missing_types(db: Session, types: Iterable[str]) -> None:
+    """Save the system-wide choice. The caller commits."""
+    set_setting(db, SETTING_KEY, _clean(types))
 
 
 def owned_release_group_ids(db: Session, artist_id: int) -> set[int]:

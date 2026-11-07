@@ -5,9 +5,7 @@ from app.models import ReleaseGroup, User
 from app.services.musicbrainz.categories import CATEGORIES, DEFAULT_MISSING_TYPES
 from app.services.musicbrainz.matching import match_artist_albums
 from app.services.musicbrainz.missing import (
-    clear_user_missing_types,
     get_missing_types,
-    has_user_override,
     missing_counts,
     missing_release_groups,
     owned_release_group_ids,
@@ -113,52 +111,6 @@ def test_global_setting_and_validation(jdb):
     assert get_missing_types(jdb) == []
 
 
-def test_each_user_can_override_the_global_choice(jdb, studio):
-    artist, _ = studio
-    ann = User(username="ann", password_hash="x", role="user")
-    bob = User(username="bob", password_hash="x", role="user")
-    jdb.add_all([ann, bob])
-    jdb.commit()
-    set_missing_types(jdb, ["album"])  # global
-    set_missing_types(jdb, ["single", "live"], user_id=ann.id)
-    jdb.commit()
-    assert get_missing_types(jdb, ann.id) == ["single", "live"]
-    assert get_missing_types(jdb, bob.id) == ["album"]  # inherits the global choice
-    assert get_missing_types(jdb) == ["album"]
-    assert titles(missing_release_groups(jdb, artist.id, get_missing_types(jdb, ann.id))) == [
-        "Hit Single",
-        "Live in Town",
-    ]
-    assert titles(missing_release_groups(jdb, artist.id, get_missing_types(jdb, bob.id))) == [
-        "First",
-        "Second",
-    ]
-
-
-def test_user_override_can_be_cleared(jdb):
-    user = User(username="ann", password_hash="x", role="user")
-    jdb.add(user)
-    jdb.commit()
-    set_missing_types(jdb, ["live"], user_id=user.id)
-    jdb.commit()
-    assert has_user_override(jdb, user.id)
-    clear_user_missing_types(jdb, user.id)
-    jdb.commit()
-    assert not has_user_override(jdb, user.id) and get_missing_types(jdb, user.id) == [
-        "album",
-        "ep",
-    ]
-
-
-def test_a_user_may_choose_nothing(jdb):
-    user = User(username="ann", password_hash="x", role="user")
-    jdb.add(user)
-    jdb.commit()
-    set_missing_types(jdb, [], user_id=user.id)
-    jdb.commit()
-    assert get_missing_types(jdb, user.id) == []  # an empty personal list is a choice
-
-
 def test_missing_counts_for_a_page_of_artists(jdb, studio):
     artist, _ = studio
     other = make_artist(jdb, "Other")
@@ -187,3 +139,18 @@ def test_realistic_discography_has_a_plausible_missing_list(jdb):
     assert "Lady Soul" not in titles(missing) and "Spirit in the Dark" not in titles(missing)
     assert "Aretha Arrives" in titles(missing)
     assert all(g.category == "album" for g in missing)
+
+
+def test_the_choice_is_the_same_for_everyone_and_old_personal_rows_are_ignored(jdb, studio):
+    """Personal choices no longer exist: a leftover user-scoped row never changes the result."""
+    from app.models import Setting
+
+    user = User(username="ann", password_hash="x", role="user")
+    jdb.add(user)
+    jdb.commit()
+    set_missing_types(jdb, ["album"])
+    jdb.add(Setting(key="missing_types", value_json='["live"]', scope="user", user_id=user.id))
+    jdb.commit()
+    assert get_missing_types(jdb) == ["album"]
+    with pytest.raises(TypeError):
+        get_missing_types(jdb, user.id)  # the per-user argument is gone

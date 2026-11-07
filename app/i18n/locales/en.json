@@ -188,9 +188,7 @@
   "review.reason.low_score": "No close match",
   "review.reason.no_match": "Not found",
   "review.reason.invalid_mbid": "MBID not recognised by MusicBrainz",
-  "preferences.intro": "Choose which kinds of releases count as missing albums. Your choice applies only to you.",
-  "preferences.use_default": "Use the shared default",
-  "preferences.use_custom": "Choose my own",
+  "preferences.intro": "Your personal settings.",
   "library.missing_types": "Missing album types (shared default)",
   "library.missing_types_hint": "Users can override this in their preferences.",
   "flash.sync_queued": "Sync queued.",
@@ -375,5 +373,15 @@
   "settings.error.cron_invalid": "Not a valid crontab expression.",
   "settings.error.path_map_invalid": "Each rule must look like /plex/path=/local/path.",
   "settings.error.secret_invalid": "Not a valid value (no spaces, at most 512 characters).",
-  "flash.settings_saved": "Settings saved."
+  "flash.settings_saved": "Settings saved.",
+  "preferences.language": "Language",
+  "preferences.language_hint": "The language of the interface, every time you sign in.",
+  "preferences.theme": "Theme",
+  "preferences.theme.auto": "Automatic",
+  "preferences.theme.auto.hint": "Follows the light or dark setting of your device.",
+  "preferences.theme.light": "Light",
+  "preferences.theme.light.hint": "Always light.",
+  "preferences.theme.dark": "Dark",
+  "preferences.theme.dark.hint": "Always dark.",
+  "error.preferences_invalid": "Choose a language and a theme from the lists."
 }

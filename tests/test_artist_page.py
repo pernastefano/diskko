@@ -223,16 +223,25 @@ def test_show_every_type(admin_client, band):
     assert 'href="/artist/' + str(band["id"]) + '"' in text
 
 
-def test_each_user_sees_their_own_types(admin_client, user_client, band):
-    post(user_client, "/account/preferences", {"mode": "custom", "types": ["live", "single"]})
-    bob = page(user_client, f"/artist/{band['id']}")
-    assert [m for m in re.findall(r'data-group="(missing-[a-z]+)"', bob)] == [
-        "missing-single",
-        "missing-live",
-    ]
-    assert "Studio Two" not in bob
-    admin = page(admin_client, f"/artist/{band['id']}")
-    assert "Studio Two" in admin and "Hit Single" not in admin
+def test_every_user_sees_the_same_system_wide_types(admin_client, user_client, band):
+    for client in (admin_client, user_client):
+        text = page(client, f"/artist/{band['id']}")
+        assert [m for m in re.findall(r'data-group="(missing-[a-z]+)"', text)] == [
+            "missing-album",
+            "missing-ep",
+        ]
+    post(
+        admin_client,
+        "/settings/albums/types",
+        {"types": ["live", "single"]},
+        page="/settings/albums",
+    )
+    for client in (admin_client, user_client):  # an administrator's change reaches everybody
+        text = page(client, f"/artist/{band['id']}")
+        assert [m for m in re.findall(r'data-group="(missing-[a-z]+)"', text)] == [
+            "missing-single",
+            "missing-live",
+        ]
 
 
 # -------------------------------------------------------------- request control
@@ -384,16 +393,7 @@ def test_opening_the_page_queues_the_missing_covers_once(app, admin_client, pend
     [job] = jobs(app)
     assert job.dedupe_key == f"fetch_covers:{pending['id']}" and job.queue == "coverart"
     payload = json.loads(job.payload_json)
-    assert payload["artist_id"] == pending["id"] and payload["types"] == ["album", "ep"]
-
-
-def test_the_viewers_types_are_requested(app, admin_client, user_client, pending):
-    post(user_client, "/account/preferences", {"mode": "custom", "types": ["single"]})
-    with app.state.session_factory() as db:
-        db.get(ReleaseGroup, pending["rgs"]["single"]).cover_status = "unknown"
-        db.commit()
-    page(user_client, f"/artist/{pending['id']}")
-    assert json.loads(jobs(app)[0].payload_json)["types"] == ["single"]
+    assert payload == {"artist_id": pending["id"]}
 
 
 def test_no_job_when_nothing_is_pending(app, admin_client, band):

@@ -120,7 +120,7 @@ def artists_page(
             .group_by(LibraryAlbum.artist_id, LibraryAlbum.match_status)
         ):
             album_counts[artist_id][match_status] = n
-    types = get_missing_types(db, auth.user.id)
+    types = get_missing_types(db)
     query = {
         k: v for k, v in {"q": q.strip(), "status": status, "attention": attention}.items() if v
     }
@@ -186,7 +186,7 @@ def artist_page(request: Request, db: DB, auth: AdminAuth, artist_id: int):
         }
         for album in albums
     ]
-    types = get_missing_types(db, auth.user.id)
+    types = get_missing_types(db)
     review = db.scalar(
         select(ArtistReview).where(
             ArtistReview.artist_id == artist_id, ArtistReview.status == "pending"

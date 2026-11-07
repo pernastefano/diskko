@@ -3,24 +3,25 @@
 {% block content %}
 <h1 class="mb-2 text-2xl font-semibold">{{ t('nav.preferences') }}</h1>
 <p class="mb-4 max-w-2xl text-sm text-slate-600">{{ t('preferences.intro') }}</p>
-<form method="post" action="/account/preferences" class="max-w-2xl space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
-      x-data="{ custom: {{ 'true' if custom else 'false' }} }">
+<form method="post" action="/account/preferences" class="max-w-xl space-y-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label class="flex items-start gap-2">
-    <input type="radio" name="mode" value="default" @change="custom = false" {% if not custom %}checked{% endif %} class="mt-1">
-    <span>{{ t('preferences.use_default') }}
-      <span class="block text-xs text-slate-500">{% for c in shared %}{{ t('category.' ~ c) }}{{ ', ' if not loop.last }}{% else %}—{% endfor %}</span></span>
-  </label>
-  <label class="flex items-start gap-2">
-    <input type="radio" name="mode" value="custom" @change="custom = true" {% if custom %}checked{% endif %} class="mt-1">
-    <span>{{ t('preferences.use_custom') }}</span>
-  </label>
-  <fieldset class="grid grid-cols-2 gap-2 pl-6 md:grid-cols-3" :class="custom ? '' : 'opacity-50'">
-    {% for c in categories %}
-      <label class="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="types" value="{{ c }}" {% if c in selected %}checked{% endif %}> {{ t('category.' ~ c) }}
-      </label>
-    {% endfor %}
+  <div>
+    <label for="language" class="block text-sm font-medium">{{ t('preferences.language') }}</label>
+    <select id="language" name="language" class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+      {% for code, name in languages.items() %}<option value="{{ code }}" {% if code == current_language %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    <p class="mt-1 text-xs text-slate-500">{{ t('preferences.language_hint') }}</p>
+  </div>
+  <fieldset>
+    <legend class="text-sm font-medium">{{ t('preferences.theme') }}</legend>
+    <div class="mt-2 space-y-2">
+      {% for th in themes %}
+        <label class="flex items-start gap-2 text-sm">
+          <input type="radio" name="theme" value="{{ th }}" {% if th == current_theme %}checked{% endif %} class="mt-0.5">
+          <span>{{ t('preferences.theme.' ~ th) }}<span class="block text-xs text-slate-500">{{ t('preferences.theme.' ~ th ~ '.hint') }}</span></span>
+        </label>
+      {% endfor %}
+    </div>
   </fieldset>
   <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700">{{ t('action.save') }}</button>
 </form>

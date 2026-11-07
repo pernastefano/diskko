@@ -8,6 +8,7 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +17,7 @@ from app.models.base import Base, utcnow
 ROLE_ADMIN = "admin"
 ROLE_USER = "user"
 ROLES = (ROLE_ADMIN, ROLE_USER)
+THEMES = ("auto", "light", "dark")  # auto follows the operating system
 
 
 class User(Base):
@@ -29,6 +31,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16), default=ROLE_USER)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     language: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    theme: Mapped[str] = mapped_column(String(8), default="auto", server_default=text("'auto'"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     sessions: Mapped[list["UserSession"]] = relationship(

@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.auth.csrf import CSRF_COOKIE, get_csrf_token
 from app.i18n import LANG_COOKIE, LANG_NAMES, has_key, resolve_lang, translate
-from app.models import utcnow
+from app.models import THEMES, utcnow
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
@@ -61,6 +61,7 @@ def render(
     context: dict[str, Any] = {
         "user": auth.user if auth else None,
         "lang": lang,
+        "theme": auth.user.theme if auth and auth.user.theme in THEMES else "auto",
         "lang_names": LANG_NAMES,
         "t": partial(translate, lang),
         "csrf_token": token,
