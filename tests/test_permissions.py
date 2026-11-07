@@ -77,13 +77,13 @@ def test_htmx_anonymous_gets_401_with_redirect_header(admin_client, new_client):
 
 
 def test_nav_shows_users_link_only_to_admin(admin_client, user_client):
-    assert "/admin/users" in admin_client.get("/library").text
-    assert "/admin/users" not in user_client.get("/library").text
+    assert "/settings" in admin_client.get("/library").text
+    assert "/settings" not in user_client.get("/library").text
 
 
 def test_two_users_two_roles_coexist(admin_client, user_client):
-    assert admin_client.get("/admin/users").status_code == 200
-    assert user_client.get("/admin/users").status_code == 403
+    assert admin_client.get("/settings/users").status_code == 200
+    assert user_client.get("/settings/users").status_code == 403
     assert user_client.get("/library").status_code == 200
 
 

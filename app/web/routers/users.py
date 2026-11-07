@@ -2,7 +2,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
 
 from app.auth.deps import DB, AdminAuth, SettingsDep, require_admin
 from app.auth.users import (
@@ -13,25 +12,11 @@ from app.auth.users import (
     set_active,
     set_role,
 )
-from app.i18n import has_key
-from app.models import ROLE_USER, ROLES, User
+from app.models import ROLE_USER, User
+from app.web.routers.settings import render_users_section
 from app.web.templating import is_htmx, render
 
 router = APIRouter(prefix="/admin/users", dependencies=[Depends(require_admin)])
-
-
-def _list_page(request: Request, db: DB, ctx: dict | None = None, status_code: int = 200):
-    users = db.scalars(select(User).order_by(User.username)).all()
-    error_key = f"error.{request.query_params.get('error', '')}"
-    context = {
-        "users": users,
-        "roles": ROLES,
-        "form_username": "",
-        "form_role": ROLE_USER,
-        "error": error_key if has_key(error_key) else None,
-    }
-    context.update(ctx or {})
-    return render(request, "admin/users.html", context, status_code=status_code)
 
 
 def _get_target(db: DB, user_id: int) -> User:
@@ -41,21 +26,30 @@ def _get_target(db: DB, user_id: int) -> User:
     return target
 
 
-def _row_result(request: Request, db: DB, target: User, exc: UserError | None = None):
-    """HTMX gets the updated row (409 + message on error); plain requests get a redirect."""
+def _row_result(
+    request: Request, db: DB, target: User, exc: UserError | None = None, *, modal: str = ""
+):
+    """HTMX gets the updated row (409 + message on error); plain requests get a redirect.
+
+    `modal="reset"` sends a failed password reset back to the page with its dialog open."""
     if is_htmx(request):
         if exc:
             db.rollback()
             db.refresh(target)
         ctx = {"u": target, "row_error": f"error.{exc.code}" if exc else None}
         return render(request, "admin/_user_row.html", ctx, status_code=409 if exc else 200)
+    if exc and modal:
+        return RedirectResponse(
+            f"/settings/users?modal={modal}&uid={target.id}&error={exc.code}", status_code=303
+        )
     suffix = f"error={exc.code}" if exc else "flash=user_updated"
-    return RedirectResponse(f"/admin/users?{suffix}", status_code=303)
+    return RedirectResponse(f"/settings/users?{suffix}", status_code=303)
 
 
 @router.get("")
-def users_list(request: Request, db: DB):
-    return _list_page(request, db)
+def users_list():
+    """Users are managed in the settings now."""
+    return RedirectResponse("/settings/users", status_code=303)
 
 
 @router.post("")
@@ -70,9 +64,15 @@ def users_create(
     try:
         create_user(db, username, password, role, settings)
     except UserError as exc:
-        ctx = {"error": f"error.{exc.code}", "form_username": username, "form_role": role}
-        return _list_page(request, db, ctx, status_code=400)
-    return RedirectResponse("/admin/users?flash=user_created", status_code=303)
+        return render_users_section(
+            request,
+            db,
+            status_code=400,
+            modal="create",
+            form={"username": username, "role": role},
+            modal_error=f"error.{exc.code}",
+        )
+    return RedirectResponse("/settings/users?flash=user_created", status_code=303)
 
 
 @router.post("/{user_id}/role")
@@ -112,7 +112,7 @@ def users_password(
     try:
         reset_password(db, target, new_password, settings)
     except UserError as exc:
-        return _row_result(request, db, target, exc)
+        return _row_result(request, db, target, exc, modal="reset")
     return _row_result(request, db, target)
 
 
@@ -125,4 +125,4 @@ def users_delete(request: Request, db: DB, auth: AdminAuth, user_id: int):
         return _row_result(request, db, target, exc)
     if is_htmx(request):
         return HTMLResponse("")
-    return RedirectResponse("/admin/users?flash=user_deleted", status_code=303)
+    return RedirectResponse("/settings/users?flash=user_deleted", status_code=303)

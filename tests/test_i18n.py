@@ -15,9 +15,11 @@ from app.i18n import (
     translate,
 )
 from app.integrations.status import INTEGRATION_NAMES
-from app.models import JOB_STATUSES, MATCH_STATUSES, MB_STATUSES, User
-from app.services.library.quality import QUALITY_TIERS
+from app.models import JOB_STATUSES, MATCH_STATUSES, MB_STATUSES, THEMES, User
+from app.quality import QUALITY_TIERS
 from app.services.musicbrainz.categories import CATEGORIES
+from app.services.runtime_config import FIELDS, QUEUES
+from app.web.routers.settings import GROUPS, SECTIONS
 from tests.conftest import login, post
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
@@ -67,6 +69,19 @@ def test_all_used_keys_exist():
             f"review.reason.{r}" for r in ("ambiguous", "low_score", "no_match", "invalid_mbid")
         }
         used |= {f"artists.source.{s}" for s in ("tag", "auto", "manual")}
+        used |= {f"settings.field.{k}" for k in FIELDS}
+        used |= {f"settings.hint.{k}" for k in FIELDS if k != "job_queue_concurrency"}
+        used |= {f"settings.group.{g}" for g in GROUPS} | {
+            f"settings.group.{g}.hint" for g in GROUPS
+        }
+        used |= {f"settings.queue.{q}" for q in QUEUES} | {
+            f"settings.queue.{q}.hint" for q in QUEUES
+        }
+        used |= {f"settings.section.{x}" for x in SECTIONS} | {"settings.yes", "settings.no"}
+        used |= {f"quality.full.{t}" for t in QUALITY_TIERS}
+        used |= {f"preferences.theme.{t}" for t in THEMES}
+        used |= {f"preferences.theme.{t}.hint" for t in THEMES}
+        used |= {f"settings.check.{c}" for c in ("not_found", "not_directory", "not_readable")}
         used |= {
             f"request.status.{s}"
             for s in (
@@ -90,6 +105,17 @@ def test_all_used_keys_exist():
         } | {"integration.result.rate_limited", "integration.result.invalid_response"}
     missing = sorted(k for k in used if not k.endswith(".") and k not in en)
     assert not missing, missing
+
+
+def test_every_validation_error_has_a_message():
+    import re as _re
+
+    source = (APP_DIR / "services" / "runtime_config.py").read_text()
+    codes = set(_re.findall(r'FieldError\("(\w+)"\)', source))
+    en = _catalog("en")
+    assert codes and all(f"settings.error.{c}" in en for c in codes), codes - {
+        c for c in codes if f"settings.error.{c}" in en
+    }
 
 
 def test_translate_fallbacks():
@@ -174,7 +200,7 @@ def test_setup_stores_detected_language(client, db):
 
 def test_admin_pages_translated(admin_client):
     post(admin_client, "/lang", {"lang": "it", "next": "/"})
-    page = admin_client.get("/admin/users").text
+    page = admin_client.get("/settings/users").text
     assert "Utenti" in page and "Crea utente" in page
 
 

@@ -1,6 +1,6 @@
 {# Variables: u (target user), user (current admin), row_error (i18n key or None) #}
 {% set is_self = (u.id == user.id) %}
-<tr id="user-{{ u.id }}" x-data="{ reset: false }">
+<tr id="user-{{ u.id }}">
   <td class="px-4 py-2 align-top">
     <span class="font-medium">{{ u.username }}</span>
     {% if is_self %}<span class="text-xs text-slate-500">({{ t('users.you') }})</span>{% endif %}
@@ -28,7 +28,8 @@
           {{ t('action.disable') if u.is_active else t('action.enable') }}
         </button>
       {% endif %}
-      <button type="button" @click="reset = !reset" class="rounded border border-slate-300 px-2 py-1 hover:bg-slate-100">{{ t('users.reset_password') }}</button>
+      <button type="button" @click="openReset({{ u.id }}, {{ u.username|tojson|forceescape }})" data-reset="{{ u.id }}"
+              class="rounded border border-slate-300 px-2 py-1 hover:bg-slate-100">{{ t('users.reset_password') }}</button>
       {% if not is_self %}
         <button type="button" hx-post="/admin/users/{{ u.id }}/delete" hx-confirm="{{ t('users.confirm_delete', username=u.username) }}"
                 hx-target="#user-{{ u.id }}" hx-swap="outerHTML" class="rounded border border-red-300 px-2 py-1 text-red-700 hover:bg-red-50">
@@ -36,11 +37,5 @@
         </button>
       {% endif %}
     </div>
-    <form x-show="reset" x-cloak class="mt-2 flex gap-2" hx-post="/admin/users/{{ u.id }}/password"
-          hx-target="#user-{{ u.id }}" hx-swap="outerHTML">
-      <input type="password" name="new_password" required autocomplete="new-password" placeholder="{{ t('field.new_password') }}"
-             class="rounded border border-slate-300 px-2 py-1">
-      <button type="submit" class="rounded bg-indigo-600 px-2 py-1 text-white hover:bg-indigo-700">{{ t('action.save') }}</button>
-    </form>
   </td>
 </tr>

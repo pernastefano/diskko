@@ -14,7 +14,7 @@ ADMIN_PAGES = [
     "/settings/integrations",
     "/settings/jobs",
     "/settings/albums",
-    "/admin/users",
+    "/settings/users",
     "/account/preferences",
     "/account/password",
 ]

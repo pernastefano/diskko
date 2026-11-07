@@ -15,10 +15,10 @@ def _user(db, name):
 
 def test_create_user(admin_client, db):
     r = add_user(admin_client, "Carol", role="user")
-    assert r.headers["location"] == "/admin/users?flash=user_created"
+    assert r.headers["location"] == "/settings/users?flash=user_created"
     carol = _user(db, "carol")
     assert carol.role == "user" and carol.is_active
-    page = admin_client.get("/admin/users?flash=user_created")
+    page = admin_client.get("/settings/users?flash=user_created")
     assert "carol" in page.text and "User created." in page.text
 
 
@@ -41,7 +41,7 @@ def test_create_user_validation(admin_client, db, username, password, role, mess
         admin_client,
         "/admin/users",
         {"username": username, "password": password, "role": role},
-        page="/admin/users",
+        page="/settings/users",
     )
     assert r.status_code == 400
     assert message in r.text
@@ -61,7 +61,7 @@ def test_change_role_plain_redirects(admin_client, db):
     bob = _user(db, "bob")
     r = post(admin_client, f"/admin/users/{bob.id}/role", {"role": "admin"})
     assert r.status_code == 303
-    assert r.headers["location"] == "/admin/users?flash=user_updated"
+    assert r.headers["location"] == "/settings/users?flash=user_updated"
 
 
 def test_invalid_role_rejected(admin_client, db):
@@ -157,5 +157,5 @@ def test_demoting_one_of_two_admins_is_allowed(admin_client, db):
 
 
 def test_users_list_shows_everyone(admin_client, user_client):
-    page = admin_client.get("/admin/users").text
+    page = admin_client.get("/settings/users").text
     assert "admin" in page and "bob" in page

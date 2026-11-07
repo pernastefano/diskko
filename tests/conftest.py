@@ -108,7 +108,7 @@ def add_user(admin, username, role="user", password=PASSWORD):
         admin,
         "/admin/users",
         {"username": username, "password": password, "role": role},
-        page="/admin/users",
+        page="/settings/users",
     )
     assert r.status_code == 303, r.text
     return r

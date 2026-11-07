@@ -611,3 +611,23 @@ def test_nothing_secret_is_stored_outside_the_settings_table(app, admin_client, 
     with app.state.session_factory() as db:
         keys = {s.key for s in db.scalars(select(Setting))}
     assert "config.plex_token" in keys and Path(app.state.settings.config_dir).exists()
+
+
+def test_defaults_are_shown_with_readable_names(app, admin_client):
+    albums = page(admin_client, "/settings/albums")
+    assert (
+        "FLAC Standard (16-bit / 44.1 kHz)" in albums.split("Default")[-1]
+        and "flac_standard" not in albums.split("Default:")[-1][:60]
+    )
+    save(
+        admin_client,
+        "/settings/albums/quality",
+        {"default_quality": "flac_master"},
+        page_url="/settings/albums",
+    )
+    text = page(admin_client, "/settings/albums")
+    assert (
+        "Default: FLAC Standard (16-bit / 44.1 kHz)" in text
+    )  # what "use the default" would restore
+    save(admin_client, "/settings/integrations/coverart", {}, page_url="/settings/integrations")
+    assert "Default: Yes" in page(admin_client, "/settings/integrations")

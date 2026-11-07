@@ -19,6 +19,7 @@ IDENTICAL_IN_BOTH_THEMES = {
     "bg-amber-500",
     "bg-red-500",
     "bg-slate-900",
+    "bg-black/50",  # the dark scrim behind a dialog
     "text-slate-100",
     "text-slate-300",
     "text-slate-400",

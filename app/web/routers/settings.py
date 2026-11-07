@@ -7,9 +7,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy import select
 
 from app.auth.deps import DB, AdminAuth, require_admin
 from app.config import Settings
+from app.i18n import has_key
+from app.models import ROLE_USER, ROLES, User
 from app.quality import QUALITY_TIERS
 from app.services.musicbrainz.categories import CATEGORIES
 from app.services.musicbrainz.missing import get_missing_types, set_missing_types
@@ -29,7 +32,7 @@ from app.web.templating import render
 
 router = APIRouter(prefix="/settings", dependencies=[Depends(require_admin)])
 
-SECTIONS = ("library", "integrations", "jobs", "albums")
+SECTIONS = ("library", "integrations", "jobs", "albums", "users")
 GROUPS = ("plex", "slskd", "musicbrainz", "coverart", "lastfm")
 TESTABLE = ("plex", "slskd", "musicbrainz")  # integrations with a connection test
 CHOICE_LABELS = {"library_source": "library.source.", "default_quality": "quality.full."}
@@ -40,9 +43,17 @@ def _display_default(base: Settings, field: Field) -> str:
     value = getattr(base, field.key)
     if field.kind == "secret":
         return ""
-    if field.kind == "bool":
-        return "yes" if value else "no"
     return str(value) if value not in ("", None) else ""
+
+
+def _default_label(base: Settings, field: Field) -> str | None:
+    """i18n key that names the default when its raw value is not meant to be read."""
+    value = getattr(base, field.key)
+    if field.kind == "bool":
+        return "settings.yes" if value else "settings.no"
+    if field.kind == "choice":
+        return CHOICE_LABELS.get(field.key, "") + str(value)
+    return None
 
 
 def field_view(
@@ -62,6 +73,7 @@ def field_view(
         "required": field.required,
         "overridden": field.key in overridden,
         "default": _display_default(base, field),
+        "default_label": _default_label(base, field),
         "error": f"settings.error.{errors[field.key]}" if errors and field.key in errors else None,
         "choices": [(c, CHOICE_LABELS.get(field.key, "") + c) for c in field.choices],
         "secret_set": field.kind == "secret" and bool(current),
@@ -150,6 +162,48 @@ def _page(
     return render(request, f"settings/{section}.html", ctx, status_code=status_code)
 
 
+def render_users_section(
+    request: Request,
+    db: DB,
+    *,
+    status_code: int = 200,
+    modal: str = "",
+    form: dict[str, str] | None = None,
+    modal_error: str | None = None,
+):
+    """The users list; the create and reset dialogs open on their own after a failed attempt."""
+    params = request.query_params
+    modal = modal or params.get("modal", "")
+    reset_user = None
+    if modal == "reset":
+        uid = params.get("uid", "")
+        reset_user = db.get(User, int(uid)) if uid.isdigit() else None
+        if reset_user is None:
+            modal = ""
+    elif modal != "create":
+        modal = ""
+    error = None
+    key = f"error.{params.get('error', '')}"
+    if params.get("error") and has_key(key):
+        if modal:
+            modal_error = modal_error or key  # a failed dialog shows its error inside the dialog
+        else:
+            error = key
+    ctx = {
+        "section": "users",
+        "sections": SECTIONS,
+        "users": db.scalars(select(User).order_by(User.username)).all(),
+        "roles": ROLES,
+        "modal": modal,
+        "reset_user": reset_user,
+        "form_username": (form or {}).get("username", ""),
+        "form_role": (form or {}).get("role", ROLE_USER),
+        "modal_error": modal_error,
+        "error": error,
+    }
+    return render(request, "settings/users.html", ctx, status_code=status_code)
+
+
 @router.get("")
 def settings_index():
     return RedirectResponse("/settings/library", status_code=303)
@@ -159,6 +213,8 @@ def settings_index():
 def settings_page(request: Request, db: DB, section: str):
     if section not in SECTIONS:
         raise HTTPException(status_code=404, detail="not_found")
+    if section == "users":
+        return render_users_section(request, db)
     return _page(request, db, section)
 
 

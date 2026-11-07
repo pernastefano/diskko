@@ -383,5 +383,10 @@
   "preferences.theme.light.hint": "Sempre chiaro.",
   "preferences.theme.dark": "Scuro",
   "preferences.theme.dark.hint": "Sempre scuro.",
-  "error.preferences_invalid": "Scegli una lingua e un tema dagli elenchi."
+  "error.preferences_invalid": "Scegli una lingua e un tema dagli elenchi.",
+  "settings.section.users": "Utenti",
+  "users.reset_for": "Nuova password per",
+  "users.reset_hint": "L'utente viene disconnesso ovunque.",
+  "settings.yes": "Sì",
+  "settings.no": "No"
 }

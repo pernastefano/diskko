@@ -4,9 +4,9 @@
     {% if f.overridden %}
       <span class="rounded bg-indigo-100 px-1.5 py-0.5 text-indigo-800">{{ t('settings.overridden') }}</span>
       <label class="flex items-center gap-1"><input type="checkbox" name="reset" value="{{ f.key }}"> {{ t('settings.use_default') }}</label>
-      {% if f.kind != 'secret' %}<span>{{ t('settings.default_is', value=(f.default or t('settings.empty'))) }}</span>{% endif %}
+      {% if f.kind != 'secret' %}<span>{{ t('settings.default_is', value=(t(f.default_label) if f.default_label else (f.default or t('settings.empty')))) }}</span>{% endif %}
     {% else %}
-      <span>{{ t('settings.from_env') }}{% if f.kind != 'secret' and f.default %}: {{ f.default }}{% endif %}</span>
+      <span>{{ t('settings.from_env') }}{% if f.kind != 'secret' and (f.default or f.default_label) %}: {{ t(f.default_label) if f.default_label else f.default }}{% endif %}</span>
     {% endif %}
   </p>
 {% endmacro %}

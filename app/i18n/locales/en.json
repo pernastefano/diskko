@@ -383,5 +383,10 @@
   "preferences.theme.light.hint": "Always light.",
   "preferences.theme.dark": "Dark",
   "preferences.theme.dark.hint": "Always dark.",
-  "error.preferences_invalid": "Choose a language and a theme from the lists."
+  "error.preferences_invalid": "Choose a language and a theme from the lists.",
+  "settings.section.users": "Users",
+  "users.reset_for": "New password for",
+  "users.reset_hint": "The user is signed out everywhere.",
+  "settings.yes": "Yes",
+  "settings.no": "No"
 }

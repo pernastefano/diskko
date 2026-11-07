@@ -73,5 +73,5 @@ def test_csrf_error_page_message(admin_client):
 
 
 def test_safe_methods_need_no_token(admin_client):
-    assert admin_client.get("/admin/users").status_code == 200
+    assert admin_client.get("/settings/users").status_code == 200
     assert post(admin_client, "/logout").status_code == 303

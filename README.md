@@ -81,3 +81,30 @@ Precedente/Successiva. `/artist/<id>` mostra gli album posseduti (con badge di q
 copertina) e quelli mancanti, raggruppati per tipo secondo le preferenze dell'utente. Il pulsante
 "Richiedi download" è per ora solo un segnaposto: i download arrivano con le fasi successive.
 Le copertine mancanti si scaricano in background quando si apre la pagina.
+
+## Impostazioni
+
+Gli amministratori configurano l'app da **Impostazioni** (l'ingranaggio in alto a destra), senza
+riavviare:
+
+- **Libreria**: cartella della musica (con "Verifica cartella"), sorgente predefinita (Filesystem o
+  Plex) e orario della scansione notturna.
+- **Integrazioni**: Plex, SLSKD, MusicBrainz, Cover Art Archive e Last.fm, ciascuna con il proprio
+  modulo e, dove esiste, il "Test connessione". I token e le chiavi non vengono mai mostrati dopo il
+  salvataggio: lasciando il campo vuoto si mantiene il valore attuale.
+- **Job**: quanti job di ogni tipo girano insieme (MusicBrainz resta sempre a 1).
+- **Album e qualità**: i tipi di album considerati "mancanti" (uguali per tutti gli utenti) e la
+  qualità predefinita dei download: *FLAC Standard* (16-bit / 44,1 kHz, il predefinito), *FLAC Studio*
+  (24-bit o 16-bit / 48 kHz), *FLAC Hi-Res* (24-bit / 96 kHz) e *FLAC Master* (24-bit / 192 kHz),
+  oltre ai livelli MP3.
+- **Utenti**: creazione e reimpostazione della password in finestre modali, ruoli, attivazione ed
+  eliminazione.
+
+Le variabili d'ambiente (`.env`) restano i valori **predefiniti** e quelli di avvio (`SECRET_KEY`,
+`BASE_URL`, `CONFIG_DIR`...); ciò che si salva dalle Impostazioni li sostituisce, e "Usa il
+predefinito" li ripristina. I token salvati stanno nel database dell'app (nella cartella di
+configurazione): trattala come riservata.
+
+Ogni utente sceglie lingua e tema (Chiaro, Scuro o Automatico) dalle proprie **Preferenze**.
+I livelli di qualità degli album già scansionati vengono ricalcolati automaticamente
+all'aggiornamento.
