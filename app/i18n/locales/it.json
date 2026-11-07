@@ -603,5 +603,19 @@
   "provider.deezer": "Deezer",
   "provider.itunes": "iTunes",
   "provider.lastfm": "Last.fm",
-  "provider.listenbrainz": "ListenBrainz"
+  "provider.listenbrainz": "ListenBrainz",
+  "album.source.deezer": "Deezer",
+  "artist.notice.provider": "Questo artista non è su MusicBrainz: gli album arrivano da Deezer e possono essere meno completi. Passeranno a MusicBrainz in automatico se lo aggiunge.",
+  "mb.status.provider": "Dati da Deezer",
+  "review.reason.provider": "Dati da Deezer, da verificare",
+  "review.provider.intro": "Non è su MusicBrainz. Deezer ha un artista con questo nome e album che corrispondono alla libreria, quindi si usano i suoi dati. Verifica che sia l'artista giusto.",
+  "review.provider.overlap": "{n} album della libreria trovati nella sua discografia",
+  "review.provider.fans": "{n} fan",
+  "review.provider.confirm": "Mantieni i dati di Deezer",
+  "review.provider.retry": "Cerca di nuovo su MusicBrainz",
+  "flash.provider_confirmed": "Dati di Deezer confermati.",
+  "settings.field.providers_metadata": "Dati di artisti e album",
+  "settings.hint.providers_metadata": "MusicBrainz è sempre il primo. Scegli Deezer per completare artisti e album che MusicBrainz non ha (solo quando la corrispondenza è certa); lascia vuoto per disattivarlo.",
+  "provider.musicbrainz": "MusicBrainz",
+  "settings.error.providers_first": "Per i dati di artisti e album MusicBrainz è sempre il primo."
 }

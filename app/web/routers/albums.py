@@ -70,7 +70,12 @@ def _remote_state(
     state = {"loading": False, "tracks_failed": False, "previews_failed": False}
 
     tracks = load_tracks(db, group.id)
-    if tracklist_state(db, group.id) != "fresh" and settings.mb_user_agent.strip():
+    on_musicbrainz = group.source == "musicbrainz"  # other sources have no MusicBrainz tracklist
+    if (
+        on_musicbrainz
+        and tracklist_state(db, group.id) != "fresh"
+        and settings.mb_user_agent.strip()
+    ):
         key = tracklist_dedupe_key(group.id)
         job = job_state(db, key)
         if job == "active":

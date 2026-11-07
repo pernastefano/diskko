@@ -32,6 +32,11 @@ def covers_dir(data_dir: Path) -> Path:
     return data_dir / "covers"
 
 
+def cover_stem(mbid: str) -> str:
+    """File name (without extension) of a cover: ids of other providers have a colon."""
+    return mbid.replace(":", "-")
+
+
 def write_atomic(directory: Path, name: str, data: bytes) -> None:
     """Write via a temp file and rename, so a half-written image is never served."""
     directory.mkdir(parents=True, exist_ok=True)
@@ -126,7 +131,7 @@ async def fetch_covers(ctx: JobContext) -> None:
             if found is not None:
                 consecutive = 0
                 data, extension, label = found
-                name = f"{mbid}{extension}"
+                name = f"{cover_stem(mbid)}{extension}"
                 write_atomic(directory, name, data)
                 saved += 1
                 await ctx.run_db(_set_cover(rg_id, name, "ok"))

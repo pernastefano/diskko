@@ -603,5 +603,19 @@
   "provider.deezer": "Deezer",
   "provider.itunes": "iTunes",
   "provider.lastfm": "Last.fm",
-  "provider.listenbrainz": "ListenBrainz"
+  "provider.listenbrainz": "ListenBrainz",
+  "album.source.deezer": "Deezer",
+  "artist.notice.provider": "This artist is not on MusicBrainz: the albums come from Deezer and may be less complete. They switch to MusicBrainz automatically if it adds the artist.",
+  "mb.status.provider": "Data from Deezer",
+  "review.reason.provider": "Data from Deezer, to check",
+  "review.provider.intro": "Not on MusicBrainz. Deezer has an artist with this name and albums that match the library, so its data is in use. Check that it is the right artist.",
+  "review.provider.overlap": "{n} library album(s) found in its discography",
+  "review.provider.fans": "{n} fans",
+  "review.provider.confirm": "Keep Deezer data",
+  "review.provider.retry": "Search MusicBrainz again",
+  "flash.provider_confirmed": "Deezer data confirmed.",
+  "settings.field.providers_metadata": "Artist and album data",
+  "settings.hint.providers_metadata": "MusicBrainz is always first. Choose Deezer to fill in artists and albums that MusicBrainz does not have (only when the match is certain); leave it empty to turn that off.",
+  "provider.musicbrainz": "MusicBrainz",
+  "settings.error.providers_first": "MusicBrainz always comes first for artist and album data."
 }

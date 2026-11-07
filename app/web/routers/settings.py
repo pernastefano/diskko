@@ -109,6 +109,7 @@ def field_view(
         slots = len(field.choices)
         picked += [""] * slots
         view["slots"] = [(i, picked[i - 1]) for i in range(1, slots + 1)]
+        view["first"] = field.first
     if field.kind == "cron":
         view["value"] = " ".join(str(view["value"]).split())
         view["presets"] = [(cron, f"settings.schedule.{i}") for i, cron in SCHEDULE_PRESETS]

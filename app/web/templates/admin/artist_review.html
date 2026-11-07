@@ -12,7 +12,27 @@
       <h2 class="font-semibold"><a class="text-indigo-600 hover:underline" href="/admin/artists/{{ artist.id }}">{{ artist.name }}</a></h2>
       <span class="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">{{ t('review.reason.' ~ item.review.reason) }}</span>
     </div>
-    {% if item.candidates %}
+    {% if item.review.reason == 'provider' %}
+      {% for c in item.candidates %}
+        <div class="mt-3 rounded border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800" data-provider-review="{{ artist.id }}">
+          <p>{{ t('review.provider.intro') }}</p>
+          <p class="mt-1 text-xs">
+            <a class="underline" rel="noopener noreferrer" target="_blank" href="{{ c.url }}">{{ c.name }} ↗</a>
+            · {{ t('review.provider.overlap', n=c.overlap) }}{% if c.fans %} · {{ t('review.provider.fans', n=c.fans) }}{% endif %}
+          </p>
+        </div>
+      {% endfor %}
+      <div class="mt-3 flex flex-wrap gap-3">
+        <form method="post" action="/admin/artists/{{ artist.id }}/confirm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="review">
+          <button type="submit" class="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-700">{{ t('review.provider.confirm') }}</button>
+        </form>
+        <form method="post" action="/admin/artists/{{ artist.id }}/reset">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="review">
+          <button type="submit" class="rounded border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100">{{ t('review.provider.retry') }}</button>
+        </form>
+      </div>
+    {% elif item.candidates %}
       <table class="mt-3 min-w-full text-sm">
         <thead class="text-left text-xs uppercase tracking-wide text-slate-500">
           <tr><th class="py-1 pr-3">{{ t('artists.cand.name') }}</th><th class="pr-3">{{ t('artists.cand.details') }}</th>

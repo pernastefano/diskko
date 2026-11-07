@@ -28,6 +28,7 @@ def settings(tmp_path):
         base_url="http://testserver",
         data_dir=tmp_path / "data",
         jobs_enabled=False,  # tests that need workers start them explicitly
+        providers_metadata="musicbrainz",  # the Deezer metadata fallback has its own tests
     )
 
 

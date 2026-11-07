@@ -9,8 +9,11 @@ from app.jobs.handlers.fetch_covers import covers_dir
 
 router = APIRouter()
 
-# <release-group MBID>.jpg|png : nothing else is ever served from the covers folder.
-_NAME = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png)$")
+# <release-group MBID>.jpg|png (or deezer-<album id>.jpg|png for albums that MusicBrainz lacks):
+# nothing else is ever served from the covers folder.
+_NAME = re.compile(
+    r"^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|deezer-\d{1,20})\.(jpg|png)$"
+)
 _TYPES = {"jpg": "image/jpeg", "png": "image/png"}
 
 

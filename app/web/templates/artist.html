@@ -7,7 +7,8 @@
     <h1 class="text-3xl font-semibold">{{ artist.name }}{% if not artist.in_library %} <span class="ml-2 align-middle rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" data-external>{{ t('artist.not_in_library') }}</span>{% endif %}</h1>
     <p class="mt-1 text-sm text-slate-500">
       {% if artist.mbid %}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/artist/{{ artist.mbid }}">MusicBrainz ↗</a>{% endif %}
-      {% if artist.metadata_synced_at %}{% if artist.mbid %} · {% endif %}{{ t('artist.synced', when=artist.metadata_synced_at|fmt_dt) }}{% endif %}
+      {% if artist.provider == 'deezer' and artist.provider_artist_id %}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://www.deezer.com/artist/{{ artist.provider_artist_id }}" data-source="deezer">{{ t('album.source.deezer') }} ↗</a>{% endif %}
+      {% if artist.metadata_synced_at %}{% if artist.mbid or artist.provider %} · {% endif %}{{ t('artist.synced', when=artist.metadata_synced_at|fmt_dt) }}{% endif %}
     </p>
   </div>
   {% if user.is_admin %}
@@ -24,6 +25,8 @@
 
 {% if artist.mb_status == 'review' %}
   <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800" role="note">{{ t('artist.notice.review') }}</p>
+{% elif artist.mb_status == 'provider' %}
+  <p class="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800" role="note" data-notice="provider">{{ t('artist.notice.provider') }}</p>
 {% elif artist.mb_status == 'unmatched' %}
   <p class="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600" role="note">{{ t('artist.notice.unmatched') }}</p>
 {% elif not artist.metadata_synced_at %}

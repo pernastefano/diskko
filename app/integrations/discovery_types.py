@@ -26,6 +26,7 @@ class ArtistCandidate:
     name: str
     picture_url: str | None
     fans: int = 0
+    provider_id: str | None = None  # the artist's id at the provider
 
 
 @dataclass(frozen=True)

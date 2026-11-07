@@ -30,6 +30,8 @@ async def fetch_tracklist(ctx: JobContext) -> None:
     if found is None:
         raise PermanentJobError(f"release group {group_id} not found")
     mbid, title, artist = found
+    if ":" in mbid:  # an album known only to a fallback provider has no MusicBrainz tracklist
+        raise PermanentJobError(f"{title} is not on MusicBrainz: no tracklist to fetch")
     try:
         client = MusicBrainzClient(ctx.settings, ctx.session_factory)
     except MusicBrainzNotConfigured as exc:

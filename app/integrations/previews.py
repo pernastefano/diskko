@@ -28,9 +28,39 @@ from app.integrations.cached_http import (
     TransientError,
 )
 from app.integrations.discovery_types import AlbumCandidate, ArtistCandidate, PreviewData
+from app.integrations.musicbrainz_client import ReleaseGroupData
+from app.services.musicbrainz.titles import album_key
 
 SEARCH_TTL = timedelta(days=30)
+DISCOGRAPHY_TTL = timedelta(days=7)
 RESULT_LIMIT = 10
+ALBUMS_PAGE = 100
+PROVIDER_PREFIX = "deezer:"  # release group ids that come from Deezer, not MusicBrainz
+ALBUMS_MAX = 1000  # albums read per artist, however many there are
+
+_RECORD_TYPES = {
+    "album": ("Album", []),
+    "single": ("Single", []),
+    "ep": ("EP", []),
+    "compile": ("Album", ["Compilation"]),
+}
+_DATE = re.compile(r"^(\d{4})(-\d{2}){0,2}$")
+
+
+def _release_group(raw: dict[str, Any]) -> ReleaseGroupData | None:
+    if not raw.get("id") or not raw.get("title") or not str(raw["id"]).isdigit():
+        return None
+    primary, secondary = _RECORD_TYPES.get(str(raw.get("record_type") or ""), ("Other", []))
+    date = str(raw.get("release_date") or "")
+    if not _DATE.match(date) or date.startswith("0000"):
+        date = ""
+    return ReleaseGroupData(
+        mbid=f"{PROVIDER_PREFIX}{raw['id']}",
+        title=str(raw["title"]),
+        primary_type=primary,
+        secondary_types=list(secondary),
+        first_release_date=date or None,
+    )
 
 
 def _year(value: Any) -> int | None:
@@ -179,9 +209,45 @@ class DeezerClient(CachedJsonClient):
                     str(raw["name"]),
                     picture_url(raw.get("picture_medium")),
                     int(raw.get("nb_fan") or 0),
+                    str(raw["id"]) if raw.get("id") else None,
                 )
             )
         return found
+
+    async def artist_albums(self, artist_id: str, *, force=False) -> list[ReleaseGroupData]:
+        """The artist's discography as release groups with ids "deezer:<album id>".
+
+        /artist/{id}/albums pages with `index` and `limit` and reports `total`; each album has
+        `record_type` (album, single, ep, compile), `release_date` and a `link`. Editions of the
+        same album (deluxe, remaster) are listed separately: only the earliest is kept.
+        """
+        if not str(artist_id).isdigit():
+            raise ValueError("invalid Deezer artist id")
+        found: dict[tuple[str, str], ReleaseGroupData] = {}
+        index, total = 0, 1
+        while index < min(total, ALBUMS_MAX):
+            data = await self.get_json(
+                f"{self.settings.deezer_url.rstrip('/')}/artist/{artist_id}/albums",
+                {"limit": ALBUMS_PAGE, "index": index},
+                ttl=DISCOGRAPHY_TTL,
+                force=force,
+            )
+            rows = (data or {}).get("data") or []
+            total = int((data or {}).get("total") or 0)
+            if not rows:
+                break
+            for raw in rows:
+                group = _release_group(raw)
+                if group is None:
+                    continue
+                key = (album_key(group.title), group.primary_type or "")
+                known = found.get(key)
+                if known is None or (group.first_release_date or "9") < (
+                    known.first_release_date or "9"
+                ):
+                    found[key] = group
+            index += len(rows)
+        return list(found.values())
 
     async def album_tracks(self, album_id: str) -> list[PreviewData]:
         data = await self.get_json(

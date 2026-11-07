@@ -79,7 +79,19 @@ secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
   servizio che fallisce 5 volte di fila (`PROVIDER_BREAKER_THRESHOLD`) viene messo in pausa per 10
   minuti (`PROVIDER_BREAKER_COOLDOWN_MINUTES`): nel frattempo si usano i fallback; se nessuno
   risponde il job torna in coda dopo la pausa **senza consumare un tentativo** e senza bloccare gli
-  altri job. I metadati (MusicBrainz) non hanno alternative: hanno solo pausa e nuovo tentativo.
+  altri job.
+- **Artisti e album che MusicBrainz non ha**: MusicBrainz resta sempre la fonte di riferimento, ma
+  se non trova l'artista (nessun risultato) Diskko cerca lo stesso nome su Deezer e lo usa **solo se
+  è certo**: nome identico e almeno un album della libreria nella sua discografia (con omonimi vince
+  chi ne ha chiaramente di più, in caso di parità non si sceglie). Gli album arrivano con id
+  `deezer:<id>`, hanno il tipo, l'anno e la copertina di Deezer, compaiono tra i mancanti e si
+  possono richiedere come gli altri; non hanno la lista tracce (quella viene da MusicBrainz). Se
+  l'artista c'è su MusicBrainz ma un album della libreria no, lo stesso controllo cerca quell'album
+  su Deezer. L'artista passa in *Revisione artisti* come "Dati da Deezer, da verificare": si può
+  **mantenere**, **cercare di nuovo su MusicBrainz**, indicare l'MBID giusto o segnarlo come non
+  presente (i dati di Deezer vengono tolti). Alle sincronizzazioni periodiche si ricontrolla
+  MusicBrainz e, se l'artista compare, i suoi dati sostituiscono quelli di Deezer. Si disattiva in
+  Servizi di riserva → *Dati di artisti e album* (`PROVIDERS_METADATA=musicbrainz`).
 
 I dati di MusicBrainz sono di pubblico dominio (CC0); le copertine del Cover Art Archive hanno
 licenze proprie e restano solo nella tua cache locale.

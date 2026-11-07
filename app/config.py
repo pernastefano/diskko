@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     providers_covers: str = "coverartarchive,deezer"
     providers_previews: str = "itunes,deezer"
     providers_similar: str = "lastfm,listenbrainz"
+    providers_metadata: str = "musicbrainz,deezer"  # MusicBrainz first; Deezer fills the gaps
     provider_breaker_threshold: int = 5  # consecutive failures that pause a service
     provider_breaker_cooldown_minutes: int = 10
     lastfm_api_key: str = ""

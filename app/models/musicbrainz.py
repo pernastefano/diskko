@@ -8,6 +8,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,7 +20,12 @@ MB_RESOLVED = "resolved"  # has an MBID
 MB_REVIEW = "review"  # waiting for a manual decision
 MB_UNMATCHED = "unmatched"  # decided: not on MusicBrainz
 MB_IGNORED = "ignored"  # never looked up (e.g. "Unknown Artist")
-MB_STATUSES = (MB_PENDING, MB_RESOLVED, MB_REVIEW, MB_UNMATCHED, MB_IGNORED)
+MB_PROVIDER = "provider"  # not on MusicBrainz: metadata comes from a fallback provider
+MB_STATUSES = (MB_PENDING, MB_RESOLVED, MB_REVIEW, MB_UNMATCHED, MB_IGNORED, MB_PROVIDER)
+
+# ReleaseGroup.source: where the album information comes from
+SOURCE_MUSICBRAINZ = "musicbrainz"
+SOURCE_DEEZER = "deezer"
 
 # LibraryAlbum.match_status
 MATCH_MATCHED = "matched"  # confident automatic match
@@ -65,6 +71,10 @@ class ReleaseGroup(Base):
     first_release_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     disambiguation: Mapped[str] = mapped_column(String(255), default="")
+    # musicbrainz, or a fallback provider (then `mbid` holds "<provider>:<id>", not an MBID)
+    source: Mapped[str] = mapped_column(
+        String(16), default="musicbrainz", server_default=text("'musicbrainz'")
+    )
     # Single user-facing type derived from primary/secondary types (see categories.py).
     category: Mapped[str] = mapped_column(String(24), default="other")
     track_count_hint: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -118,6 +128,7 @@ __all__ = [
     "MATCH_UNMATCHED",
     "MB_IGNORED",
     "MB_PENDING",
+    "MB_PROVIDER",
     "MB_RESOLVED",
     "MB_REVIEW",
     "MB_STATUSES",
@@ -125,6 +136,8 @@ __all__ = [
     "REVIEW_DISMISSED",
     "REVIEW_PENDING",
     "REVIEW_RESOLVED",
+    "SOURCE_DEEZER",
+    "SOURCE_MUSICBRAINZ",
     "AlbumMatchOverride",
     "ApiCache",
     "ArtistReview",

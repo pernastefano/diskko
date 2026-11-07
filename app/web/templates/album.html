@@ -14,7 +14,7 @@
       {% if year %}{% set _ = parts.append(year|string) %}{% endif %}
       {% if group %}{% set _ = parts.append(t('category.' ~ group.category)) %}{% endif %}
       {% if summary.tracks %}{% set _ = parts.append(t('album.summary', n=summary.tracks, min=(summary.seconds // 60)) ~ (' · ' ~ t('album.discs', n=summary.discs) if summary.discs > 1 else '')) %}{% endif %}
-      {{ parts|join(' · ') }}{% if group %}{{ ' · ' if parts }}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ group.mbid }}">MusicBrainz ↗</a>{% endif %}
+      {{ parts|join(' · ') }}{% if group and group.source == 'deezer' %}{{ ' · ' if parts }}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://www.deezer.com/album/{{ group.mbid.split(':')[1] }}" data-source="deezer">{{ t('album.source.deezer') }} ↗</a>{% elif group %}{{ ' · ' if parts }}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ group.mbid }}">MusicBrainz ↗</a>{% endif %}
     </p>
     <div class="mt-3 flex flex-wrap items-center gap-2">
       {% if mode == 'remote' %}

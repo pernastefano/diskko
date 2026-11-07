@@ -19,7 +19,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.integrations.providers import CAPABILITIES
+from app.integrations.providers import CAPABILITIES, FIXED_FIRST
 from app.models import Setting
 from app.services.app_settings import set_setting
 from app.services.quality_profiles import load_profiles
@@ -52,6 +52,7 @@ class Field:
     maximum: float | None = None
     required: bool = False
     max_length: int = 255
+    first: str = ""  # providers: the one that must come first
 
 
 FIELDS: dict[str, Field] = {
@@ -79,7 +80,15 @@ FIELDS: dict[str, Field] = {
         Field("lastfm_api_key", "secret", "integrations", "lastfm"),
         # which service answers what (default first, then the fallbacks)
         *(
-            Field(key, "providers", "integrations", "providers", choices=known, required=True)
+            Field(
+                key,
+                "providers",
+                "integrations",
+                "providers",
+                choices=known,
+                required=True,
+                first=FIXED_FIRST.get(key, ""),
+            )
             for key, known in CAPABILITIES.values()
         ),
         Field(
@@ -245,6 +254,8 @@ def parse_providers(field: Field, items: list[str]) -> str:
         raise FieldError("choice_invalid")
     if len(set(names)) != len(names):
         raise FieldError("providers_duplicate")
+    if field.first and names[0] != field.first:
+        raise FieldError("providers_first")
     return ",".join(names)
 
 

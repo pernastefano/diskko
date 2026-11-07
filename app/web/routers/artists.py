@@ -249,13 +249,30 @@ def artist_dismiss(db: DB, auth: AdminAuth, artist_id: int, next: Annotated[str,
     return RedirectResponse(f"{back}?flash=artist_dismissed", status_code=303)
 
 
+@router.post("/{artist_id}/confirm")
+def artist_confirm(db: DB, auth: AdminAuth, artist_id: int, next: Annotated[str, Form()] = ""):
+    """Keep the data a fallback provider gave for an artist that MusicBrainz lacks."""
+    _artist_or_404(db, artist_id)
+    sync.confirm_provider(db, artist_id, auth.user.id)
+    db.commit()
+    back = "/admin/artists/review" if next == "review" else f"/admin/artists/{artist_id}"
+    return RedirectResponse(f"{back}?flash=provider_confirmed", status_code=303)
+
+
 @router.post("/{artist_id}/reset")
-def artist_reset(request: Request, db: DB, auth: AdminAuth, artist_id: int):
+def artist_reset(
+    request: Request,
+    db: DB,
+    auth: AdminAuth,
+    artist_id: int,
+    next: Annotated[str, Form()] = "",
+):
     _artist_or_404(db, artist_id)
     sync.reset_artist(db, artist_id, auth.user.id)
     db.commit()
     queue_sync(request, db, artist_id, auth.user.id, force=True)
-    return RedirectResponse(f"/admin/artists/{artist_id}?flash=artist_reset", status_code=303)
+    back = "/admin/artists/review" if next == "review" else f"/admin/artists/{artist_id}"
+    return RedirectResponse(f"{back}?flash=artist_reset", status_code=303)
 
 
 @router.post("/{artist_id}/albums/{album_id}/match")

@@ -9,14 +9,17 @@ from sqlalchemy.orm import Session
 
 from app.integrations.musicbrainz_client import ReleaseGroupData
 from app.models import (
+    MATCH_UNMATCHED,
     MB_IGNORED,
     MB_PENDING,
+    MB_PROVIDER,
     MB_RESOLVED,
     MB_REVIEW,
     MB_UNMATCHED,
     REVIEW_DISMISSED,
     REVIEW_PENDING,
     REVIEW_RESOLVED,
+    SOURCE_MUSICBRAINZ,
     Artist,
     ArtistReview,
     LibraryAlbum,
@@ -34,6 +37,7 @@ class ArtistInput:
     mb_status: str
     in_library: bool
     album_titles: list[str]
+    provider_artist_id: str | None = None
 
 
 def load_artist_input(db: Session, artist_id: int) -> ArtistInput | None:
@@ -42,7 +46,13 @@ def load_artist_input(db: Session, artist_id: int) -> ArtistInput | None:
         return None
     titles = list(db.scalars(select(LibraryAlbum.title).where(LibraryAlbum.artist_id == artist_id)))
     return ArtistInput(
-        artist.id, artist.name, artist.mbid, artist.mb_status, artist.in_library, titles
+        artist.id,
+        artist.name,
+        artist.mbid,
+        artist.mb_status,
+        artist.in_library,
+        titles,
+        artist.provider_artist_id,
     )
 
 
@@ -95,6 +105,7 @@ def _set_mbid(
             [{"mbid": mbid, "name": other.name, "note": "already assigned to another artist"}],
         )
         return
+    clear_provider_data(db, artist)  # MusicBrainz is the reference: Deezer's data goes
     artist.mbid, artist.mb_status = mbid, MB_RESOLVED
     artist.mb_source, artist.mb_confidence = source, confidence
     _close_reviews(db, artist.id, REVIEW_RESOLVED)
@@ -105,12 +116,22 @@ def mark_invalid_mbid(db: Session, artist_id: int) -> None:
 
 
 def store_release_groups(
-    db: Session, artist_id: int, groups: list[ReleaseGroupData]
+    db: Session,
+    artist_id: int,
+    groups: list[ReleaseGroupData],
+    *,
+    source: str = SOURCE_MUSICBRAINZ,
+    prune: bool = True,
 ) -> tuple[int, int, int]:
-    """Upsert the discography; release groups that vanished from MusicBrainz are removed."""
+    """Upsert the discography of one source; release groups of that source that vanished from
+    it are removed (unless `prune` is off). Groups of other sources are never touched."""
     existing = {
         rg.mbid: rg
-        for rg in db.scalars(select(ReleaseGroup).where(ReleaseGroup.artist_id == artist_id))
+        for rg in db.scalars(
+            select(ReleaseGroup).where(
+                ReleaseGroup.artist_id == artist_id, ReleaseGroup.source == source
+            )
+        )
     }
     added = updated = 0
     seen: set[str] = set()
@@ -129,14 +150,90 @@ def store_release_groups(
         rg.secondary_types_json = json.dumps(data.secondary_types)
         rg.first_release_date, rg.year = data.first_release_date, data.year
         rg.disambiguation, rg.category = data.disambiguation, data.category
+        rg.source = source
         rg.synced_at = utcnow()
     removed = 0
     for mbid, rg in existing.items():
-        if mbid not in seen:
+        if prune and mbid not in seen:
             db.delete(rg)
             removed += 1
     db.flush()
     return added, updated, removed
+
+
+def unmatched_titles(db: Session, artist_id: int) -> list[str]:
+    """Titles of the library albums that matched no release group."""
+    return list(
+        db.scalars(
+            select(LibraryAlbum.title).where(
+                LibraryAlbum.artist_id == artist_id, LibraryAlbum.match_status == MATCH_UNMATCHED
+            )
+        )
+    )
+
+
+# ------------------------------------------------- artists known only to a fallback provider
+
+
+def clear_provider_data(db: Session, artist: Artist) -> None:
+    """Forget what a fallback provider told about the artist (its albums included)."""
+    ids = list(
+        db.scalars(
+            select(ReleaseGroup.id).where(
+                ReleaseGroup.artist_id == artist.id, ReleaseGroup.source != SOURCE_MUSICBRAINZ
+            )
+        )
+    )
+    if artist.provider is None and not ids:
+        return
+    if artist.provider is not None and ids:
+        for album in db.scalars(select(LibraryAlbum).where(LibraryAlbum.release_group_id.in_(ids))):
+            album.release_group_id, album.matched_confidence = None, None
+            album.match_status = MATCH_UNMATCHED
+        for rg in db.scalars(select(ReleaseGroup).where(ReleaseGroup.id.in_(ids))):
+            db.delete(rg)
+    artist.provider, artist.provider_artist_id = None, None
+    db.flush()
+
+
+def apply_provider(
+    db: Session,
+    artist_id: int,
+    provider: str,
+    provider_artist_id: str,
+    confidence: float,
+    details: dict,
+) -> None:
+    """The artist is not on MusicBrainz but a provider knows it for sure. The first time, it is
+    queued for a human look (the data can be confirmed, replaced or dropped later)."""
+    artist = db.get(Artist, artist_id)
+    first_time = artist.provider is None
+    artist.provider, artist.provider_artist_id = provider, provider_artist_id
+    artist.mb_status, artist.mb_source, artist.mb_confidence = MB_PROVIDER, "provider", confidence
+    if first_time:
+        _close_reviews(db, artist_id, REVIEW_DISMISSED)
+        db.add(
+            ArtistReview(
+                artist_id=artist_id,
+                reason="provider",
+                candidates_json=json.dumps([{"provider": provider, **details}]),
+                status=REVIEW_PENDING,
+            )
+        )
+
+
+def finish_provider_sync(db: Session, artist_id: int) -> None:
+    artist = db.get(Artist, artist_id)
+    artist.metadata_synced_at = utcnow()
+    artist.mb_status = MB_PROVIDER
+
+
+def confirm_provider(db: Session, artist_id: int, user_id: int | None) -> None:
+    """An admin checked the fallback data and keeps it (MusicBrainz still wins if it appears)."""
+    artist = db.get(Artist, artist_id)
+    if artist.mb_status == MB_PROVIDER:
+        artist.mb_source = "manual"
+    _close_reviews(db, artist_id, REVIEW_RESOLVED, user_id)
 
 
 def finish_sync(db: Session, artist_id: int) -> None:
@@ -159,6 +256,7 @@ def choose_candidate(db: Session, artist_id: int, mbid: str, user_id: int | None
 def dismiss_artist(db: Session, artist_id: int, user_id: int | None) -> None:
     """An admin decided the artist is not on MusicBrainz: stop looking."""
     artist = db.get(Artist, artist_id)
+    clear_provider_data(db, artist)
     artist.mb_status = MB_UNMATCHED
     _close_reviews(db, artist_id, REVIEW_DISMISSED, user_id)
 
@@ -166,6 +264,7 @@ def dismiss_artist(db: Session, artist_id: int, user_id: int | None) -> None:
 def reset_artist(db: Session, artist_id: int, user_id: int | None) -> None:
     """Forget the current identity and search again."""
     artist = db.get(Artist, artist_id)
+    clear_provider_data(db, artist)
     artist.mbid, artist.mb_source, artist.mb_confidence = None, None, None
     artist.mb_status, artist.metadata_synced_at = MB_PENDING, None
     _close_reviews(db, artist_id, REVIEW_DISMISSED, user_id)
@@ -182,7 +281,7 @@ def artists_needing_sync(db: Session, refresh_days: int) -> list[int]:
         Artist.in_library.is_(True),
         or_(
             Artist.mb_status == MB_PENDING,
-            (Artist.mb_status == MB_RESOLVED)
+            Artist.mb_status.in_((MB_RESOLVED, MB_PROVIDER))
             & (or_(Artist.metadata_synced_at.is_(None), Artist.metadata_synced_at < cutoff)),
         ),
     )
