@@ -17,7 +17,7 @@ def _fill(path):
 def _admin_routes(app):
     routes = []
     for path, methods in app.openapi()["paths"].items():
-        if path.startswith("/admin"):
+        if path.startswith(("/admin", "/settings")):
             for method in methods:
                 routes.append((method.upper(), _fill(path)))
     return sorted(routes)
@@ -31,7 +31,7 @@ def _call(client, method, path):
 
 def test_admin_routes_are_discovered(app):
     # Guards the dynamic tests below against silently testing nothing.
-    assert len(_admin_routes(app)) >= 28
+    assert len(_admin_routes(app)) >= 35
 
 
 def test_every_admin_route_denies_regular_users(app, user_client):

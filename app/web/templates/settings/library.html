@@ -1,0 +1,20 @@
+{% extends "settings/_layout.html" %}
+{% from "settings/_fields.html" import field, save_button with context %}
+{% block settings_body %}
+<form method="post" action="/settings/library" class="space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2 class="text-lg font-semibold">{{ t('settings.section.library') }}</h2>
+  <div>
+    {{ field(fields.music_dir) }}
+    <p class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+      <button type="button" hx-post="/settings/library/check" hx-include="#f-music_dir" hx-target="#path-check" hx-swap="innerHTML"
+              class="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-100">{{ t('settings.check.button') }}</button>
+      <span id="path-check" aria-live="polite"></span>
+    </p>
+    <p class="mt-2 text-xs text-amber-700">{{ t('settings.library.path_warning') }}</p>
+  </div>
+  {{ field(fields.library_source) }}
+  {{ field(fields.library_scan_cron) }}
+  {{ save_button() }}
+</form>
+{% endblock %}

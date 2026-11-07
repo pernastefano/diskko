@@ -135,7 +135,7 @@ def test_changing_the_shared_types_changes_the_missing_list_at_once(admin_client
     assert "Hit Single" not in page(admin_client, url).split("Missing albums", 1)[1]
     r = post(
         admin_client,
-        "/admin/library/missing-types",
+        "/settings/albums/types",
         {"types": ["single", "live"]},
         page="/admin/library",
     )
@@ -475,7 +475,7 @@ def test_choosing_nothing_is_allowed(user_client):
 def test_unknown_types_are_dropped(admin_client, db):
     post(
         admin_client,
-        "/admin/library/missing-types",
+        "/settings/albums/types",
         {"types": ["live", "bogus"]},
         page="/admin/library",
     )
@@ -483,12 +483,12 @@ def test_unknown_types_are_dropped(admin_client, db):
 
 
 def test_only_admins_set_the_shared_default(user_client):
-    assert post(user_client, "/admin/library/missing-types", {"types": ["live"]}).status_code == 403
+    assert post(user_client, "/settings/albums/types", {"types": ["live"]}).status_code == 403
 
 
-def test_the_library_page_shows_the_shared_choice(admin_client):
-    post(admin_client, "/admin/library/missing-types", {"types": ["live"]}, page="/admin/library")
-    text = page(admin_client, "/admin/library")
+def test_the_settings_page_shows_the_shared_choice(admin_client):
+    post(admin_client, "/settings/albums/types", {"types": ["live"]}, page="/settings/albums")
+    text = page(admin_client, "/settings/albums")
     assert "Missing album types" in text and 'value="live" checked' in text
 
 

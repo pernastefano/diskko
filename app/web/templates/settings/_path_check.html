@@ -1,0 +1,7 @@
+{% if state == 'ok' %}
+  <span role="status" class="text-green-700" data-check="ok">{{ t('settings.check.ok', n=entries) }}</span>
+{% elif state == 'invalid' %}
+  <span role="alert" class="text-red-700" data-check="invalid">{{ t('settings.error.' ~ code) }}</span>
+{% else %}
+  <span role="alert" class="text-amber-700" data-check="{{ state }}">{{ t('settings.check.' ~ state) }}</span>
+{% endif %}

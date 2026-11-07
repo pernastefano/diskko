@@ -1,0 +1,41 @@
+{# Form controls for the settings pages. Import with context. `f` comes from field_view(). #}
+{% macro status_line(f) %}
+  <p class="flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+    {% if f.overridden %}
+      <span class="rounded bg-indigo-100 px-1.5 py-0.5 text-indigo-800">{{ t('settings.overridden') }}</span>
+      <label class="flex items-center gap-1"><input type="checkbox" name="reset" value="{{ f.key }}"> {{ t('settings.use_default') }}</label>
+      {% if f.kind != 'secret' %}<span>{{ t('settings.default_is', value=(f.default or t('settings.empty'))) }}</span>{% endif %}
+    {% else %}
+      <span>{{ t('settings.from_env') }}{% if f.kind != 'secret' and f.default %}: {{ f.default }}{% endif %}</span>
+    {% endif %}
+  </p>
+{% endmacro %}
+
+{% macro field(f, type='text') %}
+  <div class="space-y-1">
+    <label for="f-{{ f.key }}" class="block text-sm font-medium">{{ t('settings.field.' ~ f.key) }}{% if f.required %} <span class="text-red-600" aria-hidden="true">*</span>{% endif %}</label>
+    {% if f.kind == 'bool' %}
+      <label class="flex items-center gap-2 text-sm"><input id="f-{{ f.key }}" type="checkbox" name="{{ f.key }}" value="1" {% if f.value %}checked{% endif %}> {{ t('settings.hint.' ~ f.key) }}</label>
+    {% elif f.kind == 'choice' %}
+      <select id="f-{{ f.key }}" name="{{ f.key }}" class="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+        {% for value, label in f.choices %}<option value="{{ value }}" {% if value == f.value %}selected{% endif %}>{{ t(label) }}</option>{% endfor %}
+      </select>
+      <p class="text-xs text-slate-500">{{ t('settings.hint.' ~ f.key) }}</p>
+    {% elif f.kind == 'secret' %}
+      <input id="f-{{ f.key }}" type="password" name="{{ f.key }}" value="" autocomplete="new-password" spellcheck="false"
+             placeholder="{{ '••••••••' if f.secret_set else '' }}"
+             class="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+      <p class="text-xs text-slate-500"><span data-secret-state="{{ 'set' if f.secret_set else 'unset' }}" class="font-medium">{{ t('settings.secret_set') if f.secret_set else t('settings.secret_unset') }}</span> · {{ t('settings.secret_keep') }}</p>
+    {% else %}
+      <input id="f-{{ f.key }}" type="{{ type }}" name="{{ f.key }}" value="{{ f.value }}" autocomplete="off" spellcheck="false"
+             class="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+      <p class="text-xs text-slate-500">{{ t('settings.hint.' ~ f.key) }}</p>
+    {% endif %}
+    {{ status_line(f) }}
+    {% if f.error %}<p role="alert" class="text-xs font-medium text-red-700" data-error="{{ f.key }}">{{ t(f.error) }}</p>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro save_button() %}
+  <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('action.save') }}</button>
+{% endmacro %}

@@ -1,0 +1,26 @@
+{% extends "settings/_layout.html" %}
+{% from "settings/_fields.html" import field, save_button, status_line with context %}
+{% block settings_body %}
+<form method="post" action="/settings/jobs" class="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div>
+    <h2 class="text-lg font-semibold">{{ t('settings.section.jobs') }}</h2>
+    <p class="text-sm text-slate-500">{{ t('settings.jobs.intro') }}</p>
+  </div>
+  {% if errors %}<p role="alert" class="text-sm font-medium text-red-700" data-error="job_queue_concurrency">{{ t('settings.error.' ~ errors.job_queue_concurrency) }}</p>{% endif %}
+  <div class="divide-y divide-slate-100">
+    {% for name, value, fixed in queues %}
+      <div class="flex flex-wrap items-center justify-between gap-3 py-3">
+        <div>
+          <label for="queue-{{ name }}" class="text-sm font-medium">{{ t('settings.queue.' ~ name) }}</label>
+          <p class="text-xs text-slate-500">{{ t('settings.queue.' ~ name ~ '.hint') }}</p>
+        </div>
+        <input id="queue-{{ name }}" name="queue_{{ name }}" type="number" min="1" max="8" value="{{ value }}" {% if fixed %}readonly aria-readonly="true" title="{{ t('settings.queue.fixed') }}"{% endif %}
+               class="w-20 rounded-md border border-slate-300 px-2 py-1 text-right text-sm {{ 'bg-slate-100 text-slate-500' if fixed }}">
+      </div>
+    {% endfor %}
+  </div>
+  {% set f = fields.job_queue_concurrency %}{{ status_line(f) }}
+  {{ save_button() }}
+</form>
+{% endblock %}

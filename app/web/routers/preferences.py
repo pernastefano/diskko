@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 
-from app.auth.deps import DB, AdminAuth, UserAuth
+from app.auth.deps import DB, UserAuth
 from app.services.musicbrainz.categories import CATEGORIES
 from app.services.musicbrainz.missing import (
     clear_user_missing_types,
@@ -42,10 +42,3 @@ def preferences_save(
         clear_user_missing_types(db, auth.user.id)
     db.commit()
     return RedirectResponse("/account/preferences?flash=preferences_saved", status_code=303)
-
-
-@router.post("/admin/library/missing-types")
-def shared_types_save(db: DB, auth: AdminAuth, types: Annotated[list[str] | None, Form()] = None):
-    set_missing_types(db, types or [])
-    db.commit()
-    return RedirectResponse("/admin/library?flash=missing_types_saved", status_code=303)

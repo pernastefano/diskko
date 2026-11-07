@@ -27,6 +27,7 @@ from app.web.routers import (
     status,
     users,
 )
+from app.web.routers import settings as settings_pages
 
 STATIC_DIR = Path(__file__).parent / "web" / "static"
 
@@ -100,6 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         library.router,
         artists.router,
         preferences.router,
+        settings_pages.router,
         covers.router,
         status.router,
         pages.router,

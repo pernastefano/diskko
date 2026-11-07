@@ -16,7 +16,7 @@ from app.web.templating import is_htmx, render
 router = APIRouter(prefix="/admin/status", dependencies=[Depends(require_admin)])
 
 
-def _card(request: Request, db: DB, name: str) -> dict:
+def integration_card(request: Request, db: DB, name: str) -> dict:
     integration = build_integration(name, request.app.state.settings)
     if integration is None:
         raise HTTPException(status_code=404, detail="not_found")
@@ -43,7 +43,7 @@ def status_page(request: Request, db: DB):
         for q in registry.queue_names()
     ]
     ctx = {
-        "cards": [_card(request, db, n) for n in INTEGRATION_NAMES],
+        "cards": [integration_card(request, db, n) for n in INTEGRATION_NAMES],
         "queues": queues,
         "workers_enabled": request.app.state.worker is not None,
     }
@@ -52,12 +52,12 @@ def status_page(request: Request, db: DB):
 
 @router.get("/{name}/card")
 def status_card(request: Request, db: DB, name: str):
-    return render(request, "admin/_status_card.html", {"card": _card(request, db, name)})
+    return render(request, "admin/_status_card.html", {"card": integration_card(request, db, name)})
 
 
 @router.post("/{name}/test")
 def status_test(request: Request, db: DB, auth: AdminAuth, name: str):
-    _card(request, db, name)  # 404 for unknown integrations
+    integration_card(request, db, name)  # 404 for unknown integrations
     engine.enqueue(
         db,
         "integration_check",
@@ -67,5 +67,7 @@ def status_test(request: Request, db: DB, auth: AdminAuth, name: str):
     )
     notify_worker(request)
     if is_htmx(request):
-        return render(request, "admin/_status_card.html", {"card": _card(request, db, name)})
+        return render(
+            request, "admin/_status_card.html", {"card": integration_card(request, db, name)}
+        )
     return RedirectResponse("/admin/status", status_code=303)

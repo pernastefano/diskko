@@ -272,7 +272,7 @@ def test_every_release_group_type_is_counted_only_when_selected(app, admin_clien
         assert live.category == "live"
     post(
         admin_client,
-        "/admin/library/missing-types",
+        "/settings/albums/types",
         {"types": ["album", "live"]},
         page="/admin/library",
     )

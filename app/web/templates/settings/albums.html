@@ -1,0 +1,24 @@
+{% extends "settings/_layout.html" %}
+{% from "settings/_fields.html" import field, save_button with context %}
+{% block settings_body %}
+<form method="post" action="/settings/albums/types" class="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div>
+    <h2 class="text-lg font-semibold">{{ t('settings.albums.types_title') }}</h2>
+    <p class="text-sm text-slate-500">{{ t('settings.albums.types_hint') }}</p>
+  </div>
+  <div class="grid grid-cols-2 gap-2 md:grid-cols-3">
+    {% for c in categories %}
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="types" value="{{ c }}" {% if c in selected_types %}checked{% endif %}> {{ t('category.' ~ c) }}</label>
+    {% endfor %}
+  </div>
+  {{ save_button() }}
+</form>
+
+<form method="post" action="/settings/albums/quality" class="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2 class="text-lg font-semibold">{{ t('settings.quality.title') }}</h2>
+  {{ field(fields.default_quality) }}
+  {{ save_button() }}
+</form>
+{% endblock %}

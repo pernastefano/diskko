@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ t('settings.title') }}{% endblock %}
+{% block content %}
+<h1 class="mb-4 text-2xl font-semibold">{{ t('settings.title') }}</h1>
+<div class="flex flex-col gap-6 md:flex-row">
+  <nav class="flex shrink-0 gap-1 overflow-x-auto md:w-48 md:flex-col" aria-label="{{ t('settings.title') }}">
+    {% for s in sections %}
+      <a href="/settings/{{ s }}" {% if s == section %}aria-current="page"{% endif %}
+         class="whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium {{ 'bg-indigo-600 text-white' if s == section else 'text-slate-700 hover:bg-slate-100' }}">{{ t('settings.section.' ~ s) }}</a>
+    {% endfor %}
+  </nav>
+  <div class="min-w-0 flex-1 space-y-6">
+    {% block settings_body %}{% endblock %}
+  </div>
+</div>
+{% endblock %}
