@@ -80,6 +80,25 @@ FIELDS: dict[str, Field] = {
 }
 
 
+# What the settings offer for a schedule: (id, crontab). The crontab is what gets stored, so
+# LIBRARY_SCAN_CRON and values saved earlier keep working; anything else shows as "custom".
+SCHEDULE_PRESETS: tuple[tuple[str, str], ...] = (
+    ("never", ""),
+    ("hourly", "0 * * * *"),
+    ("every_6_hours", "0 */6 * * *"),
+    ("every_12_hours", "0 */12 * * *"),
+    ("daily", "0 2 * * *"),
+    ("weekly", "0 2 * * 0"),
+    ("monthly", "0 2 1 * *"),
+)
+
+
+def schedule_id(cron: str) -> str | None:
+    """The preset a crontab expression stands for, if any."""
+    normal = " ".join(cron.split())
+    return next((i for i, c in SCHEDULE_PRESETS if c == normal), None)
+
+
 def fields_of(section: str, group: str | None = None) -> list[Field]:
     return [
         f for f in FIELDS.values() if f.section == section and (group is None or f.group == group)

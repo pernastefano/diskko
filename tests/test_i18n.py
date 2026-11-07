@@ -18,7 +18,7 @@ from app.integrations.status import INTEGRATION_NAMES
 from app.models import JOB_STATUSES, MATCH_STATUSES, MB_STATUSES, THEMES, User
 from app.quality import COLORS, KINDS
 from app.services.musicbrainz.categories import CATEGORIES
-from app.services.runtime_config import FIELDS, QUEUES
+from app.services.runtime_config import FIELDS, QUEUES, SCHEDULE_PRESETS
 from app.web.routers.settings import GROUPS, SECTIONS
 from tests.conftest import login, post
 
@@ -61,6 +61,9 @@ def test_all_used_keys_exist():
         used |= {f"flash.{c}" for c in re.findall(r"flash=(\w+)", text)}
         used |= {f"role.{r}" for r in ("admin", "user")}
         used |= {f"job.status.{s}" for s in JOB_STATUSES}
+        used |= {f"settings.schedule.{i}" for i, _ in SCHEDULE_PRESETS} | {
+            "settings.schedule.custom"
+        }
         used |= {f"quality.kind.{k}" for k in KINDS}
         used |= {f"quality.color.{c}" for c in COLORS}
         used |= {f"category.{c}" for c in CATEGORIES}

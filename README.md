@@ -88,7 +88,7 @@ Gli amministratori configurano l'app da **Impostazioni** (l'ingranaggio in alto 
 riavviare:
 
 - **Libreria**: cartella della musica (con "Verifica cartella"), sorgente predefinita (Filesystem o
-  Plex) e orario della scansione notturna.
+  Plex) e frequenza della scansione (mai, ogni ora, ogni giorno, settimana, mese...).
 - **Integrazioni**: Plex, SLSKD, MusicBrainz, Cover Art Archive e Last.fm, ciascuna con il proprio
   modulo e, dove esiste, il "Test connessione". I token e le chiavi non vengono mai mostrati dopo il
   salvataggio: lasciando il campo vuoto si mantiene il valore attuale.

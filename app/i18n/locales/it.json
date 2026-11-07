@@ -117,7 +117,7 @@
   "library.source.plex": "Plex",
   "library.folder": "Cartella musicale",
   "library.plex_section": "Sezione musicale di Plex",
-  "library.schedule": "Scansione notturna",
+  "library.schedule": "Scansione pianificata",
   "library.schedule_off": "disattivata",
   "library.scan": "Scansiona libreria",
   "library.full_rescan": "Riscansione completa",
@@ -274,7 +274,7 @@
   "settings.field.library_source": "Sorgente predefinita",
   "settings.hint.library_source": "Da dove si legge la libreria: la cartella o Plex.",
   "settings.field.library_scan_cron": "Scansione pianificata",
-  "settings.hint.library_scan_cron": "Crontab: minuto ora giorno mese giorno-settimana, per esempio 0 2 * * *. Vuoto = disattivata.",
+  "settings.hint.library_scan_cron": "Ogni quanto la libreria viene scansionata per file nuovi o modificati. Gli orari seguono il fuso orario del server.",
   "settings.field.plex_url": "URL di Plex",
   "settings.hint.plex_url": "Per esempio http://192.168.1.10:32400",
   "settings.field.plex_token": "Token di Plex",
@@ -425,5 +425,13 @@
   "error.quality_delete_default": "Il profilo predefinito non si può eliminare: scegline prima un altro.",
   "error.quality_delete_last": "L'ultimo profilo non si può eliminare.",
   "flash.quality_saved": "Profili di qualità salvati.",
-  "action.edit": "Modifica"
+  "action.edit": "Modifica",
+  "settings.schedule.never": "Mai",
+  "settings.schedule.hourly": "Ogni ora",
+  "settings.schedule.every_6_hours": "Ogni 6 ore",
+  "settings.schedule.every_12_hours": "Ogni 12 ore",
+  "settings.schedule.daily": "Ogni giorno (2:00)",
+  "settings.schedule.weekly": "Ogni settimana (domenica, 2:00)",
+  "settings.schedule.monthly": "Ogni mese (il 1°, 2:00)",
+  "settings.schedule.custom": "Personalizzata"
 }

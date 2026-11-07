@@ -102,7 +102,7 @@ def test_admins_reach_the_settings_from_the_menu(admin_client, user_client):
 def test_library_page_shows_the_current_values(app, admin_client):
     text = page(admin_client, "/settings/library")
     assert f'value="{app.state.settings.music_dir}"' in text
-    assert '<option value="filesystem" selected>' in text and "Default" in text
+    assert '<option value="filesystem" selected>' in text
 
 
 def test_saving_the_library_settings_applies_them_at_once(app, admin_client, tmp_path):
@@ -124,7 +124,7 @@ def test_saving_the_library_settings_applies_them_at_once(app, admin_client, tmp
     }
     assert app.state.base_settings.library_source == "filesystem"  # the environment is untouched
     text = page(admin_client, r.headers["location"])
-    assert "Settings saved." in text and text.count("Changed here") == 3
+    assert "Settings saved." in text and "Changed here" not in text
     assert '<option value="plex" selected>' in text
 
 
@@ -575,3 +575,80 @@ def test_nothing_secret_is_stored_outside_the_settings_table(app, admin_client, 
 def test_defaults_are_shown_with_readable_names(app, admin_client):
     save(admin_client, "/settings/integrations/coverart", {}, page_url="/settings/integrations")
     assert "Default: Yes" in page(admin_client, "/settings/integrations")
+
+
+# ------------------------------------------------------------- scan schedule
+
+
+def schedule_select(text):
+    select_html = re.search(r'<select id="f-library_scan_cron".*?</select>', text, re.S).group(0)
+    return re.findall(r'<option value="([^"]*)"\s*(selected)?>([^<]+)</option>', select_html)
+
+
+def test_the_scan_schedule_is_a_dropdown_of_presets(admin_client):
+    options = schedule_select(page(admin_client, "/settings/library"))
+    assert [o[2] for o in options] == [
+        "Never",
+        "Every hour",
+        "Every 6 hours",
+        "Every 12 hours",
+        "Every day (2:00)",
+        "Every week (Sunday, 2:00)",
+        "Every month (1st, 2:00)",
+    ]
+    assert [o[0] for o in options if o[1]] == ["0 2 * * *"]  # the default: every day
+    assert 'name="library_scan_cron" value=' not in page(admin_client, "/settings/library")
+
+
+def test_choosing_a_schedule_saves_its_crontab(app, admin_client):
+    r = save(
+        admin_client,
+        "/settings/library",
+        {
+            "music_dir": "/srv/music",
+            "library_source": "filesystem",
+            "library_scan_cron": "0 2 * * 0",
+        },
+    )
+    assert r.status_code == 303 and app.state.settings.library_scan_cron == "0 2 * * 0"
+    assert [o[2] for o in schedule_select(page(admin_client, "/settings/library")) if o[1]] == [
+        "Every week (Sunday, 2:00)"
+    ]
+    off = save(
+        admin_client,
+        "/settings/library",
+        {"music_dir": "/srv/music", "library_source": "filesystem", "library_scan_cron": ""},
+    )
+    assert off.status_code == 303 and app.state.settings.library_scan_cron == ""
+    assert [o[2] for o in schedule_select(page(admin_client, "/settings/library")) if o[1]] == [
+        "Never"
+    ]
+
+
+def test_a_custom_crontab_from_the_environment_is_kept_and_shown(app, admin_client):
+    app.state.settings.library_scan_cron = "15 4 * * 1"
+    options = schedule_select(page(admin_client, "/settings/library"))
+    assert ("15 4 * * 1", "selected", "Custom: 15 4 * * 1") in options
+    assert len([o for o in options if o[1]]) == 1
+
+
+def test_the_library_page_names_the_schedule(app, admin_client):
+    assert "Every day (2:00)" in page(admin_client, "/admin/library")
+    app.state.settings.library_scan_cron = "15 4 * * 1"
+    assert "15 4 * * 1" in page(admin_client, "/admin/library")
+
+
+def test_the_library_section_has_no_default_or_override_notes(app, admin_client):
+    save(
+        admin_client,
+        "/settings/library",
+        {"music_dir": "/srv/music", "library_source": "plex", "library_scan_cron": "0 * * * *"},
+    )
+    text = page(admin_client, "/settings/library")
+    for phrase in ("Changed here", "Use the default", "Default:", "From the environment"):
+        assert phrase not in text, phrase
+    assert 'name="reset"' not in text
+    # the other sections keep them
+    save(admin_client, "/settings/integrations/coverart", {}, page_url="/settings/integrations")
+    other = page(admin_client, "/settings/integrations")
+    assert "Changed here" in other and 'name="reset"' in other

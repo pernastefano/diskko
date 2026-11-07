@@ -22,7 +22,7 @@
       {% else %}
         <div class="flex justify-between"><dt class="text-slate-500">{{ t('library.folder') }}</dt><dd class="font-mono text-xs">{{ music_dir }}</dd></div>
       {% endif %}
-      <div class="flex justify-between"><dt class="text-slate-500">{{ t('library.schedule') }}</dt><dd class="font-mono text-xs">{{ cron if cron else t('library.schedule_off') }}</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">{{ t('library.schedule') }}</dt><dd class="font-mono text-xs">{{ t(schedule_label) if schedule_label and cron else (cron if cron else t('library.schedule_off')) }}</dd></div>
     </dl>
     <div class="mt-4 flex flex-wrap gap-2">
       <form method="post" action="/admin/library/scan">

@@ -9,6 +9,7 @@ from app.jobs import engine
 from app.models import ACTIVE_STATUSES, Artist, Job, LibraryAlbum, LibraryTrack
 from app.quality import DEFAULT_PROFILES
 from app.services.library.scan import last_scan
+from app.services.runtime_config import schedule_id
 from app.web.routers.jobs import notify_worker
 from app.web.templating import render
 
@@ -43,6 +44,11 @@ def library_page(request: Request, db: DB):
         "music_dir": str(settings.music_dir),
         "plex_section": settings.plex_music_section,
         "cron": settings.library_scan_cron.strip(),
+        "schedule_label": (
+            f"settings.schedule.{preset}"
+            if (preset := schedule_id(settings.library_scan_cron))
+            else None
+        ),
         "artists": db.scalar(select(func.count(Artist.id)).where(Artist.in_library.is_(True))),
         "albums": db.scalar(select(func.count(LibraryAlbum.id))),
         "tracks": db.scalar(select(func.count(LibraryTrack.id))),

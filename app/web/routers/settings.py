@@ -22,6 +22,7 @@ from app.services.quality_profiles import ProfileError, default_key
 from app.services.runtime_config import (
     FIELDS,
     QUEUES,
+    SCHEDULE_PRESETS,
     Field,
     FieldError,
     apply_runtime_config,
@@ -29,6 +30,7 @@ from app.services.runtime_config import (
     overridden_keys,
     parse_value,
     save_values,
+    schedule_id,
 )
 from app.web.routers.jobs import notify_worker
 from app.web.routers.status import integration_card
@@ -58,6 +60,8 @@ def _default_label(base: Settings, field: Field) -> str | None:
         return "settings.yes" if value else "settings.no"
     if field.kind == "choice":
         return CHOICE_LABELS.get(field.key, "") + str(value)
+    if field.kind == "cron" and (preset := schedule_id(str(value))):
+        return f"settings.schedule.{preset}"
     return None
 
 
@@ -93,6 +97,10 @@ def field_view(
         view["value"] = str(current)
     if field.kind == "bool" and submitted is not None:
         view["value"] = field.key in submitted
+    if field.kind == "cron":
+        view["value"] = " ".join(str(view["value"]).split())
+        view["presets"] = [(cron, f"settings.schedule.{i}") for i, cron in SCHEDULE_PRESETS]
+        view["custom"] = "" if schedule_id(view["value"]) is not None else view["value"]
     return view
 
 

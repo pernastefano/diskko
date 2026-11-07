@@ -5,7 +5,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <h2 class="text-lg font-semibold">{{ t('settings.section.library') }}</h2>
   <div>
-    {{ field(fields.music_dir) }}
+    {{ field(fields.music_dir, status=False) }}
     <p class="mt-2 flex flex-wrap items-center gap-3 text-sm">
       <button type="button" hx-post="/settings/library/check" hx-include="#f-music_dir" hx-target="#path-check" hx-swap="innerHTML"
               class="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-100">{{ t('settings.check.button') }}</button>
@@ -13,8 +13,8 @@
     </p>
     <p class="mt-2 text-xs text-amber-700">{{ t('settings.library.path_warning') }}</p>
   </div>
-  {{ field(fields.library_source) }}
-  {{ field(fields.library_scan_cron) }}
+  {{ field(fields.library_source, status=False) }}
+  {{ field(fields.library_scan_cron, status=False) }}
   {{ save_button() }}
 </form>
 {% endblock %}

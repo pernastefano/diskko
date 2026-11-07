@@ -117,7 +117,7 @@
   "library.source.plex": "Plex",
   "library.folder": "Music folder",
   "library.plex_section": "Plex music section",
-  "library.schedule": "Nightly scan",
+  "library.schedule": "Scheduled scan",
   "library.schedule_off": "disabled",
   "library.scan": "Scan library",
   "library.full_rescan": "Full rescan",
@@ -274,7 +274,7 @@
   "settings.field.library_source": "Default source",
   "settings.hint.library_source": "Where the library is read from: the folder or Plex.",
   "settings.field.library_scan_cron": "Scheduled scan",
-  "settings.hint.library_scan_cron": "Crontab: minute hour day month weekday, for example 0 2 * * *. Empty turns the schedule off.",
+  "settings.hint.library_scan_cron": "How often the library is scanned for new and changed files. Times use the server time zone.",
   "settings.field.plex_url": "Plex URL",
   "settings.hint.plex_url": "For example http://192.168.1.10:32400",
   "settings.field.plex_token": "Plex token",
@@ -425,5 +425,13 @@
   "error.quality_delete_default": "The default profile cannot be deleted: choose another default first.",
   "error.quality_delete_last": "The last profile cannot be deleted.",
   "flash.quality_saved": "Quality profiles saved.",
-  "action.edit": "Edit"
+  "action.edit": "Edit",
+  "settings.schedule.never": "Never",
+  "settings.schedule.hourly": "Every hour",
+  "settings.schedule.every_6_hours": "Every 6 hours",
+  "settings.schedule.every_12_hours": "Every 12 hours",
+  "settings.schedule.daily": "Every day (2:00)",
+  "settings.schedule.weekly": "Every week (Sunday, 2:00)",
+  "settings.schedule.monthly": "Every month (1st, 2:00)",
+  "settings.schedule.custom": "Custom"
 }

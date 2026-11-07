@@ -11,7 +11,7 @@
   </p>
 {% endmacro %}
 
-{% macro field(f, type='text') %}
+{% macro field(f, type='text', status=True) %}
   <div class="space-y-1">
     <label for="f-{{ f.key }}" class="block text-sm font-medium">{{ t('settings.field.' ~ f.key) }}{% if f.required %} <span class="text-red-600" aria-hidden="true">*</span>{% endif %}</label>
     {% if f.kind == 'bool' %}
@@ -19,6 +19,12 @@
     {% elif f.kind == 'choice' %}
       <select id="f-{{ f.key }}" name="{{ f.key }}" class="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
         {% for value, label in f.choices %}<option value="{{ value }}" {% if value == f.value %}selected{% endif %}>{{ t(label) }}</option>{% endfor %}
+      </select>
+      <p class="text-xs text-slate-500">{{ t('settings.hint.' ~ f.key) }}</p>
+    {% elif f.kind == 'cron' %}
+      <select id="f-{{ f.key }}" name="{{ f.key }}" class="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+        {% for value, label in f.presets %}<option value="{{ value }}" {% if value == f.value %}selected{% endif %}>{{ t(label) }}</option>{% endfor %}
+        {% if f.custom %}<option value="{{ f.custom }}" selected>{{ t('settings.schedule.custom') }}: {{ f.custom }}</option>{% endif %}
       </select>
       <p class="text-xs text-slate-500">{{ t('settings.hint.' ~ f.key) }}</p>
     {% elif f.kind == 'secret' %}
@@ -31,7 +37,7 @@
              class="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
       <p class="text-xs text-slate-500">{{ t('settings.hint.' ~ f.key) }}</p>
     {% endif %}
-    {{ status_line(f) }}
+    {% if status %}{{ status_line(f) }}{% endif %}
     {% if f.error %}<p role="alert" class="text-xs font-medium text-red-700" data-error="{{ f.key }}">{{ t(f.error) }}</p>{% endif %}
   </div>
 {% endmacro %}

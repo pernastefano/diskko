@@ -31,7 +31,7 @@ def test_empty_library_page(admin_client):
     page = admin_client.get("/admin/library").text
     assert "The library has not been scanned yet." in page
     assert "Scan library" in page and "Full rescan" in page
-    assert "Nightly scan" in page and "0 2 * * *" in page
+    assert "Scheduled scan" in page and "Every day (2:00)" in page
 
 
 def test_page_shows_counts_quality_and_last_scan(app, admin_client, tmp_path):
