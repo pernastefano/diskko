@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy import select
 
 from app.auth.deps import DB, AdminAuth, require_admin
 from app.integrations.status import (
@@ -7,9 +8,11 @@ from app.integrations.status import (
     build_integration,
     check_dedupe_key,
     check_in_progress,
+    integration_health,
     last_result,
 )
 from app.jobs import engine, registry
+from app.models import ACTIVE_STATUSES, Job
 from app.web.routers.jobs import notify_worker
 from app.web.templating import is_htmx, render
 
@@ -28,6 +31,40 @@ def integration_card(request: Request, db: DB, name: str) -> dict:
     }
 
 
+CHECK_ALL_KEY = "scheduled:check_integrations"  # the scheduler's own key: never two at once
+
+
+def _grid_context(request: Request, db: DB) -> dict:
+    settings = request.app.state.settings
+    checking_all = (
+        db.scalar(
+            select(Job.id).where(Job.dedupe_key == CHECK_ALL_KEY, Job.status.in_(ACTIVE_STATUSES))
+        )
+        is not None
+    )
+    return {
+        "cards": [integration_card(request, db, n) for n in INTEGRATION_NAMES],
+        "health": integration_health(db, settings),
+        "check_minutes": settings.status_check_minutes,
+        "checking_all": checking_all,
+    }
+
+
+@router.get("/grid")
+def status_grid(request: Request, db: DB):
+    """The cards and the summary alone; the page refreshes them by itself."""
+    return render(request, "admin/_status_grid.html", _grid_context(request, db))
+
+
+@router.post("/test-all")
+def status_test_all(request: Request, db: DB, auth: AdminAuth):
+    engine.enqueue(db, "check_integrations", {}, dedupe_key=CHECK_ALL_KEY, created_by=auth.user.id)
+    notify_worker(request)
+    if is_htmx(request):
+        return render(request, "admin/_status_grid.html", _grid_context(request, db))
+    return RedirectResponse("/admin/status", status_code=303)
+
+
 @router.get("")
 def status_page(request: Request, db: DB):
     settings = request.app.state.settings
@@ -43,7 +80,7 @@ def status_page(request: Request, db: DB):
         for q in registry.queue_names()
     ]
     ctx = {
-        "cards": [integration_card(request, db, n) for n in INTEGRATION_NAMES],
+        **_grid_context(request, db),
         "queues": queues,
         "workers_enabled": request.app.state.worker is not None,
     }

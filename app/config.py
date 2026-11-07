@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2,library:1,coverart:2,discovery:2"
     job_poll_interval: float = 1.0
     job_retention_days: int = 30
+    # How often the connection to every configured service is checked (0 turns it off). Five
+    # minutes keeps the status icon fresh and costs a handful of tiny requests.
+    status_check_minutes: int = 5
     job_log_max_lines: int = 5000
 
     # Library

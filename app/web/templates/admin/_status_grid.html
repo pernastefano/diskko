@@ -1,0 +1,13 @@
+{# needs: cards, health, check_minutes, checking_all. Refreshes itself: often while a check runs. #}
+<div id="status-grid" hx-get="/admin/status/grid" hx-trigger="every {{ 1 if checking_all else 30 }}s" hx-swap="outerHTML">
+  {% set tone = {'ok': 'bg-green-100 text-green-800', 'partial': 'bg-amber-100 text-amber-800', 'down': 'bg-red-100 text-red-800', 'unknown': 'bg-slate-200 text-slate-700'} %}
+  <div class="mb-3 flex flex-wrap items-center gap-3 text-sm">
+    <span class="rounded px-2 py-0.5 font-medium {{ tone[health.state] }}" data-health="{{ health.state }}">{{ t('status.health.' ~ health.state, ok=health.connected, total=health.configured) }}</span>
+    <span class="text-slate-500">{% if check_minutes > 0 %}{{ t('status.auto_check', n=check_minutes) }}{% else %}{{ t('status.auto_check_off') }}{% endif %}</span>
+    <button type="button" hx-post="/admin/status/test-all" hx-target="#status-grid" hx-swap="outerHTML" {% if checking_all %}disabled{% endif %}
+            class="rounded border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-50" data-check-all>{{ t('status.test_all') }}</button>
+  </div>
+  <div class="grid gap-4 md:grid-cols-3">
+    {% for card in cards %}{% include "admin/_status_card.html" %}{% endfor %}
+  </div>
+</div>

@@ -466,5 +466,12 @@
   "integration.name.lastfm": "Last.fm",
   "integration.name.listenbrainz": "ListenBrainz",
   "integration.name.itunes": "iTunes (previews)",
-  "integration.name.deezer": "Deezer (previews)"
+  "integration.name.deezer": "Deezer (previews)",
+  "status.health.ok": "All {total} configured services connected",
+  "status.health.partial": "{ok} of {total} configured services connected",
+  "status.health.down": "No configured service is connected",
+  "status.health.unknown": "Connection status not known yet",
+  "status.auto_check": "Checked automatically every {n} minutes.",
+  "status.auto_check_off": "Automatic checks are off.",
+  "status.test_all": "Check all now"
 }

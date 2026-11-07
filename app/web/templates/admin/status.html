@@ -4,9 +4,7 @@
 <h1 class="mb-4 text-2xl font-semibold">{{ t('nav.status') }}</h1>
 
 <h2 class="mb-2 text-lg font-semibold">{{ t('status.integrations') }}</h2>
-<div class="grid gap-4 md:grid-cols-3">
-  {% for card in cards %}{% include "admin/_status_card.html" %}{% endfor %}
-</div>
+{% include "admin/_status_grid.html" %}
 
 <h2 class="mb-2 mt-8 text-lg font-semibold">{{ t('status.workers') }}</h2>
 {% if not workers_enabled %}

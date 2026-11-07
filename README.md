@@ -82,6 +82,15 @@ copertina) e quelli mancanti, raggruppati per tipo secondo le preferenze dell'ut
 "Richiedi download" è per ora solo un segnaposto: i download arrivano con le fasi successive.
 Le copertine mancanti si scaricano in background quando si apre la pagina.
 
+## Stato dei servizi
+
+L'icona **Stato** nella barra in alto riassume la connessione ai servizi **configurati** (Plex,
+SLSKD, MusicBrainz, Last.fm, ListenBrainz, iTunes e Deezer; quelli non configurati non contano):
+**verde** se sono tutti raggiungibili, **gialla** se solo alcuni, **rossa** se nessuno, neutra finché
+non c'è un risultato recente. Un job controlla i servizi all'avvio, ogni 5 minuti
+(`STATUS_CHECK_MINUTES`, 0 per disattivare) e subito dopo ogni salvataggio delle Impostazioni; la
+pagina Stato si aggiorna da sola e ha il pulsante "Controlla tutto ora".
+
 ## Scoprire musica
 
 - **Cerca** (voce nel menu): cerca qualsiasi artista su MusicBrainz, anche se non è nella libreria.

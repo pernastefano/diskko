@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -40,7 +41,20 @@ def schedules_for(settings: Settings) -> list[Schedule]:
     cron = settings.library_scan_cron.strip()
     if cron:
         result.append(Schedule("scan_library", cron))
+    if settings.status_check_minutes > 0:
+        result.append(
+            Schedule("check_integrations", status_check_cron(settings.status_check_minutes))
+        )
     return result
+
+
+def status_check_cron(minutes: int) -> str:
+    """Crontab for "every N minutes" (an hour or more means every hour)."""
+    return f"*/{minutes} * * * *" if minutes < 60 else "0 * * * *"
+
+
+# These also run right away, not only at the next tick: the status icon needs a first answer.
+RUN_AT_ONCE = frozenset({"check_integrations"})
 
 
 def _timezone(name: str) -> ZoneInfo:
@@ -73,7 +87,7 @@ class JobScheduler:
         self.schedules = schedules_for(settings) if schedules is None else schedules
         self._scheduler = AsyncIOScheduler(timezone=_timezone(settings.tz))
 
-    def _add(self, schedule: Schedule) -> None:
+    def _add(self, schedule: Schedule, *, now: bool = False) -> None:
         try:
             trigger = CronTrigger.from_crontab(schedule.cron, timezone=self._scheduler.timezone)
         except ValueError:
@@ -87,11 +101,12 @@ class JobScheduler:
             replace_existing=True,
             coalesce=True,
             max_instances=1,
+            **({"next_run_time": datetime.now(self._scheduler.timezone)} if now else {}),
         )
 
     def start(self) -> None:
         for schedule in self.schedules:
-            self._add(schedule)
+            self._add(schedule, now=schedule.job_type in RUN_AT_ONCE)
         self._scheduler.start()
 
     def reschedule(self, settings: Settings) -> None:
@@ -104,7 +119,8 @@ class JobScheduler:
             if job.id not in wanted:
                 self._scheduler.remove_job(job.id)
         for schedule in self.schedules:
-            self._add(schedule)
+            # saving settings re-checks the services at once (a new key, a new URL...)
+            self._add(schedule, now=schedule.job_type in RUN_AT_ONCE)
 
     async def _fire(self, schedule: Schedule) -> None:
         await asyncio.to_thread(enqueue_scheduled, self._factory, schedule)

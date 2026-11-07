@@ -466,5 +466,12 @@
   "integration.name.lastfm": "Last.fm",
   "integration.name.listenbrainz": "ListenBrainz",
   "integration.name.itunes": "iTunes (anteprime)",
-  "integration.name.deezer": "Deezer (anteprime)"
+  "integration.name.deezer": "Deezer (anteprime)",
+  "status.health.ok": "Tutti i {total} servizi configurati sono connessi",
+  "status.health.partial": "{ok} servizi configurati su {total} connessi",
+  "status.health.down": "Nessun servizio configurato è connesso",
+  "status.health.unknown": "Stato delle connessioni non ancora noto",
+  "status.auto_check": "Controllo automatico ogni {n} minuti.",
+  "status.auto_check_off": "I controlli automatici sono disattivati.",
+  "status.test_all": "Controlla tutto ora"
 }
