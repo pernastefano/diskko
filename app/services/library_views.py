@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Artist, LibraryAlbum, ReleaseGroup
 from app.services.library.grouping import name_key
+from app.services.library.quality import is_lossless_tier
 from app.services.musicbrainz.categories import CATEGORIES
 from app.services.musicbrainz.missing import OWNED_STATUSES
 
@@ -218,8 +219,7 @@ def describe_format(album: LibraryAlbum) -> str:
     codec = (album.format or "").upper()
     if not codec:
         return ""
-    lossless = album.quality_tier in ("lossless", "lossless_24")
-    if lossless or not album.bitrate:
+    if is_lossless_tier(album.quality_tier) or not album.bitrate:
         return codec
     return f"{codec} · {album.bitrate} kbps"
 

@@ -386,8 +386,8 @@ def test_an_artist_without_anything(jdb):
 @pytest.mark.parametrize(
     ("codec", "tier", "bitrate", "expected"),
     [
-        ("flac", "lossless", 900, "FLAC"),
-        ("flac", "lossless_24", 2000, "FLAC"),
+        ("flac", "flac_standard", 900, "FLAC"),
+        ("flac", "flac_master", 2000, "FLAC"),
         ("mp3", "mp3_320", 320, "MP3 · 320 kbps"),
         ("aac", "any", 128, "AAC · 128 kbps"),
         ("mp3", "any", None, "MP3"),

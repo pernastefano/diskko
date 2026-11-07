@@ -6,7 +6,7 @@ Notes on what is and is not confirmed by the official documentation:
 - MusicBrainz ids are read from `guids` when an id starts with `mbid://` (the exact format
   is not documented, so this is best effort);
 - whether audio streams (bit depth, sampling rate) are present in bulk listings is not
-  documented: when they are missing, lossless files are classified as plain `lossless`.
+  documented: when they are missing, lossless files are read as 16-bit / 44.1 kHz (FLAC Standard).
 """
 
 import contextlib
@@ -272,7 +272,10 @@ class PlexProvider(LibraryProvider):
                 sample_rate=getattr(stream, "samplingRate", None),
                 duration=duration_ms / 1000 if duration_ms else None,
                 quality_tier=classify_track(
-                    lossless=lossless, bitrate_kbps=bitrate, bit_depth=bit_depth
+                    lossless=lossless,
+                    bitrate_kbps=bitrate,
+                    bit_depth=bit_depth,
+                    sample_rate=getattr(stream, "samplingRate", None),
                 ),
                 artist=getattr(track, "grandparentTitle", None),
                 album_artist=getattr(track, "grandparentTitle", None),

@@ -47,7 +47,7 @@ def band(app, admin_client):
             "comp": make_rg(db, artist, "Best Of", 1999, "Album", ("Compilation",)),
         }
         one = make_album(db, artist, "Studio One", year=1990)
-        one.quality_tier, one.format, one.bitrate, one.track_count = "lossless_24", "flac", 1500, 11
+        one.quality_tier, one.format, one.bitrate, one.track_count = "flac_hires", "flac", 1500, 11
         live = make_album(db, artist, "Live Show", year=1995)
         live.quality_tier, live.format, live.bitrate, live.track_count = "mp3_320", "mp3", 320, 14
         home = make_album(db, artist, "Home Recording", year=1991, path="x/home")
@@ -116,8 +116,8 @@ def test_quality_badges(admin_client, band):
     badges = dict(
         zip(titles_in(text)[:3], re.findall(r'data-quality="([a-z0-9_]+)"', text), strict=False)
     )
-    assert badges == {"Studio One": "lossless_24", "Live Show": "mp3_320", "Home Recording": "any"}
-    assert "Lossless 24-bit" in text and "MP3 320 / V0" in text and "Any / low quality" in text
+    assert badges == {"Studio One": "flac_hires", "Live Show": "mp3_320", "Home Recording": "any"}
+    assert "FLAC Hi-Res" in text and "MP3 320 / V0" in text and "Any / low quality" in text
     assert "bg-purple-100" in text and "bg-blue-100" in text and "bg-red-100" in text
 
 
@@ -134,8 +134,10 @@ def test_format_and_track_count(admin_client, band):
 @pytest.mark.parametrize(
     ("tier", "label", "cls"),
     [
-        ("lossless_24", "Lossless 24-bit", "purple"),
-        ("lossless", "Lossless (FLAC)", "green"),
+        ("flac_master", "FLAC Master", "fuchsia"),
+        ("flac_hires", "FLAC Hi-Res", "purple"),
+        ("flac_studio", "FLAC Studio", "teal"),
+        ("flac_standard", "FLAC Standard", "green"),
         ("mp3_320", "MP3 320 / V0", "blue"),
         ("mp3_256", "MP3 ≥ 256", "sky"),
         ("mp3_192", "MP3 ≥ 192", "amber"),
@@ -459,7 +461,7 @@ def test_italian(admin_client, band):
         "Richiedi download",
         "Artisti simili",
         "In arrivo.",
-        "Lossless 24-bit",
+        "FLAC Hi-Res",
         "Non abbinati",
         "Aggiorna metadati",
         "Studio Two",

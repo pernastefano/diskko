@@ -135,8 +135,6 @@
   "quality.mp3_192": "MP3 ≥ 192",
   "quality.mp3_256": "MP3 ≥ 256",
   "quality.mp3_320": "MP3 320 / V0",
-  "quality.lossless": "Lossless (FLAC)",
-  "quality.lossless_24": "Lossless 24-bit",
   "nav.artists": "Artisti",
   "nav.preferences": "Preferenze",
   "artists.review_queue": "Coda di revisione",
@@ -276,5 +274,17 @@
   "request.status.failed": "Fallito",
   "request.status.cancelled": "Annullato",
   "request.status.no_results": "Nessun risultato",
-  "flash.request_unavailable": "I download non sono ancora disponibili."
+  "flash.request_unavailable": "I download non sono ancora disponibili.",
+  "quality.flac_standard": "FLAC Standard",
+  "quality.flac_studio": "FLAC Studio",
+  "quality.flac_hires": "FLAC Hi-Res",
+  "quality.flac_master": "FLAC Master",
+  "quality.full.any": "Qualsiasi qualità",
+  "quality.full.mp3_192": "MP3 192 kbps o migliore",
+  "quality.full.mp3_256": "MP3 256 kbps o migliore",
+  "quality.full.mp3_320": "MP3 320 kbps / V0 o migliore",
+  "quality.full.flac_standard": "FLAC Standard (16-bit / 44,1 kHz)",
+  "quality.full.flac_studio": "FLAC Studio (24-bit o 16-bit / 48 kHz)",
+  "quality.full.flac_hires": "FLAC Hi-Res (24-bit / 96 kHz)",
+  "quality.full.flac_master": "FLAC Master (24-bit / 192 kHz)"
 }

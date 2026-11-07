@@ -98,7 +98,7 @@ def test_first_scan_groups_albums_and_computes_quality(session_factory, music):
         albums = {a.title: a for a in db.scalars(select(LibraryAlbum))}
         lady, disco, hits = albums["Lady Soul"], albums["Discovery"], albums["Summer Hits"]
         assert (lady.quality_tier, lady.format, lady.track_count, lady.year) == (
-            "lossless_24",
+            "flac_studio",  # 24-bit at 44.1 kHz
             "flac",
             2,
             1968,
@@ -118,7 +118,7 @@ def test_first_scan_groups_albums_and_computes_quality(session_factory, music):
         )
         assert track.path == "Aretha Franklin/Lady Soul (1968)/01 Song 1.flac"
         assert (
-            track.quality_tier == "lossless_24" and track.file_size > 0 and track.file_mtime_ns > 0
+            track.quality_tier == "flac_studio" and track.file_size > 0 and track.file_mtime_ns > 0
         )
 
 

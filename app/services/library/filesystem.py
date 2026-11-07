@@ -66,6 +66,7 @@ def to_scanned_track(rel_path: str, size: int, mtime_ns: int, info: AudioFileInf
             lossless=info.lossless,
             bitrate_kbps=info.bitrate,
             bit_depth=info.bit_depth,
+            sample_rate=info.sample_rate,
             v0=info.v0,
         ),
         artist=info.artist,

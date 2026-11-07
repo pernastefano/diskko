@@ -37,12 +37,12 @@ def make_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(engine, expire_on_commit=False)
 
 
-def run_migrations(url: str) -> None:
-    """Apply Alembic migrations up to head (used at startup)."""
+def run_migrations(url: str, revision: str = "head") -> None:
+    """Apply Alembic migrations up to `revision` (head at startup)."""
     cfg = Config(str(PROJECT_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(PROJECT_ROOT / "migrations"))
     cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, revision)
 
 
 def get_db(request: Request) -> Iterator[Session]:

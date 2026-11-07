@@ -33,7 +33,7 @@ def test_one_album(tmp_path):
             year=1968,
             codec="flac",
             lossless=True,
-            quality_tier="lossless",
+            quality_tier="flac_standard",
             file_size=100,
         )
         for i in (3, 1, 2)
@@ -50,7 +50,7 @@ def test_one_album(tmp_path):
     assert (album.total_size, album.path, album.quality_tier) == (
         300,
         "Aretha/Lady Soul",
-        "lossless",
+        "flac_standard",
     )
 
 
@@ -186,7 +186,7 @@ def test_album_aggregates():
             album_artist="A",
             album_title="B",
             codec="flac",
-            quality_tier="lossless_24",
+            quality_tier="flac_hires",
             bitrate=900,
             year=2001,
         ),
@@ -204,7 +204,7 @@ def test_album_aggregates():
             album_artist="A",
             album_title="B",
             codec="flac",
-            quality_tier="lossless",
+            quality_tier="flac_standard",
             bitrate=800,
             year=2002,
         ),

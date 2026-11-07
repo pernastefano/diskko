@@ -1,3 +1,3 @@
 {# needs `tier` #}
-{% set colors = {'lossless_24': 'bg-purple-100 text-purple-800', 'lossless': 'bg-green-100 text-green-800', 'mp3_320': 'bg-blue-100 text-blue-800', 'mp3_256': 'bg-sky-100 text-sky-800', 'mp3_192': 'bg-amber-100 text-amber-800', 'any': 'bg-red-100 text-red-800'} %}
+{% set colors = {'flac_master': 'bg-fuchsia-100 text-fuchsia-800', 'flac_hires': 'bg-purple-100 text-purple-800', 'flac_studio': 'bg-teal-100 text-teal-800', 'flac_standard': 'bg-green-100 text-green-800', 'mp3_320': 'bg-blue-100 text-blue-800', 'mp3_256': 'bg-sky-100 text-sky-800', 'mp3_192': 'bg-amber-100 text-amber-800', 'any': 'bg-red-100 text-red-800'} %}
 <span class="rounded px-1.5 py-0.5 text-xs font-medium {{ colors.get(tier, 'bg-slate-100 text-slate-700') }}" data-quality="{{ tier }}">{{ t('quality.' ~ tier) }}</span>

@@ -269,7 +269,7 @@ def test_listing_is_mapped_to_artists_albums_and_tracks(plex, psettings):
         MBID_R,
         "10",
     )
-    assert lady.path == "Aretha Franklin/Lady Soul" and lady.quality_tier == "lossless"
+    assert lady.path == "Aretha Franklin/Lady Soul" and lady.quality_tier == "flac_standard"
     first = lady.tracks[0]
     assert first.path == "Aretha Franklin/Lady Soul/01.flac" and first.title == "Chain of Fools"
     assert (first.codec, first.lossless, first.bit_depth, first.sample_rate) == (
@@ -279,7 +279,7 @@ def test_listing_is_mapped_to_artists_albums_and_tracks(plex, psettings):
         96000,
     )
     assert (first.quality_tier, first.duration, first.mbid_recording) == (
-        "lossless_24",
+        "flac_hires",  # 24-bit / 96 kHz
         180.0,
         MBID_T,
     )
@@ -289,11 +289,11 @@ def test_listing_is_mapped_to_artists_albums_and_tracks(plex, psettings):
     assert output.stats.files_seen == 4 and output.stats.errors == 0
 
 
-def test_streams_missing_from_the_listing_degrade_to_plain_lossless(plex, psettings):
+def test_streams_missing_from_the_listing_are_read_as_cd_quality(plex, psettings):
     basic_library(plex)
     plex.tracks[0].bit_depth = None
     track = scan_plex(psettings).artists[0].albums[0].tracks[0]
-    assert track.bit_depth is None and track.quality_tier == "lossless"
+    assert track.bit_depth is None and track.quality_tier == "flac_standard"
 
 
 def test_track_without_media_gets_a_placeholder_path(plex, psettings):
@@ -345,7 +345,7 @@ def test_scan_saves_rows_and_rescan_is_stable(plex, psettings, session_factory):
     with session_factory() as db:
         assert db.scalar(select(func.count(Artist.id))) == 2
         track = db.scalar(select(LibraryTrack).where(LibraryTrack.plex_rating_key == "100"))
-        assert track.source == "plex" and track.quality_tier == "lossless_24"
+        assert track.source == "plex" and track.quality_tier == "flac_hires"
         album = db.scalar(select(LibraryAlbum).where(LibraryAlbum.title == "Lady Soul"))
         assert album.plex_rating_key == "10" and album.source == "plex"
 
