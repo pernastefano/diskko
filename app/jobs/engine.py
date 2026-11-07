@@ -219,27 +219,49 @@ def save_state(db: Session, job_id: int, state: dict[str, Any]) -> None:
 # ------------------------------------------------------------------- outcomes
 
 
-def finish_success(db: Session, job_id: int) -> None:
+def _close_logs(db: Session, job_id: int, level: str, message: str, max_lines: int | None) -> None:
+    """Write the last log line and trim BEFORE the status changes, so whoever sees the final
+    status also sees the final logs."""
+    add_log(db, job_id, level, message)
+    if max_lines:
+        trim_logs(db, job_id, max_lines)
+
+
+def finish_success(db: Session, job_id: int, *, max_lines: int | None = None) -> None:
+    _close_logs(db, job_id, "info", "Completed", max_lines)
     db.execute(
         update(Job)
         .where(Job.id == job_id)
         .values(status=STATUS_SUCCEEDED, progress_pct=100.0, finished_at=utcnow(), error=None)
     )
     db.commit()
-    add_log(db, job_id, "info", "Completed")
 
 
-def finish_failure(db: Session, job_id: int, error: str, *, retry_in: float | None = None) -> None:
+def finish_failure(
+    db: Session,
+    job_id: int,
+    error: str,
+    *,
+    retry_in: float | None = None,
+    max_lines: int | None = None,
+) -> None:
     """Fail the job for good, or (with retry_in) put it back in the queue after a delay."""
     if retry_in is None:
+        _close_logs(db, job_id, "error", f"Failed: {error}", max_lines)
         db.execute(
             update(Job)
             .where(Job.id == job_id)
             .values(status=STATUS_FAILED, finished_at=utcnow(), error=error)
         )
         db.commit()
-        add_log(db, job_id, "error", f"Failed: {error}")
     else:
+        _close_logs(
+            db,
+            job_id,
+            "warning",
+            f"Attempt failed: {error}. Retrying in {retry_in:.0f}s",
+            max_lines,
+        )
         db.execute(
             update(Job)
             .where(Job.id == job_id)
@@ -250,7 +272,6 @@ def finish_failure(db: Session, job_id: int, error: str, *, retry_in: float | No
             )
         )
         db.commit()
-        add_log(db, job_id, "warning", f"Attempt failed: {error}. Retrying in {retry_in:.0f}s")
 
 
 def finish_cancelled(db: Session, job_id: int, message: str = "Cancelled") -> None:

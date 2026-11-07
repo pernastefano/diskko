@@ -151,10 +151,10 @@ class JobWorker:
 
     def _fail(self, job_id: int, message: str, retry_in: float | None = None) -> None:
         with self._factory() as db:
-            engine.finish_failure(db, job_id, message, retry_in=retry_in)
-            engine.trim_logs(db, job_id, self.settings.job_log_max_lines)
+            engine.finish_failure(
+                db, job_id, message, retry_in=retry_in, max_lines=self.settings.job_log_max_lines
+            )
 
     def _succeed(self, job_id: int) -> None:
         with self._factory() as db:
-            engine.finish_success(db, job_id)
-            engine.trim_logs(db, job_id, self.settings.job_log_max_lines)
+            engine.finish_success(db, job_id, max_lines=self.settings.job_log_max_lines)

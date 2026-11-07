@@ -283,3 +283,25 @@ def test_backoff_jitter_stays_within_ten_percent():
     for _ in range(200):
         d = engine.backoff_delay(2, 30, rng=rng)
         assert 54 <= d <= 66
+
+
+def test_the_final_logs_are_written_and_trimmed_before_the_status_changes(jdb):
+    """Whoever sees the final status must already see the final, trimmed logs."""
+    job = engine.enqueue(jdb, "demo", {})
+    for i in range(10):
+        engine.add_log(jdb, job.id, "info", f"line {i}")
+    seen = []
+
+    original = engine.trim_logs
+
+    def spy(db, job_id, max_lines):
+        seen.append(db.scalar(select(Job.status).where(Job.id == job_id)))
+        return original(db, job_id, max_lines)
+
+    engine.trim_logs = spy
+    try:
+        engine.finish_success(jdb, job.id, max_lines=5)
+    finally:
+        engine.trim_logs = original
+    assert seen and seen[0] != "succeeded"  # trimmed while the job was not finished yet
+    assert len(_logs(jdb, job.id)) == 5 and _logs(jdb, job.id)[-1] == "Completed"
