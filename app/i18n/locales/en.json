@@ -667,5 +667,16 @@
   "settings.field.quarantine_dir": "Quarantine folder",
   "settings.hint.quarantine_dir": "Where a download that cannot be imported is kept, with the reason. Empty: the “quarantine” folder in the downloads folder.",
   "settings.error.template_invalid": "Use only the placeholders {artist} {album} {year} {track} {disc} {title}, without “..”.",
-  "settings.error.template_missing": "The template must contain the required placeholder."
+  "settings.error.template_missing": "The template must contain the required placeholder.",
+  "settings.field.plex_refresh_enabled": "Tell Plex about imports",
+  "settings.hint.plex_refresh_enabled": "After an import, Plex is asked to scan the album folder (the whole section when that is not enough).",
+  "settings.field.plex_refresh_debounce_seconds": "Wait before scanning (seconds)",
+  "settings.hint.plex_refresh_debounce_seconds": "Imports that come within this time share one scan.",
+  "settings.field.plex_refresh_metadata": "Refresh the metadata in Plex",
+  "settings.hint.plex_refresh_metadata": "After the scan, ask Plex to refresh the metadata of the imported albums.",
+  "settings.field.plex_refresh_timeout_minutes": "Wait for a scan (minutes)",
+  "settings.hint.plex_refresh_timeout_minutes": "How long to wait for Plex to finish a scan before giving up waiting.",
+  "settings.plex.scan": "Scan Plex now",
+  "settings.plex.scan.hint": "Scans the whole Plex section and shows the result in the job log (it also tells whether the connection works).",
+  "settings.jobtype.plex_refresh": "Scan in Plex"
 }

@@ -200,6 +200,29 @@ Quando un download è completo parte il job `postprocess` (uno alla volta, nella
    l'abbinamento (l'album sparisce dai mancanti) e si cancella la cartella scaricata. Con una
    libreria Plex le righe le scrive la scansione, che viene accodata.
 
+## Avvisare Plex
+
+Dopo un import, se Plex è configurato (`PLEX_URL`, `PLEX_TOKEN`; vale anche con una libreria letta
+da cartella), il job `plex_refresh` gli fa scansionare le cartelle nuove:
+
+- **Debounce**: le cartelle importate si accumulano in un elenco e un solo job parte
+  `PLEX_REFRESH_DEBOUNCE_SECONDS` (30) dopo la prima; gli import ravvicinati condividono la
+  scansione, e se l'ultima è finita da poco si aspetta ancora.
+- **Scansione parziale** della cartella dell'album, con il percorso come lo vede Plex
+  (`LIBRARY_PATH_MAP` al contrario: `plex=locale`), poi attesa che Plex finisca (fino a
+  `PLEX_REFRESH_TIMEOUT_MINUTES`, 15).
+- **Verifica e ripiego**: Plex ignora in silenzio un percorso che non conosce, quindi si controlla
+  che l'album sia comparso (cercandolo per titolo e confrontando la cartella delle tracce). Se Plex
+  rifiuta la parziale, se l'album non compare o se le cartelle sono più di 20, si scansiona
+  **l'intera sezione**, una sola volta; se ancora non compare c'è un avviso nel log.
+- **Chiavi Plex** (`plex_rating_key`): con una libreria Plex il job accoda la scansione della
+  libreria che le registra; con una libreria da cartella le scrive sull'album e sulle tracce
+  importate, senza scansione completa. Con `PLEX_REFRESH_METADATA` chiede anche a Plex di aggiornare i
+  metadati degli album.
+- Un problema con Plex non fa mai fallire un import: il job si riprova da solo e le cartelle restano
+  in elenco finché la scansione non è andata a buon fine. In Impostazioni → Integrazioni → Plex il
+  pulsante **Scansiona Plex ora** scansiona l'intera sezione e mostra l'esito nel log del job.
+
 Mai sovrascritto nulla: se la cartella di destinazione esiste, il download va in **quarantena**
 (`<downloads>/diskko/quarantine/<id>/`, o la cartella scelta nelle impostazioni) con un file
 `REASON.txt`; la richiesta risulta *fallita* con il motivo e il percorso. Lo stesso vale per file

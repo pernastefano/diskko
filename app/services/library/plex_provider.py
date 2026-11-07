@@ -142,6 +142,30 @@ def merge_same_folder_albums(artists: list[ScannedArtist], profiles) -> int:
     return merged
 
 
+def open_section(settings: Settings, server_factory=None, *, timeout: int = 30):
+    """(server, the music section) of the configured Plex. Raises LibraryError."""
+    url, token = settings.plex_url.strip(), settings.plex_token.strip()
+    if not url or not token:
+        raise LibraryError("Plex is not configured: set PLEX_URL and PLEX_TOKEN")
+    factory = server_factory or (lambda u, t: PlexServer(u, t, timeout=timeout))
+    try:
+        server = factory(url, token)
+        section = server.library.section(settings.plex_music_section)
+    except Unauthorized as exc:
+        raise LibraryError("Plex rejected the token (unauthorized)") from exc
+    except NotFound as exc:
+        raise LibraryError(
+            f"Plex library section {settings.plex_music_section!r} not found"
+        ) from exc
+    except requests.exceptions.RequestException as exc:
+        raise LibraryError(f"Cannot connect to Plex ({type(exc).__name__})") from exc
+    except PlexApiException as exc:
+        raise LibraryError(f"Plex error ({type(exc).__name__})") from exc
+    if getattr(section, "type", None) != "artist":
+        raise LibraryError(f"Plex section {settings.plex_music_section!r} is not a music library")
+    return server, section
+
+
 class PlexProvider(LibraryProvider):
     source = SOURCE_PLEX
 
@@ -164,27 +188,7 @@ class PlexProvider(LibraryProvider):
     # ---------------------------------------------------------------- connection
 
     def _connect(self):
-        url, token = self.settings.plex_url.strip(), self.settings.plex_token.strip()
-        if not url or not token:
-            raise LibraryError("Plex is not configured: set PLEX_URL and PLEX_TOKEN")
-        try:
-            server = self._server_factory(url, token)
-            section = server.library.section(self.settings.plex_music_section)
-        except Unauthorized as exc:
-            raise LibraryError("Plex rejected the token (unauthorized)") from exc
-        except NotFound as exc:
-            raise LibraryError(
-                f"Plex library section {self.settings.plex_music_section!r} not found"
-            ) from exc
-        except requests.exceptions.RequestException as exc:
-            raise LibraryError(f"Cannot connect to Plex ({type(exc).__name__})") from exc
-        except PlexApiException as exc:
-            raise LibraryError(f"Plex error ({type(exc).__name__})") from exc
-        if getattr(section, "type", None) != "artist":
-            raise LibraryError(
-                f"Plex section {self.settings.plex_music_section!r} is not a music library"
-            )
-        return section
+        return open_section(self.settings, self._server_factory)[1]
 
     @staticmethod
     def _fetch(label: str, call) -> list:

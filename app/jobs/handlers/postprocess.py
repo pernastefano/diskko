@@ -40,6 +40,7 @@ from app.models import (
     ReleaseGroup,
 )
 from app.services import downloads as downloads_svc
+from app.services import plex_refresh as plex_svc
 from app.services.importer import library_import as lib
 from app.services.importer.integrity import (
     ImportRejected,
@@ -405,12 +406,30 @@ async def postprocess(ctx: JobContext) -> None:
                 match_artist_ids=[group["artist_id"]],
             )
         else:
-            await ctx.run_db(
-                lambda db: engine.enqueue(
-                    db, "scan_library", {}, dedupe_key="scan_library", parent_job_id=ctx.job_id
+            await ctx.log("Plex library: its rows come from the next scan of Plex")
+
+        # Plex is told about the new folder; whatever goes wrong there never fails the import
+        try:
+            if plex_svc.refresh_enabled(settings):
+                item = plex_svc.Pending(str(final), folder_values.album)
+                await ctx.run_db(
+                    lambda db: plex_svc.request_refresh(
+                        db, settings, [item], parent_job_id=ctx.job_id
+                    )
                 )
-            )
-            await ctx.log("Plex library: a scan was queued, Plex shows the album after it")
+                await ctx.log(
+                    "Plex will be told about the album in "
+                    f"{settings.plex_refresh_debounce_seconds}s"
+                )
+            elif settings.library_source.strip().lower() == "plex":
+                await ctx.run_db(
+                    lambda db: engine.enqueue(
+                        db, "scan_library", {}, dedupe_key="scan_library", parent_job_id=ctx.job_id
+                    )
+                )
+                await ctx.log("Plex refresh is off: a library scan was queued instead")
+        except Exception as exc:  # noqa: BLE001 - the album is imported, Plex is a courtesy
+            await ctx.log(f"Plex could not be notified ({type(exc).__name__})", "warning")
 
         # ---- the download is no longer needed
         await asyncio.to_thread(shutil.rmtree, source, True)

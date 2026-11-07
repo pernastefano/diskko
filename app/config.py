@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     library_scan_cron: str = "0 2 * * *"  # crontab; empty disables the nightly scan
     library_max_removal_pct: int = 50  # abort a scan that would drop more than this % of tracks
     plex_music_section: str = "Music"
+    # After an import, Plex is told to scan the album folder (partial scan, whole section as a
+    # fallback). Imports close together share one scan.
+    plex_refresh_enabled: bool = True
+    plex_refresh_debounce_seconds: int = 30
+    plex_refresh_metadata: bool = False  # also ask Plex to refresh the album's metadata
+    plex_refresh_timeout_minutes: int = 15  # how long to wait for a scan to end
     library_path_map: str = ""  # "plex_prefix=local_prefix;..." (Plex source only)
 
     # Integrations (all optional; connection tests are jobs, see app/integrations)

@@ -667,5 +667,16 @@
   "settings.field.quarantine_dir": "Cartella di quarantena",
   "settings.hint.quarantine_dir": "Dove si tiene un download che non si può importare, con il motivo. Vuoto: la cartella “quarantine” dentro la cartella dei download.",
   "settings.error.template_invalid": "Usa solo i segnaposto {artist} {album} {year} {track} {disc} {title}, senza “..”.",
-  "settings.error.template_missing": "Il modello deve contenere il segnaposto richiesto."
+  "settings.error.template_missing": "Il modello deve contenere il segnaposto richiesto.",
+  "settings.field.plex_refresh_enabled": "Avvisa Plex delle importazioni",
+  "settings.hint.plex_refresh_enabled": "Dopo un'importazione si chiede a Plex di scansionare la cartella dell'album (l'intera sezione quando non basta).",
+  "settings.field.plex_refresh_debounce_seconds": "Attesa prima della scansione (secondi)",
+  "settings.hint.plex_refresh_debounce_seconds": "Le importazioni che arrivano entro questo tempo condividono una sola scansione.",
+  "settings.field.plex_refresh_metadata": "Aggiorna i metadati in Plex",
+  "settings.hint.plex_refresh_metadata": "Dopo la scansione chiede a Plex di aggiornare i metadati degli album importati.",
+  "settings.field.plex_refresh_timeout_minutes": "Attesa di una scansione (minuti)",
+  "settings.hint.plex_refresh_timeout_minutes": "Per quanto tempo aspettare che Plex finisca una scansione prima di smettere di aspettare.",
+  "settings.plex.scan": "Scansiona Plex ora",
+  "settings.plex.scan.hint": "Scansiona l'intera sezione di Plex e mostra il risultato nel log del job (dice anche se la connessione funziona).",
+  "settings.jobtype.plex_refresh": "Scansione in Plex"
 }

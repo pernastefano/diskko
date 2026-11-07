@@ -11,6 +11,7 @@ from app.jobs.handlers import (  # noqa: F401
     fetch_tracklist,
     housekeeping,
     integration_check,
+    plex_refresh,
     postprocess,
     queue_covers,
     reclassify_quality,

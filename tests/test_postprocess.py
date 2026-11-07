@@ -21,6 +21,7 @@ from app.models import (
     LibraryTrack,
     ReleaseGroup,
     User,
+    utcnow,
 )
 from app.services.importer import library_import as lib
 from app.services.musicbrainz.missing import missing_release_groups
@@ -646,6 +647,86 @@ async def test_when_musicbrainz_does_not_answer_the_job_waits_and_nothing_change
     assert fetch(factory, job_id).status == "queued"  # to be retried
     assert root.exists() and not (music / "The Band").exists()  # nothing moved, nothing lost
     assert request_of(factory).status != REQ_FAILED
+
+
+# ----------------------------------------------------------------- telling Plex
+
+
+def with_plex(settings, **update):
+    return settings.model_copy(
+        update={"plex_url": "http://plex.test:32400", "plex_token": "tok", **update}
+    )
+
+
+async def import_album(env, settings):
+    _, factory, music, downloads = env
+    seed(factory)
+    put_download(downloads, good_files())
+    with respx.mock(assert_all_called=False) as mock:
+        mock_music(mock)
+        return await run_job(settings, factory)
+
+
+async def test_an_import_asks_for_a_plex_scan_of_its_folder_after_the_debounce_time(env):
+    settings, factory, music, downloads = env
+    job_id, job = await import_album(env, with_plex(settings))
+    assert job.status == "succeeded", job.error
+    from app.services import plex_refresh as plex_svc
+
+    with factory() as db:
+        assert plex_svc.read_pending(db) == [
+            plex_svc.Pending(str(album_folder(music)), "Album Title")
+        ]
+        refresh = db.scalar(select(Job).where(Job.type == "plex_refresh"))
+        assert refresh.parent_job_id == job_id and refresh.next_run_at is not None
+        assert (refresh.next_run_at - utcnow()).total_seconds() > 20  # after the debounce time
+        assert db.scalars(select(Job).where(Job.type == "scan_library")).all() == []
+    assert any("Plex will be told" in m for m in logs(factory, job_id))
+    assert request_of(factory).status == REQ_COMPLETED
+
+
+async def test_with_a_plex_library_the_refresh_job_asks_for_the_scan_not_the_import(env):
+    settings, factory, music, downloads = env
+    _, job = await import_album(env, with_plex(settings, library_source="plex"))
+    assert job.status == "succeeded", job.error
+    with factory() as db:
+        assert db.query(Job).filter(Job.type == "plex_refresh").count() == 1
+        assert (
+            db.query(Job).filter(Job.type == "scan_library").count() == 0
+        )  # the refresh queues it
+
+
+async def test_with_the_plex_refresh_off_a_plex_library_gets_a_plain_scan(env):
+    settings, factory, music, downloads = env
+    s = with_plex(settings, library_source="plex", plex_refresh_enabled=False)
+    _, job = await import_album(env, s)
+    assert job.status == "succeeded"
+    with factory() as db:
+        assert db.query(Job).filter(Job.type == "plex_refresh").count() == 0
+        assert db.query(Job).filter(Job.type == "scan_library").count() == 1
+
+
+async def test_without_plex_nothing_is_queued_for_it(env):
+    settings, factory, music, downloads = env
+    _, job = await import_album(env, settings)
+    assert job.status == "succeeded"
+    with factory() as db:
+        assert db.query(Job).filter(Job.type == "plex_refresh").count() == 0
+
+
+async def test_a_problem_telling_plex_never_fails_the_import(env, monkeypatch):
+    from app.services import plex_refresh as plex_svc
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("the database said no")
+
+    monkeypatch.setattr(plex_svc, "request_refresh", boom)
+    settings, factory, music, downloads = env
+    job_id, job = await import_album(env, with_plex(settings))
+    assert job.status == "succeeded", job.error
+    assert request_of(factory).status == REQ_COMPLETED
+    assert len(list(album_folder(music).glob("*.flac"))) == 3
+    assert any("Plex could not be notified" in m for m in logs(factory, job_id))
 
 
 # ------------------------------------------------------------------------- settings

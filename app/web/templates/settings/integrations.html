@@ -22,6 +22,16 @@
           {% endfor %}
         </div>
       </form>
+      {% if group == 'plex' %}
+        <form method="post" action="/settings/integrations/plex/scan" id="plex-scan"
+              class="-mt-2 rounded-lg border border-dashed border-slate-300 bg-white p-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-slate-500">{{ t('settings.plex.scan.hint') }}</p>
+            <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-plex-scan>{{ t('settings.plex.scan') }}</button>
+          </div>
+        </form>
+      {% endif %}
     {% endfor %}
   </section>
 {% endfor %}

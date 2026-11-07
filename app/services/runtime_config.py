@@ -87,6 +87,19 @@ FIELDS: dict[str, Field] = {
         Field("plex_token", "secret", "integrations", "plex"),
         Field("plex_music_section", "text", "integrations", "plex", required=True),
         Field("library_path_map", "path_map", "integrations", "plex", max_length=1024),
+        Field("plex_refresh_enabled", "bool", "integrations", "plex"),
+        Field(
+            "plex_refresh_debounce_seconds",
+            "int",
+            "integrations",
+            "plex",
+            minimum=5,
+            maximum=3600,
+        ),
+        Field("plex_refresh_metadata", "bool", "integrations", "plex"),
+        Field(
+            "plex_refresh_timeout_minutes", "int", "integrations", "plex", minimum=1, maximum=120
+        ),
         Field("slskd_url", "url", "integrations", "slskd"),
         Field("slskd_api_key", "secret", "integrations", "slskd"),
         Field("downloads_dir", "path", "integrations", "slskd", max_length=1024),
