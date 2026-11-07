@@ -3,6 +3,7 @@
 import re
 from datetime import timedelta
 
+import httpx
 import pytest
 import respx
 from sqlalchemy import select
@@ -56,13 +57,23 @@ async def test_deezer_artist_search(settings, session_factory):
     with respx.mock() as mock:
         route = mock.get(DEEZER).respond(json=answer)
         async with DeezerClient(settings, session_factory) as client:
-            found = await client.search_artists('Radio"head')
+            found = await client.search_artists("Radiohead")
     assert [(c.name, c.fans) for c in found] == [
         ("Radiohead Tribute Band", 414),
         ("Radiohead", 9_000_000),
     ]
     assert found[0].picture_url == PIC
-    assert route.calls.last.request.url.params["q"] == 'artist:"Radio head"'
+    assert route.call_count == 1  # the artist of that name is there: one request is enough
+    assert route.calls.last.request.url.params["q"] == '"Radiohead"'
+    assert route.calls.last.request.url.params["limit"] == "25"
+
+
+async def test_quotes_in_the_name_never_reach_the_query(settings, session_factory):
+    with respx.mock() as mock:
+        route = mock.get(DEEZER).respond(json=deezer_answer(("Guns N Roses", PIC, 9)))
+        async with DeezerClient(settings, session_factory) as client:
+            await client.search_artists('Guns "N" Roses')
+    assert route.calls.last.request.url.params["q"] == '"Guns N Roses"'
 
 
 def test_only_deezer_image_servers_are_trusted():
@@ -363,3 +374,80 @@ def test_the_quality_table_links_to_the_filtered_albums(admin_client, db):
     assert 'href="/albums?quality=mp3_320"' in text
     assert 'href="/albums?quality=flac_master"' not in text  # nothing there: no link
     assert 'href="/artists"' in text and 'href="/albums"' in text
+
+
+async def test_an_artist_the_field_search_buries_is_found_by_the_plain_search(
+    settings, session_factory
+):
+    """Deezer's artist:"50 Cent" lists karaoke and collaborations first; the plain search has the
+    artist first."""
+    plain = deezer_answer(("50 Cent", PIC, 7_887_890), ("Karaoke - 50 Cent", PIC, 102))
+    with respx.mock() as mock:
+        route = mock.get(DEEZER).respond(json=plain)
+        async with DeezerClient(settings, session_factory) as client:
+            found = await client.search_artists("50 Cent")
+    assert [c.name for c in found][0] == "50 Cent" and route.call_count == 1
+    assert route.calls.last.request.url.params["q"] == '"50 Cent"'
+
+
+async def test_when_the_plain_search_has_nobody_by_that_name_the_field_search_is_tried(
+    settings, session_factory
+):
+    first = deezer_answer(("Nas, 50 Cent, & Nature", PIC, 305))
+    second = deezer_answer(("Pretty Ugly, P-Dap & 50 Cent", PIC, 243), ("50 Cent", PIC, 7_887_890))
+    for offset, row in enumerate(second["data"]):
+        row["id"] = 1000 + offset  # other artists than the ones of the first answer
+    with respx.mock() as mock:
+        route = mock.get(DEEZER).mock(
+            side_effect=lambda r: httpx.Response(
+                200, json=first if r.url.params["q"] == '"50 Cent"' else second
+            )
+        )
+        async with DeezerClient(settings, session_factory) as client:
+            found = await client.search_artists("50 Cent")
+    assert [c.name for c in found] == [
+        "Nas, 50 Cent, & Nature",
+        "Pretty Ugly, P-Dap & 50 Cent",
+        "50 Cent",
+    ]
+    queries = [(c.request.url.params["q"], c.request.url.params["limit"]) for c in route.calls]
+    assert queries == [('"50 Cent"', "25"), ('artist:"50 Cent"', "100")]
+    assert pick_artist(found, "50 Cent").fans == 7_887_890  # the real one wins by name and fans
+
+
+async def test_the_same_artist_from_both_searches_is_listed_once(settings, session_factory):
+    only_tribute = deezer_answer(("50 Cent Tribute", PIC, 5))
+    with respx.mock() as mock:
+        mock.get(DEEZER).respond(json=only_tribute)
+        async with DeezerClient(settings, session_factory) as client:
+            found = await client.search_artists("50 Cent")
+    assert [c.name for c in found] == ["50 Cent Tribute"]  # not twice
+
+
+def test_migration_0017_makes_pictures_that_were_not_found_be_looked_up_again(settings):
+    from sqlalchemy import text
+
+    from app.db import make_engine, run_migrations
+
+    url = settings.database_url
+    run_migrations(url, "0016")
+    engine = make_engine(url)
+    with engine.begin() as conn:
+        for artist_id, name, image, checked in (
+            (1, "Found", "https://cdn-images.dzcdn.net/a.jpg", "2026-11-01"),
+            (2, "Not found", None, "2026-11-01"),
+            (3, "Never looked up", None, None),
+        ):
+            conn.execute(
+                text(
+                    "INSERT INTO artists (id, name, sort_name, name_key, mb_status, in_library,"
+                    " image_url, image_checked_at, created_at, updated_at) VALUES (:i, :n, :n,"
+                    " :n, 'pending', 1, :img, :chk, '2026-01-01', '2026-01-01')"
+                ),
+                {"i": artist_id, "n": name, "img": image, "chk": checked},
+            )
+    run_migrations(url)
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT id, image_checked_at FROM artists ORDER BY id")).all()
+    assert [(r[0], r[1] is None) for r in rows] == [(1, False), (2, True), (3, True)]
+    engine.dispose()

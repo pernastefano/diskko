@@ -34,11 +34,14 @@ from app.integrations.discovery_types import (
     TopTrackData,
 )
 from app.integrations.musicbrainz_client import ReleaseGroupData
+from app.services.library.grouping import name_key
 from app.services.musicbrainz.titles import album_key
 
 SEARCH_TTL = timedelta(days=30)
 DISCOGRAPHY_TTL = timedelta(days=7)
 RESULT_LIMIT = 10
+ARTIST_RESULTS = 25
+ARTIST_FIELD_RESULTS = 100
 ALBUMS_PAGE = 100
 PROVIDER_PREFIX = "deezer:"  # release group ids that come from Deezer, not MusicBrainz
 ALBUMS_MAX = 1000  # albums read per artist, however many there are
@@ -237,13 +240,10 @@ class DeezerClient(CachedJsonClient):
             )
         return found
 
-    async def search_artists(self, name: str, *, force=False) -> list[ArtistCandidate]:
-        """Artists named like this, with their picture. The answer is NOT sorted by relevance
-        (a tribute band can come first): the caller picks by exact name and number of fans."""
-        clean = " ".join(name.replace('"', " ").split())
+    async def _artists(self, query: str, limit: int, force: bool) -> list[ArtistCandidate]:
         data = await self.get_json(
             f"{self.settings.deezer_url.rstrip('/')}/search/artist",
-            {"q": f'artist:"{clean}"', "limit": RESULT_LIMIT},
+            {"q": query, "limit": limit},
             ttl=SEARCH_TTL,
             force=force,
         )
@@ -259,6 +259,26 @@ class DeezerClient(CachedJsonClient):
                     str(raw["id"]) if raw.get("id") else None,
                 )
             )
+        return found
+
+    async def search_artists(self, name: str, *, force=False) -> list[ArtistCandidate]:
+        """Artists named like this, with their picture.
+
+        The plain search ("name" as one phrase) lists the artist of that name first. The field
+        search (artist:"name") does not: it lists collaborations and karaoke first and "50 Cent"
+        was 29th of 30 results, so it is only the second try, when the plain one has nobody with
+        exactly this name. Neither answer is sorted by fans: the caller picks by exact name and
+        number of fans."""
+        clean = " ".join(name.replace('"', " ").split())
+        wanted = name_key(clean)
+        found = await self._artists(f'"{clean}"', ARTIST_RESULTS, force)
+        if not any(name_key(c.name) == wanted for c in found):
+            known = {c.provider_id for c in found}
+            found += [
+                c
+                for c in await self._artists(f'artist:"{clean}"', ARTIST_FIELD_RESULTS, force)
+                if c.provider_id not in known
+            ]
         return found
 
     async def artist_picture(self, artist_id: str, *, force=False) -> str | None:
