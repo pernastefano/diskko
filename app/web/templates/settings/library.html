@@ -5,7 +5,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <h2 class="text-lg font-semibold">{{ t('settings.section.library') }}</h2>
   <div>
-    {{ field(fields.music_dir, status=False) }}
+    {{ field(fields.music_dir) }}
     <p class="mt-2 flex flex-wrap items-center gap-3 text-sm">
       <button type="button" hx-post="/settings/library/check" hx-include="#f-music_dir" hx-target="#path-check" hx-swap="innerHTML"
               class="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-100">{{ t('settings.check.button') }}</button>
@@ -13,8 +13,29 @@
     </p>
     <p class="mt-2 text-xs text-amber-700">{{ t('settings.library.path_warning') }}</p>
   </div>
-  {{ field(fields.library_source, status=False) }}
-  {{ field(fields.library_scan_cron, status=False) }}
+  {{ field(fields.library_source) }}
+  {{ field(fields.library_scan_cron) }}
   {{ save_button() }}
 </form>
+
+<section id="library-scan" class="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+  <div>
+    <h2 class="text-lg font-semibold">{{ t('settings.library.scan.title') }}</h2>
+    <p class="text-sm text-slate-500">{{ t('settings.library.scan.hint') }}</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <form method="post" action="/settings/library/scan">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('library.scan') }}</button>
+    </form>
+    <form method="post" action="/settings/library/scan">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="force" value="1">
+      <button type="submit" class="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100">{{ t('library.full_rescan') }}</button>
+    </form>
+  </div>
+  {% if active_job %}
+    <p class="text-sm text-blue-800">{{ t('library.scan_running') }} <a class="underline" href="/admin/jobs/{{ active_job }}">#{{ active_job }}</a></p>
+  {% endif %}
+</section>
 {% endblock %}

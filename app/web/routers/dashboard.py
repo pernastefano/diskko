@@ -1,16 +1,11 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 
-from app.auth.deps import DB, AdminAuth, UserAuth
-from app.jobs import engine
+from app.auth.deps import DB, UserAuth
 from app.models import ACTIVE_STATUSES, Artist, Job, LibraryAlbum, LibraryTrack
 from app.quality import DEFAULT_PROFILES
 from app.services.library.scan import last_scan
 from app.services.runtime_config import schedule_id
-from app.web.routers.jobs import notify_worker
 from app.web.templating import render
 
 router = APIRouter()
@@ -57,16 +52,3 @@ def dashboard(request: Request, db: DB, auth: UserAuth):
         "active_job": active_job,
     }
     return render(request, "dashboard.html", ctx)
-
-
-@router.post("/dashboard/scan")
-def library_scan(request: Request, db: DB, auth: AdminAuth, force: Annotated[str, Form()] = ""):
-    job = engine.enqueue(
-        db,
-        "scan_library",
-        {"force": force == "1"},
-        dedupe_key=SCAN_DEDUPE_KEY,
-        created_by=auth.user.id,
-    )
-    notify_worker(request)
-    return RedirectResponse(f"/admin/jobs/{job.id}", status_code=303)

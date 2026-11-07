@@ -562,11 +562,6 @@ def test_nothing_secret_is_stored_outside_the_settings_table(app, admin_client, 
     assert "config.plex_token" in keys and Path(app.state.settings.data_dir).exists()
 
 
-def test_defaults_are_shown_with_readable_names(app, admin_client):
-    save(admin_client, "/settings/integrations/coverart", {}, page_url="/settings/integrations")
-    assert "Default: Yes" in page(admin_client, "/settings/integrations")
-
-
 # ------------------------------------------------------------- scan schedule
 
 
@@ -628,17 +623,29 @@ def test_the_library_page_names_the_schedule(app, admin_client):
     assert "15 4 * * 1" in page(admin_client, "/dashboard")
 
 
-def test_the_library_section_has_no_default_or_override_notes(app, admin_client):
+def test_no_settings_page_shows_default_or_override_notes(app, admin_client):
     save(
         admin_client,
         "/settings/library",
         {"music_dir": "/srv/music", "library_source": "plex", "library_scan_cron": "0 * * * *"},
     )
-    text = page(admin_client, "/settings/library")
-    for phrase in ("Changed here", "Use the default", "Default:", "From the environment"):
-        assert phrase not in text, phrase
-    assert 'name="reset"' not in text
-    # the other sections keep them
     save(admin_client, "/settings/integrations/coverart", {}, page_url="/settings/integrations")
-    other = page(admin_client, "/settings/integrations")
-    assert "Changed here" in other and 'name="reset"' in other
+    post(admin_client, "/settings/jobs", {"queue_default": "3"}, page="/settings/jobs")
+    assert overrides(app)  # something is saved, so the notes would show if they existed
+    for path in (
+        "/settings/library",
+        "/settings/integrations",
+        "/settings/services",
+        "/settings/jobs",
+    ):
+        text = page(admin_client, path)
+        for phrase in (
+            "Changed here",
+            "Use the default",
+            "Default:",
+            "From the environment",
+            "Modificato qui",
+            "Usa il predefinito",
+        ):
+            assert phrase not in text, (path, phrase)
+        assert 'name="reset"' not in text, path

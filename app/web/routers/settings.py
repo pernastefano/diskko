@@ -36,6 +36,7 @@ from app.services.runtime_config import (
     save_values,
     schedule_id,
 )
+from app.web.routers.dashboard import SCAN_DEDUPE_KEY
 from app.web.routers.jobs import notify_worker
 from app.web.templating import render
 
@@ -190,6 +191,9 @@ def _page(
     }
     if section == "library":
         ctx["fields"] = _fields(request, db, fields_of("library"), submitted, errors)
+        ctx["active_job"] = db.scalar(
+            select(Job.id).where(Job.dedupe_key == SCAN_DEDUPE_KEY, Job.status.in_(ACTIVE_STATUSES))
+        )
     elif section == "integrations":
         fields = _fields(request, db, fields_of("integrations"), submitted, errors)
         ctx["fields"] = fields
@@ -371,6 +375,21 @@ async def check_library_folder(request: Request):
         return render(request, "settings/_path_check.html", {"state": "invalid", "code": exc.code})
     state, entries = inspect_folder(path)
     return render(request, "settings/_path_check.html", {"state": state, "entries": entries})
+
+
+@router.post("/library/scan")
+async def scan_library(request: Request, db: DB, auth: AdminAuth):
+    """Queue a library scan ("force" in the form makes it a full rescan)."""
+    form = await request.form()
+    job = engine.enqueue(
+        db,
+        "scan_library",
+        {"force": form.get("force") == "1"},
+        dedupe_key=SCAN_DEDUPE_KEY,
+        created_by=auth.user.id,
+    )
+    notify_worker(request)
+    return RedirectResponse(f"/admin/jobs/{job.id}", status_code=303)
 
 
 @router.post("/library")

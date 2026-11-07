@@ -30,7 +30,7 @@ def populate(app):
 def test_empty_library_page(admin_client):
     page = admin_client.get("/dashboard").text
     assert "The library has not been scanned yet." in page
-    assert "Scan library" in page and "Full rescan" in page
+    assert "Scan library" not in page  # the buttons live in the library settings
     assert "Scheduled scan" in page and "Every day (2:00)" in page
 
 
@@ -44,7 +44,7 @@ def test_page_shows_counts_quality_and_last_scan(app, admin_client, tmp_path):
 
 
 def test_scan_button_queues_a_deduplicated_job(app, admin_client, db):
-    r = post(admin_client, "/dashboard/scan", page="/dashboard")
+    r = post(admin_client, "/settings/library/scan", page="/settings/library")
     assert r.status_code == 303
     job = db.scalar(select(Job))
     assert r.headers["location"] == f"/admin/jobs/{job.id}"
@@ -54,20 +54,21 @@ def test_scan_button_queues_a_deduplicated_job(app, admin_client, db):
         '{"force": false}',
     )
     assert job.created_by is not None
-    post(admin_client, "/dashboard/scan", page="/dashboard")
+    post(admin_client, "/settings/library/scan", page="/settings/library")
     assert len(db.scalars(select(Job)).all()) == 1  # a scan is already queued
-    page = admin_client.get("/dashboard").text
-    assert "A scan is in progress" in page and f"/admin/jobs/{job.id}" in page
+    for path in ("/dashboard", "/settings/library"):  # both say a scan is running
+        page = admin_client.get(path).text
+        assert "A scan is in progress" in page and f"/admin/jobs/{job.id}" in page
 
 
 def test_full_rescan_sets_the_force_flag(admin_client, db):
-    post(admin_client, "/dashboard/scan", {"force": "1"}, page="/dashboard")
+    post(admin_client, "/settings/library/scan", {"force": "1"}, page="/settings/library")
     assert db.scalar(select(Job)).payload_json == '{"force": true}'
 
 
 def test_scan_requires_csrf_and_admin(admin_client, user_client):
-    assert admin_client.post("/dashboard/scan").status_code == 403
-    assert post(user_client, "/dashboard/scan").status_code == 403
+    assert admin_client.post("/settings/library/scan").status_code == 403
+    assert post(user_client, "/settings/library/scan").status_code == 403
 
 
 def test_plex_source_shows_the_section_but_no_secrets(app, admin_client):
@@ -85,5 +86,18 @@ def test_plex_source_shows_the_section_but_no_secrets(app, admin_client):
 def test_page_in_italian_and_nav_link(admin_client):
     post(admin_client, "/lang", {"lang": "it", "next": "/"})
     page = admin_client.get("/dashboard").text
-    assert "Scansiona libreria" in page and "Riscansione completa" in page
     assert 'href="/dashboard"' in page
+    settings = admin_client.get("/settings/library").text
+    assert "Scansiona libreria" in settings and "Riscansione completa" in settings
+
+
+def test_the_scan_buttons_are_in_the_library_settings_not_on_the_dashboard(admin_client):
+    dashboard = admin_client.get("/dashboard").text
+    assert "Scan library" not in dashboard and "Full rescan" not in dashboard
+    assert "/dashboard/scan" not in dashboard and "/settings/library/scan" not in dashboard
+    assert admin_client.post("/dashboard/scan").status_code in (404, 405)
+    settings = admin_client.get("/settings/library").text
+    assert 'id="library-scan"' in settings
+    assert settings.count('action="/settings/library/scan"') == 2
+    assert 'name="force" value="1"' in settings
+    assert "Scan library" in settings and "Full rescan" in settings

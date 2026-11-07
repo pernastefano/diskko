@@ -347,9 +347,9 @@ def test_the_dashboard_is_open_to_everyone_but_the_controls_are_for_admins(
     admin_client, user_client, db, artists
 ):
     admin, user = admin_client.get("/dashboard").text, user_client.get("/dashboard").text
-    assert "Scan library" in admin and 'action="/dashboard/scan"' in admin
+    assert "Scan library" not in admin and "/settings/library/scan" not in admin
     assert user_client.get("/dashboard").status_code == 200
-    assert "Scan library" not in user and "/dashboard/scan" not in user
+    assert "Scan library" not in user and "/settings/library/scan" not in user
     assert "music-test" not in user and "Folder" not in user  # the library path stays private
     assert "Artists" in user and "Albums" in user
 

@@ -25,17 +25,6 @@
       {% endif %}
       <div class="flex justify-between"><dt class="text-slate-500">{{ t('library.schedule') }}</dt><dd class="font-mono text-xs">{{ t(schedule_label) if schedule_label and cron else (cron if cron else t('library.schedule_off')) }}</dd></div>
     </dl>
-    <div class="mt-4 flex flex-wrap gap-2">
-      <form method="post" action="/dashboard/scan">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('library.scan') }}</button>
-      </form>
-      <form method="post" action="/dashboard/scan">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="force" value="1">
-        <button type="submit" class="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100">{{ t('library.full_rescan') }}</button>
-      </form>
-    </div>
     {% if active_job %}
       <p class="mt-3 text-sm text-blue-800">{{ t('library.scan_running') }} <a class="underline" href="/admin/jobs/{{ active_job }}">#{{ active_job }}</a></p>
     {% endif %}

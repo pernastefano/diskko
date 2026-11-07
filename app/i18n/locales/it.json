@@ -299,11 +299,6 @@
   "settings.section.integrations": "Integrazioni",
   "settings.section.jobs": "Job",
   "settings.section.albums": "Album",
-  "settings.overridden": "Modificato qui",
-  "settings.use_default": "Usa il predefinito",
-  "settings.default_is": "Predefinito: {value}",
-  "settings.empty": "vuoto",
-  "settings.from_env": "Predefinito",
   "settings.secret_set": "Impostato",
   "settings.secret_unset": "Non impostato",
   "settings.secret_keep": "lascia vuoto per mantenere il valore attuale",
@@ -640,5 +635,7 @@
   "settings.jobtype.search_artists": "Ricerca artisti",
   "settings.jobtype.slskd_search": "Ricerca su SLSKD",
   "settings.jobtype.sync_artist_metadata": "Sincronizzazione metadati artista",
-  "settings.jobtype.sync_pending_artists": "Sincronizzazione artisti in attesa"
+  "settings.jobtype.sync_pending_artists": "Sincronizzazione artisti in attesa",
+  "settings.library.scan.title": "Scansione della libreria",
+  "settings.library.scan.hint": "Avvia subito la ricerca di file nuovi o modificati. La riscansione completa rilegge ogni file, anche quelli invariati."
 }

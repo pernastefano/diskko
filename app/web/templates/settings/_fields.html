@@ -1,17 +1,5 @@
 {# Form controls for the settings pages. Import with context. `f` comes from field_view(). #}
-{% macro status_line(f) %}
-  <p class="flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
-    {% if f.overridden %}
-      <span class="rounded bg-indigo-100 px-1.5 py-0.5 text-indigo-800">{{ t('settings.overridden') }}</span>
-      <label class="flex items-center gap-1"><input type="checkbox" name="reset" value="{{ f.key }}"> {{ t('settings.use_default') }}</label>
-      {% if f.kind != 'secret' %}<span>{{ t('settings.default_is', value=(t(f.default_label) if f.default_label else (f.default or t('settings.empty')))) }}</span>{% endif %}
-    {% else %}
-      <span>{{ t('settings.from_env') }}{% if f.kind != 'secret' and (f.default or f.default_label) %}: {{ t(f.default_label) if f.default_label else f.default }}{% endif %}</span>
-    {% endif %}
-  </p>
-{% endmacro %}
-
-{% macro field(f, type='text', status=True) %}
+{% macro field(f, type='text') %}
   <div class="space-y-1">
     <label for="f-{{ f.key }}" class="block text-sm font-medium">{{ t('settings.field.' ~ f.key) }}{% if f.required %} <span class="text-red-600" aria-hidden="true">*</span>{% endif %}</label>
     {% if f.kind == 'bool' %}
@@ -49,7 +37,6 @@
              class="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
       <p class="text-xs text-slate-500">{{ t('settings.hint.' ~ f.key) }}</p>
     {% endif %}
-    {% if status %}{{ status_line(f) }}{% endif %}
     {% if f.error %}<p role="alert" class="text-xs font-medium text-red-700" data-error="{{ f.key }}">{{ t(f.error) }}</p>{% endif %}
   </div>
 {% endmacro %}
