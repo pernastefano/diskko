@@ -22,7 +22,6 @@
   <h2 class="mb-1 mt-8 text-xl font-semibold">{{ t('artist.missing') }} <span class="text-sm font-normal text-slate-500">({{ sections.missing_total }})</span></h2>
   <p class="mb-3 text-sm text-slate-500">
     {% if show_all %}{{ t('artist.showing_all') }}{% else %}{{ t('artist.showing') }}: {% for c in types %}{{ t('category.' ~ c) }}{{ ', ' if not loop.last }}{% else %}—{% endfor %}{% endif %}
-    · <a class="text-indigo-600 hover:underline" href="/account/preferences">{{ t('artist.change_types') }}</a>
     {% if sections.hidden_missing %}
       · <a class="text-indigo-600 hover:underline" href="/artist/{{ artist.id }}?all=1">{{ t('artist.hidden_missing', n=sections.hidden_missing) }}</a>
     {% elif show_all %}

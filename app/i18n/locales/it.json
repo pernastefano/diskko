@@ -240,7 +240,6 @@
   "artist.tentative_hint": "Abbinamento probabile, non confermato",
   "artist.showing": "Si mostrano",
   "artist.showing_all": "Si mostrano tutti i tipi",
-  "artist.change_types": "cambia tipi",
   "artist.hidden_missing": "altri {n} in altri tipi",
   "artist.show_selected": "mostra solo i miei tipi",
   "artist.synced": "Aggiornato {when}",

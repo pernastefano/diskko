@@ -509,3 +509,12 @@ def test_a_big_discography_costs_a_constant_number_of_queries(app, admin_client,
     large = measure()
     assert small == large  # no per-album or per-release-group queries
     assert time.perf_counter() - start < 2.0
+
+
+def test_the_missing_section_does_not_link_to_the_preferences(admin_client, user_client, band):
+    for client in (admin_client, user_client):
+        text = page(client, f"/artist/{band['id']}")
+        assert "Missing" in text and "Showing:" in text.replace("Show", "Show")
+        assert (
+            "change types" not in text and "/account/preferences" not in text.split("Missing", 1)[1]
+        )

@@ -5,12 +5,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  {# Apply the theme before the first paint (no flash). "auto" follows the operating system. #}
+  <meta name="theme-color" content="#f6f1e6">
+  <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/static/icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  {# Apply the theme before the first paint (no flash). "auto" follows the operating system.
+     Dark is Graphite and light is Sand (after TRAKKO); the browser's own bar follows the page. #}
   <script>
     (function () {
       var root = document.documentElement, theme = root.dataset.theme || 'auto';
       var media = window.matchMedia('(prefers-color-scheme: dark)');
-      function apply() { root.classList.toggle('dark', theme === 'dark' || (theme === 'auto' && media.matches)); }
+      function apply() {
+        var dark = theme === 'dark' || (theme === 'auto' && media.matches);
+        root.classList.toggle('dark', dark);
+        var bar = document.querySelector('meta[name=theme-color]');
+        if (bar) { bar.content = dark ? '#181b1f' : '#f6f1e6'; }
+      }
       apply();
       if (theme === 'auto' && media.addEventListener) { media.addEventListener('change', apply); }
     })();
@@ -19,6 +30,17 @@
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
   <title>{% block title %}DISKKO{% endblock %} · DISKKO</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  {# The light theme is Sand: warm neutrals for slate, white is the cream of the cards, and the
+     indigo scale is the teal accent. The dark theme is in theme.css (Graphite, amber accent). #}
+  <script>
+    tailwind.config = { theme: { extend: { colors: {
+      white: '#f6f1e6',
+      slate: { 50: '#e9e2d3', 100: '#efe9db', 200: '#d8cfbb', 300: '#c3b8a0', 400: '#968c78',
+               500: '#6c6455', 600: '#554e41', 700: '#3f392f', 800: '#302c24', 900: '#26231c' },
+      indigo: { 50: '#e4f2ee', 100: '#cfe8e1', 200: '#a8d4c9', 300: '#78bbad', 400: '#43998c',
+                500: '#168176', 600: '#0f766e', 700: '#0b5f58', 800: '#0b4a43', 900: '#083a35' },
+    } } } };
+  </script>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <link rel="stylesheet" href="/static/theme.css">
@@ -27,7 +49,8 @@
   <header class="border-b border-slate-200 bg-white">
     <nav class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3" x-data="{ open: false }">
       <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
-        <a href="/dashboard" class="text-lg font-bold tracking-tight text-indigo-600">DISKKO</a>
+        <a href="/dashboard" class="flex items-center gap-2 text-lg font-bold tracking-tight text-indigo-600" data-logo>
+          <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>DISKKO</a>
         {% if user %}
           <a href="/dashboard" class="text-sm font-medium text-slate-600 hover:text-slate-900" data-nav-link="dashboard">{{ t('nav.dashboard') }}</a>
           <a href="/artists" class="text-sm font-medium text-slate-600 hover:text-slate-900" data-nav-link="artists">{{ t('nav.artists') }}</a>

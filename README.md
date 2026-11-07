@@ -101,6 +101,15 @@ secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
 I dati di MusicBrainz sono di pubblico dominio (CC0); le copertine del Cover Art Archive hanno
 licenze proprie e restano solo nella tua cache locale.
 
+## Temi e icona
+
+Il tema chiaro è **Sand** (neri caldi su crema, accento verde acqua) e quello scuro **Graphite**
+(grafite con accento ambra), ispirati a TRAKKO; "Automatico" segue il sistema e la barra del browser
+ne prende il colore. Il chiaro è la palette Tailwind impostata in `base.html`, lo scuro sono le regole
+di `app/web/static/theme.css`. L'icona è un disco (un anello con un punto al centro) nello stile di
+TRAKKO: `scripts/generate_icons.py` rigenera i PNG in `app/web/static/icons/` (solo libreria
+standard), con `favicon.svg` e `manifest.webmanifest` per l'installazione come app.
+
 ## Libreria e pagina artista
 
 `/library` (la pagina iniziale) mostra gli artisti a griglia o a elenco, con ricerca mentre scrivi,

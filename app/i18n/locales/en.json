@@ -240,7 +240,6 @@
   "artist.tentative_hint": "Probable match, not confirmed",
   "artist.showing": "Showing",
   "artist.showing_all": "Showing every type",
-  "artist.change_types": "change types",
   "artist.hidden_missing": "{n} more in other types",
   "artist.show_selected": "show only my types",
   "artist.synced": "Updated {when}",
