@@ -9,9 +9,8 @@
   <div class="p-3">
     <div class="truncate font-medium group-hover:text-indigo-700" title="{{ al.title }}">{{ al.title }}</div>
     <div class="truncate text-xs text-slate-500" title="{{ r.artist.name }}">{{ r.artist.name }}{% if al.year %} · {{ al.year }}{% endif %}</div>
-    <div class="mt-1 flex flex-wrap items-center gap-1">
-      {% set tier = al.quality_tier %}{% include "_quality_badge.html" %}
-      {% set fmt = al|album_format %}{% if fmt %}<span class="text-xs text-slate-500">{{ fmt }}</span>{% endif %}
+    <div class="mt-1 flex min-w-0">
+      {% set tier = al.quality_tier %}{% set truncate_badge = true %}{% include "_quality_badge.html" %}
     </div>
   </div>
 </a>

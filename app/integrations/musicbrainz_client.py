@@ -80,6 +80,8 @@ class TrackData:
     title: str
     length_ms: int | None
     recording_mbid: str | None
+    # (credited name, artist MBID, join phrase) in the order MusicBrainz lists them
+    credits: list[tuple[str, str | None, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -269,7 +271,7 @@ class MusicBrainzClient:
         for status in ("official", None):
             params: dict[str, Any] = {
                 "release-group": release_group_mbid,
-                "inc": "recordings",
+                "inc": "recordings artist-credits",  # a space becomes the "+" MusicBrainz wants
                 "limit": 25,
             }
             if status:
@@ -281,6 +283,13 @@ class MusicBrainzClient:
             if releases:
                 return releases
         return []
+
+    async def lookup_release_group(
+        self, mbid: str, *, force: bool = False
+    ) -> ReleaseGroupData | None:
+        """One release group (GET /release-group/{mbid}); None if MusicBrainz does not know it."""
+        data = await self._get(f"release-group/{mbid}", {}, force=force)
+        return _parse_release_group(data) if data else None
 
     async def browse_release_groups(
         self,
@@ -337,6 +346,19 @@ def _parse_artist(raw: dict[str, Any]) -> ArtistHit | None:
     )
 
 
+def _parse_credits(raw: Any) -> list[tuple[str, str | None, str]]:
+    """track["artist-credit"]: [{"name", "joinphrase", "artist": {"id", "name"}}]."""
+    credits = []
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        artist = item.get("artist") or {}
+        name = str(item.get("name") or artist.get("name") or "").strip()
+        if name:
+            credits.append((name, artist.get("id") or None, str(item.get("joinphrase") or "")))
+    return credits
+
+
 def _parse_release(raw: dict[str, Any]) -> ReleaseData | None:
     mbid = raw.get("id")
     if not mbid:
@@ -357,6 +379,7 @@ def _parse_release(raw: dict[str, Any]) -> ReleaseData | None:
                     title=title,
                     length_ms=int(length) if isinstance(length, int | float) else None,
                     recording_mbid=(t.get("recording") or {}).get("id"),
+                    credits=_parse_credits(t.get("artist-credit")),
                 )
             )
     return ReleaseData(

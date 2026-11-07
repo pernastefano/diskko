@@ -94,6 +94,8 @@ class ReleaseTrack(Base):
     title: Mapped[str] = mapped_column(String(512))
     length_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     recording_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # who plays the track: [{"name", "mbid", "join"}], as MusicBrainz credits it (compilations)
+    artist_credit_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     release_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 

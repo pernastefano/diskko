@@ -9,10 +9,11 @@ from typing import Annotated
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
-from app.auth.deps import DB, UserAuth
+from app.auth.deps import DB, AdminAuth, UserAuth
 from app.i18n import has_key
 from app.jobs import engine
 from app.jobs.handlers.fetch_tracklist import tracklist_dedupe_key
+from app.jobs.handlers.refresh_album import refresh_dedupe_key
 from app.jobs.handlers.resolve_previews import previews_dedupe_key
 from app.models import (
     REQ_ACTIVE,
@@ -26,6 +27,7 @@ from app.models import (
 from app.services import downloads as downloads_svc
 from app.services.albums import (
     TrackRow,
+    attach_artists,
     extension_of,
     media_type_of,
     owned_album_for,
@@ -108,6 +110,7 @@ def _remote_state(
             state["loading"] = True
         previews = list(preview.tracks or []) if preview.tracks else previews
     state["rows"] = remote_rows(tracks, previews)
+    attach_artists(db, state["rows"], db.get(Artist, group.artist_id))
     state["lookup"] = db.get(PreviewLookup, group.id) if previews else None
     state["tracks_known"] = bool(tracks)
     return state
@@ -121,6 +124,7 @@ def _group_context(
     ctx = _base_context(group, owned, artist)
     if owned is not None:
         rows = owned_rows(db, owned)
+        attach_artists(db, rows, artist)
         ctx.update(mode="owned", rows=rows, loading=False, lookup=None, tracks_known=True)
         ctx["upgrade"] = _upgrade_context(request, db, group, owned)
     else:
@@ -234,9 +238,27 @@ def local_album_page(request: Request, db: DB, auth: UserAuth, album_id: int):
     artist = db.get(Artist, album.artist_id)
     ctx = _base_context(None, album, artist)
     rows = owned_rows(db, album)
+    attach_artists(db, rows, artist)
     ctx.update(mode="local", rows=rows, loading=False, lookup=None, tracks_known=True)
     ctx["summary"] = _summary(rows)
     return render(request, "album.html", ctx)
+
+
+@router.post("/album/{group_id}/refresh")
+def album_refresh(request: Request, db: DB, auth: AdminAuth, group_id: int):
+    """Update the album's metadata: a job re-reads it at MusicBrainz and queues the rest."""
+    group = db.get(ReleaseGroup, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="not_found")
+    engine.enqueue(
+        db,
+        "refresh_album",
+        {"release_group_id": group.id},
+        dedupe_key=refresh_dedupe_key(group.id),
+        created_by=auth.user.id,
+    )
+    notify_worker(request)
+    return RedirectResponse(f"/album/{group.id}?flash=album_refresh_queued", status_code=303)
 
 
 @router.get("/album/{group_id}")

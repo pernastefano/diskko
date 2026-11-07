@@ -47,7 +47,7 @@
     <tbody class="divide-y divide-slate-100">
       {% for row in rows %}
         {% set album = row.album %}{% set group = row.group %}
-        <tr>
+        <tr id="album-{{ album.id }}">
           <td class="px-3 py-2">{{ cover(group) }}</td>
           <td class="px-3 py-2"><div class="font-medium">{{ album.title }}</div><div class="text-xs text-slate-500">{{ album.year or '—' }} · {{ album.format or '' }}</div></td>
           <td class="px-3 py-2 text-xs">{{ quality_profiles.name(album.quality_tier) }}</td>

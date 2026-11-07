@@ -5,7 +5,8 @@
   Deezer when one matches. Without a MusicBrainz list the preview tracks are shown instead.
 """
 
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from rapidfuzz import fuzz
@@ -16,6 +17,7 @@ from app.models import (
     MATCH_MANUAL,
     MATCH_MATCHED,
     MATCH_TENTATIVE,
+    Artist,
     LibraryAlbum,
     LibraryTrack,
     PreviewTrack,
@@ -68,6 +70,17 @@ def resolve_library_file(music_dir: Path, relative: str) -> Path | None:
 
 
 @dataclass
+class ArtistRef:
+    """Who plays a track: the name, our artist page when we have one, and the text that joins
+    it to the next credit ("feat.", " & ")."""
+
+    name: str
+    mbid: str | None = None
+    artist_id: int | None = None
+    join: str = ""
+
+
+@dataclass
 class TrackRow:
     disc: int
     number: str
@@ -79,6 +92,7 @@ class TrackRow:
     codec: str | None = None
     quality: str | None = None
     note: str | None = None  # not_playable | no_file | no_preview
+    artists: list[ArtistRef] = field(default_factory=list)  # empty: the album's artist
 
 
 def owned_album_for(db: Session, release_group_id: int) -> LibraryAlbum | None:
@@ -110,6 +124,7 @@ def owned_rows(db: Session, album: LibraryAlbum) -> list[TrackRow]:
             seconds=round(t.duration) if t.duration else None,
             codec=t.codec or ext or None,
             quality=t.quality_tier,
+            artists=[ArtistRef(t.artist.strip())] if (t.artist or "").strip() else [],
         )
         if t.path.startswith("plex:"):
             row.note = "no_file"
@@ -166,6 +181,7 @@ def remote_rows(tracks: list[ReleaseTrack], previews: list[PreviewTrack]) -> lis
             number=t.number or str(t.position),
             title=t.title,
             seconds=round(t.length_ms / 1000) if t.length_ms else None,
+            artists=_credits_of(t),
         )
         preview = matches.get(t.id)
         if preview is not None:
@@ -174,6 +190,41 @@ def remote_rows(tracks: list[ReleaseTrack], previews: list[PreviewTrack]) -> lis
             row.note = "no_preview"
         rows.append(row)
     return rows
+
+
+def _credits_of(track: ReleaseTrack) -> list[ArtistRef]:
+    try:
+        raw = json.loads(track.artist_credit_json or "[]")
+    except ValueError:
+        return []
+    return [
+        ArtistRef(str(c["name"]), c.get("mbid") or None, join=str(c.get("join") or ""))
+        for c in raw
+        if isinstance(c, dict) and c.get("name")
+    ]
+
+
+def attach_artists(db: Session, rows: list[TrackRow], fallback: Artist) -> None:
+    """Give every row its artists, each linked to our artist page when we have that artist
+    (by MusicBrainz id, else by name). A row without credits gets the album's artist."""
+    for row in rows:
+        if not row.artists:
+            row.artists = [ArtistRef(fallback.name, fallback.mbid, fallback.id)]
+    mbids = {a.mbid for r in rows for a in r.artists if a.mbid and a.artist_id is None}
+    keys = {name_key(a.name) for r in rows for a in r.artists if a.artist_id is None}
+    by_mbid: dict[str, int] = {}
+    by_key: dict[str, int] = {}
+    if mbids or keys:
+        for artist in db.scalars(
+            select(Artist).where(Artist.mbid.in_(mbids) | Artist.name_key.in_(keys))
+        ):
+            if artist.mbid:
+                by_mbid[artist.mbid] = artist.id
+            by_key.setdefault(artist.name_key, artist.id)
+    for row in rows:
+        for ref in row.artists:
+            if ref.artist_id is None:
+                ref.artist_id = by_mbid.get(ref.mbid or "") or by_key.get(name_key(ref.name))
 
 
 def total_seconds(rows: list[TrackRow]) -> int:

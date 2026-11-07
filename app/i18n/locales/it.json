@@ -521,7 +521,6 @@
   "album.not_owned": "Non è nella tua libreria",
   "album.local_hint": "Questo album è nella tua libreria ma non è abbinato a MusicBrainz: non ci sono anteprime né download.",
   "album.col.title": "Titolo",
-  "album.col.format": "Formato",
   "album.col.length": "Durata",
   "album.col.play": "Ascolta",
   "album.note.not_playable": "Il browser non può riprodurre questo formato.",
@@ -653,5 +652,10 @@
   "settings.hint.providers_bio": "Wikipedia si trova tramite MusicBrainz (serve l'MBID dell'artista). Last.fm richiede la sua chiave API.",
   "provider.wikipedia": "Wikipedia",
   "settings.jobtype.fetch_artist_profile": "Profilo artista (immagine, descrizione)",
-  "settings.jobtype.fetch_top_tracks": "Brani più ascoltati dell'artista"
+  "settings.jobtype.fetch_top_tracks": "Brani più ascoltati dell'artista",
+  "album.col.quality": "Qualità",
+  "album.refresh": "Aggiorna metadati",
+  "album.manage_match": "Gestisci abbinamento",
+  "flash.album_refresh_queued": "Aggiornamento dell'album: dettagli, lista tracce, anteprime e copertina sono in aggiornamento.",
+  "settings.jobtype.refresh_album": "Aggiornamento metadati album"
 }

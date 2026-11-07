@@ -521,7 +521,6 @@
   "album.not_owned": "Not in your library",
   "album.local_hint": "This album is in your library but is not matched to MusicBrainz, so there are no previews or downloads for it.",
   "album.col.title": "Title",
-  "album.col.format": "Format",
   "album.col.length": "Length",
   "album.col.play": "Play",
   "album.note.not_playable": "Your browser cannot play this format.",
@@ -653,5 +652,10 @@
   "settings.hint.providers_bio": "Wikipedia is found through MusicBrainz (it needs the artist's MusicBrainz id). Last.fm needs its API key.",
   "provider.wikipedia": "Wikipedia",
   "settings.jobtype.fetch_artist_profile": "Artist profile (picture, description)",
-  "settings.jobtype.fetch_top_tracks": "Artist top tracks"
+  "settings.jobtype.fetch_top_tracks": "Artist top tracks",
+  "album.col.quality": "Quality",
+  "album.refresh": "Update metadata",
+  "album.manage_match": "Manage match",
+  "flash.album_refresh_queued": "Updating the album: its details, track list, previews and cover are being refreshed.",
+  "settings.jobtype.refresh_album": "Album metadata update"
 }

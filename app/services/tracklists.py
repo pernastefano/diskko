@@ -1,5 +1,6 @@
 """Track lists of albums that are not (or not only) in the library: from MusicBrainz."""
 
+import json
 from collections import Counter
 from datetime import timedelta
 
@@ -45,6 +46,11 @@ def store_tracklist(db: Session, release_group_id: int, release: ReleaseData | N
                 title=t.title[:512],
                 length_ms=t.length_ms,
                 recording_mbid=t.recording_mbid,
+                artist_credit_json=(
+                    json.dumps([{"name": n, "mbid": m, "join": j} for n, m, j in t.credits])
+                    if t.credits
+                    else None
+                ),
                 release_mbid=release.mbid if release else None,
             )
         )

@@ -13,6 +13,7 @@ from app.jobs.handlers import (  # noqa: F401
     integration_check,
     queue_covers,
     reclassify_quality,
+    refresh_album,
     resolve_previews,
     scan_library,
     search_artists,

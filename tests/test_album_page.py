@@ -141,7 +141,8 @@ async def test_browse_releases_parses_the_real_answer(settings, session_factory)
     assert len(releases) == 15 and releases == again and route.call_count == 1  # cached
     params = route.calls.last.request.url.params
     assert params["release-group"] == "05571372-5b11-39b7-89c5-1c02589a27c8"
-    assert params["inc"] == "recordings" and params["status"] == "official"
+    assert params["inc"] == "recordings artist-credits" and params["status"] == "official"
+    assert "inc=recordings+artist-credits" in str(route.calls.last.request.url)  # MB wants "+"
     first = releases[0]
     assert first.tracks[0].title and first.tracks[0].recording_mbid and first.tracks[0].length_ms
 

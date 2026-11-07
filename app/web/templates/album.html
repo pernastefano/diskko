@@ -21,10 +21,22 @@
         <span class="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" data-ownership="remote">{{ t('album.not_owned') }}</span>
       {% else %}
         <span class="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800" data-ownership="owned">{{ t('album.owned') }}</span>
-        {% if album %}{% set tier = album.quality_tier %}{% include "_quality_badge.html" %}
-          {% set fmt = album|album_format %}{% if fmt %}<span class="text-xs text-slate-500">{{ fmt }}</span>{% endif %}{% endif %}
+        {% if album %}{% set tier = album.quality_tier %}{% include "_quality_badge.html" %}{% endif %}
       {% endif %}
     </div>
+    {% if user.is_admin %}
+      <div class="mt-3 flex flex-wrap gap-2" data-album-admin>
+        {% if group %}
+          <form method="post" action="/album/{{ group.id }}/refresh">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-album-refresh>{{ t('album.refresh') }}</button>
+          </form>
+        {% endif %}
+        {% if album %}
+          <a href="/admin/artists/{{ artist.id }}#album-{{ album.id }}" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-album-match>{{ t('album.manage_match') }}</a>
+        {% endif %}
+      </div>
+    {% endif %}
     {% if mode == 'remote' %}
       <div class="mt-3" data-album-request>{% include "_request_control.html" %}</div>
     {% elif mode == 'owned' and upgrade and upgrade.offer %}

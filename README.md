@@ -123,6 +123,13 @@ Le copertine mancanti si scaricano in background quando si apre la pagina.
   formato e tipo.
 - **Gestione artisti** (`/admin/artists`, solo amministratori): abbinamenti con MusicBrainz e
   revisioni.
+- **Pagina album** (`/album/<id>`): tabella delle tracce a colonne fisse (titolo, qualità, durata e
+  lettore sempre a destra, senza andare a capo), con per ogni traccia **titolo – artista**
+  (l'artista è un link alla sua pagina se lo conosciamo: serve alle compilation con più artisti;
+  per gli album non posseduti gli artisti vengono da MusicBrainz). Si vede il profilo di qualità,
+  non il formato del file. Gli amministratori hanno **Aggiorna metadati** (rilegge l'album su
+  MusicBrainz e rinnova lista tracce, anteprime e copertina) e **Gestisci abbinamento** (apre la
+  riga dell'album in Gestione artisti).
 - Nella pagina di un album posseduto si può chiedere un **upgrade di qualità** (per esempio da MP3 a
   FLAC): parte una richiesta di download che cerca almeno quella qualità.
 

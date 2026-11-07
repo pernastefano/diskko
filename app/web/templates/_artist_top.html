@@ -10,16 +10,17 @@
       <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-top-state="failed">{{ t('artist.top.failed') }}
         <button type="button" hx-post="/artist/{{ artist.id }}/top?retry=1" hx-target="#artist-top" hx-swap="outerHTML" class="underline">{{ t('action.retry') }}</button></p>
     {% else %}
-      <ol class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm" data-top-state="ready">
+      <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+      <ol class="min-w-[640px] divide-y divide-slate-100 whitespace-nowrap" data-top-state="ready">
         {% for t_ in tracks %}
-          <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2" data-top-track="{{ t_.position }}">
+          <li class="flex items-center gap-3 px-3 py-2" data-top-track="{{ t_.position }}">
             <span class="w-6 shrink-0 text-right text-sm tabular-nums text-slate-400">{{ t_.position }}</span>
             <div class="min-w-0 flex-1">
-              <div class="truncate text-sm font-medium" title="{{ t_.title }}">{{ t_.title }}</div>
+              <div class="flex min-w-0 gap-1 text-sm" title="{{ t_.title }} – {{ artist.name }}" data-track-title><span class="min-w-0 truncate font-medium">{{ t_.title }}</span><span class="min-w-0 truncate text-slate-500">– <span data-track-artist>{{ artist.name }}</span></span></div>
               {% if t_.album_title %}<div class="truncate text-xs text-slate-500" title="{{ t_.album_title }}">{{ t_.album_title }}</div>{% endif %}
             </div>
-            {% if t_.duration_s %}<span class="shrink-0 text-xs tabular-nums text-slate-500">{{ t_.duration_s // 60 }}:{{ '%02d' % (t_.duration_s % 60) }}</span>{% endif %}
-            <div class="w-56 max-w-full shrink-0">
+            <span class="w-12 shrink-0 text-right text-xs tabular-nums text-slate-500">{% if t_.duration_s %}{{ t_.duration_s // 60 }}:{{ '%02d' % (t_.duration_s % 60) }}{% else %}—{% endif %}</span>
+            <div class="flex w-64 shrink-0 justify-end">
               {% if t_.id in alive %}
                 <div x-data="{ broken: false }">
                   <audio x-show="!broken" controls preload="none" referrerpolicy="no-referrer" src="{{ t_.preview_url }}" @error="broken = true" class="h-8 w-56 max-w-full"></audio>
@@ -35,6 +36,7 @@
           </li>
         {% endfor %}
       </ol>
+      </div>
       <p class="mt-2 text-xs text-slate-500" data-top-credit>
         {{ t('album.preview_hint') }}
         {% if 'deezer' in providers %}{{ t('preview.credit_deezer') }}{% endif %}

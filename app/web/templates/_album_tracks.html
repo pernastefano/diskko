@@ -3,28 +3,40 @@
   {% if rows %}
     {% set ns = namespace(disc=none) %}
     <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <table class="w-full min-w-[720px] table-fixed divide-y divide-slate-200 whitespace-nowrap text-sm" data-track-table>
+        <colgroup>
+          <col class="w-12">
+          <col>
+          {% if mode != 'remote' %}<col class="w-56">{% endif %}
+          <col class="w-16">
+          <col class="w-64">
+        </colgroup>
         <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
           <tr>
-            <th class="w-12 px-3 py-2">#</th><th class="px-3 py-2">{{ t('album.col.title') }}</th>
-            {% if mode != 'remote' %}<th class="px-3 py-2">{{ t('album.col.format') }}</th>{% endif %}
-            <th class="px-3 py-2 text-right">{{ t('album.col.length') }}</th><th class="px-3 py-2">{{ t('album.col.play') }}</th>
+            <th class="px-3 py-2">#</th><th class="px-3 py-2">{{ t('album.col.title') }}</th>
+            {% if mode != 'remote' %}<th class="px-3 py-2">{{ t('album.col.quality') }}</th>{% endif %}
+            <th class="px-3 py-2 text-right">{{ t('album.col.length') }}</th><th class="px-3 py-2 text-right">{{ t('album.col.play') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           {% for r in rows %}
             {% if summary.discs > 1 and r.disc != ns.disc %}
               {% set ns.disc = r.disc %}
-              <tr class="bg-slate-50"><td colspan="5" class="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('album.disc', n=r.disc) }}</td></tr>
+              <tr class="bg-slate-50"><td colspan="{{ 4 if mode == 'remote' else 5 }}" class="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('album.disc', n=r.disc) }}</td></tr>
             {% endif %}
             <tr data-track="{{ loop.index }}" data-source="{{ r.source }}">
               <td class="px-3 py-2 tabular-nums text-slate-500">{{ r.number }}</td>
-              <td class="px-3 py-2 font-medium">{{ r.title }}</td>
+              <td class="px-3 py-2">
+                <div class="flex min-w-0 gap-1" title="{{ r.title }} – {% for a in r.artists %}{{ a.name }}{{ a.join }}{% endfor %}" data-track-title>
+                  <span class="min-w-0 truncate font-medium">{{ r.title }}</span><span class="min-w-0 truncate text-slate-500">– {% for a in r.artists %}{% if a.artist_id %}<a href="/artist/{{ a.artist_id }}" class="text-indigo-700 hover:underline" data-track-artist>{{ a.name }}</a>{% else %}<span data-track-artist>{{ a.name }}</span>{% endif %}{{ a.join }}{% endfor %}</span>
+                </div>
+              </td>
               {% if mode != 'remote' %}
-                <td class="px-3 py-2 text-xs text-slate-500">{{ (r.codec or '')|upper }}{% if r.quality %} {% set tier = r.quality %}{% include "_quality_badge.html" %}{% endif %}</td>
+                <td class="px-3 py-2">{% if r.quality %}<div class="flex min-w-0">{% set tier = r.quality %}{% set truncate_badge = true %}{% include "_quality_badge.html" %}</div>{% endif %}</td>
               {% endif %}
               <td class="px-3 py-2 text-right tabular-nums text-slate-500">{% if r.seconds %}{{ r.seconds // 60 }}:{{ '%02d' % (r.seconds % 60) }}{% else %}—{% endif %}</td>
               <td class="px-3 py-2">
+                <div class="flex justify-end">
                 {% if r.source == 'file' %}
                   <div x-data='{ ok: !!document.createElement("audio").canPlayType({{ r.mime|tojson }}), broken: false }'>
                     <audio x-show="ok && !broken" controls preload="none" src="{{ r.url }}" @error="broken = true" class="h-8 w-56 max-w-full"></audio>
@@ -42,6 +54,7 @@
                 {% else %}
                   <span class="text-xs text-slate-400" title="{{ t('album.note.' ~ r.note) if r.note else '' }}">{% if r.note == 'no_preview' and loading %}…{% else %}—{% endif %}</span>
                 {% endif %}
+                </div>
               </td>
             </tr>
           {% endfor %}
