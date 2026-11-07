@@ -10,6 +10,7 @@ import responses
 from sqlalchemy import func, select
 
 from app.models import Artist, LibraryAlbum, LibraryTrack
+from app.quality import DEFAULT_PROFILES
 from app.services.library import build_provider
 from app.services.library.plex_provider import PlexProvider, map_path, parse_path_map
 from app.services.library.provider import LibraryError, RecordingReporter
@@ -439,7 +440,7 @@ def test_section_must_be_a_music_library(plex, psettings):
 
 
 def test_build_provider_selects_plex(psettings):
-    assert isinstance(build_provider(psettings), PlexProvider)
+    assert isinstance(build_provider(psettings, DEFAULT_PROFILES), PlexProvider)
 
 
 async def test_scan_job_with_the_plex_source(plex, psettings, session_factory):

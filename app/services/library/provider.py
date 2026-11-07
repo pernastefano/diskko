@@ -25,6 +25,7 @@ class ScannedTrack:
     disc_no: int | None = None
     codec: str | None = None
     lossless: bool = False
+    v0: bool = False  # LAME V0 (variable bitrate around 245 kbps)
     bitrate: int | None = None
     bit_depth: int | None = None
     sample_rate: int | None = None

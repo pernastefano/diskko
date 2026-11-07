@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.main import create_app
 from app.models import Setting
+from app.quality import DEFAULT_PROFILES
 from app.services.library import build_provider
 from app.services.musicbrainz.missing import get_missing_types
 from app.services.runtime_config import read_overrides
@@ -43,6 +44,7 @@ def test_settings_are_for_admins_only(admin_client, user_client, new_client):
         "/settings/integrations",
         "/settings/jobs",
         "/settings/albums",
+        "/settings/quality",
     ):
         assert user_client.get(path).status_code == 403, path
         anon = new_client().get(path)
@@ -50,7 +52,9 @@ def test_settings_are_for_admins_only(admin_client, user_client, new_client):
     for path in (
         "/settings/library",
         "/settings/jobs",
-        "/settings/albums/quality",
+        "/settings/quality/profiles",
+        "/settings/quality/default",
+        "/settings/quality/restore",
         "/settings/albums/types",
         "/settings/integrations/plex",
         "/settings/library/check",
@@ -63,7 +67,8 @@ def test_settings_posts_need_csrf(admin_client):
         "/settings/library",
         "/settings/jobs",
         "/settings/integrations/plex",
-        "/settings/albums/quality",
+        "/settings/quality/profiles",
+        "/settings/quality/restore",
         "/settings/albums/types",
     ):
         assert admin_client.post(path, data={"music_dir": "/x"}).status_code == 403, path
@@ -129,7 +134,7 @@ def test_a_saved_folder_is_what_the_scan_reads(app, admin_client, tmp_path):
         "/settings/library",
         {"music_dir": str(tmp_path), "library_source": "filesystem", "library_scan_cron": ""},
     )
-    assert build_provider(app.state.settings).root == tmp_path
+    assert build_provider(app.state.settings, DEFAULT_PROFILES).root == tmp_path
 
 
 def test_invalid_values_are_reported_and_nothing_is_saved(app, admin_client):
@@ -510,52 +515,6 @@ def test_running_workers_follow_the_saved_numbers(settings):
 # --------------------------------------------------------------------- albums
 
 
-def test_quality_options_and_the_default(admin_client):
-    text = page(admin_client, "/settings/albums")
-    select = re.search(r'<select id="f-default_quality".*?</select>', text, re.S).group(0)
-    options = re.findall(r'<option value="([a-z0-9_]+)"\s*(selected)?>([^<]+)</option>', select)
-    assert [o[0] for o in options] == [
-        "any",
-        "mp3_192",
-        "mp3_256",
-        "mp3_320",
-        "flac_standard",
-        "flac_studio",
-        "flac_hires",
-        "flac_master",
-    ]
-    assert [o[0] for o in options if o[1]] == ["flac_standard"]  # FLAC Standard is the default
-    labels = {o[0]: o[2] for o in options}
-    assert labels["flac_standard"] == "FLAC Standard (16-bit / 44.1 kHz)"
-    assert labels["flac_studio"] == "FLAC Studio (24-bit or 16-bit / 48 kHz)"
-    assert labels["flac_hires"] == "FLAC Hi-Res (24-bit / 96 kHz)"
-    assert labels["flac_master"] == "FLAC Master (24-bit / 192 kHz)"
-
-
-def test_saving_the_default_quality(app, admin_client):
-    assert app.state.settings.default_quality == "flac_standard"
-    r = save(
-        admin_client,
-        "/settings/albums/quality",
-        {"default_quality": "flac_hires"},
-        page_url="/settings/albums",
-    )
-    assert r.status_code == 303 and app.state.settings.default_quality == "flac_hires"
-    assert overrides(app) == {"default_quality": "flac_hires"}
-    assert '<option value="flac_hires" selected>' in page(admin_client, "/settings/albums")
-
-
-@pytest.mark.parametrize("value", ["lossless", "lossless_24", "best", ""])
-def test_old_and_unknown_quality_names_are_refused(app, admin_client, value):
-    r = save(
-        admin_client,
-        "/settings/albums/quality",
-        {"default_quality": value},
-        page_url="/settings/albums",
-    )
-    assert r.status_code == 400 and app.state.settings.default_quality == "flac_standard"
-
-
 def test_the_missing_types_are_a_system_setting(app, admin_client, db):
     text = page(admin_client, "/settings/albums")
     assert (
@@ -584,7 +543,7 @@ def test_settings_in_italian(admin_client):
     post(admin_client, "/lang", {"lang": "it", "next": "/library"})
     assert "Cartella della libreria" in page(admin_client, "/settings/library")
     text = page(admin_client, "/settings/albums")
-    assert "FLAC Standard (16-bit / 44,1 kHz)" in text and "Tipi di album mancanti" in text
+    assert "Tipi di album mancanti" in text
     assert "Chiave API" in page(admin_client, "/settings/integrations")
     assert "Worker per coda" in page(admin_client, "/settings/jobs") or "Generale" in page(
         admin_client, "/settings/jobs"
@@ -614,20 +573,5 @@ def test_nothing_secret_is_stored_outside_the_settings_table(app, admin_client, 
 
 
 def test_defaults_are_shown_with_readable_names(app, admin_client):
-    albums = page(admin_client, "/settings/albums")
-    assert (
-        "FLAC Standard (16-bit / 44.1 kHz)" in albums.split("Default")[-1]
-        and "flac_standard" not in albums.split("Default:")[-1][:60]
-    )
-    save(
-        admin_client,
-        "/settings/albums/quality",
-        {"default_quality": "flac_master"},
-        page_url="/settings/albums",
-    )
-    text = page(admin_client, "/settings/albums")
-    assert (
-        "Default: FLAC Standard (16-bit / 44.1 kHz)" in text
-    )  # what "use the default" would restore
     save(admin_client, "/settings/integrations/coverart", {}, page_url="/settings/integrations")
     assert "Default: Yes" in page(admin_client, "/settings/integrations")

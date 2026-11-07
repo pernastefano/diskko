@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from app.auth.csrf import CSRF_COOKIE, get_csrf_token
 from app.i18n import LANG_COOKIE, LANG_NAMES, has_key, resolve_lang, translate
 from app.models import THEMES, utcnow
+from app.quality import DEFAULT_PROFILES
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
@@ -66,6 +67,7 @@ def render(
         "t": partial(translate, lang),
         "csrf_token": token,
         "current_path": request.url.path,
+        "quality_profiles": getattr(request.app.state, "quality_profiles", DEFAULT_PROFILES),
         "min_password_length": request.app.state.settings.min_password_length,
         "flash": flash_key if has_key(flash_key) else None,
     }

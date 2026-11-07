@@ -6,6 +6,7 @@ from app.jobs.errors import JobCancelled
 from app.jobs.scheduler import JobScheduler, Schedule, schedules_for
 from app.jobs.worker import JobWorker
 from app.models import STATUS_FAILED, STATUS_SUCCEEDED, Job, LibraryTrack
+from app.quality import DEFAULT_PROFILES
 from app.services.app_settings import get_setting
 from app.services.library import build_provider
 from app.services.library.filesystem import FilesystemProvider
@@ -135,10 +136,10 @@ def test_library_queue_runs_one_scan_at_a_time(settings):
 
 
 def test_build_provider_selects_filesystem(lib_settings):
-    provider = build_provider(lib_settings)
+    provider = build_provider(lib_settings, DEFAULT_PROFILES)
     assert isinstance(provider, FilesystemProvider) and provider.root == lib_settings.music_dir
     with pytest.raises(LibraryError):
-        build_provider(lib_settings.model_copy(update={"library_source": "nope"}))
+        build_provider(lib_settings.model_copy(update={"library_source": "nope"}), DEFAULT_PROFILES)
 
 
 def test_scan_reporter_honours_cancellation_requests(session_factory):

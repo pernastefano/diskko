@@ -20,8 +20,8 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models import Setting
-from app.quality import QUALITY_TIERS
 from app.services.app_settings import set_setting
+from app.services.quality_profiles import load_profiles
 
 STORAGE_PREFIX = "config."
 MAX_WORKERS = 8
@@ -74,10 +74,8 @@ FIELDS: dict[str, Field] = {
         Field("lastfm_api_key", "secret", "integrations", "lastfm"),
         # jobs
         Field("job_queue_concurrency", "concurrency", "jobs", "jobs"),
-        # albums and quality
-        Field(
-            "default_quality", "choice", "albums", "quality", choices=QUALITY_TIERS, required=True
-        ),
+        # quality: the key must name an existing profile, checked where it is saved
+        Field("default_quality", "text", "quality", "quality", required=True, max_length=48),
     )
 }
 
@@ -294,6 +292,7 @@ def apply_runtime_config(app) -> Settings:
     """Rebuild the effective settings from the database and push them into the running app."""
     with app.state.session_factory() as db:
         overrides = read_overrides(db)
+        app.state.quality_profiles = load_profiles(db)
     effective = effective_settings(app.state.base_settings, overrides)
     app.state.settings = effective
     if getattr(app.state, "worker", None) is not None:

@@ -1,3 +1,4 @@
-{# needs `tier` #}
-{% set colors = {'flac_master': 'bg-fuchsia-100 text-fuchsia-800', 'flac_hires': 'bg-purple-100 text-purple-800', 'flac_studio': 'bg-teal-100 text-teal-800', 'flac_standard': 'bg-green-100 text-green-800', 'mp3_320': 'bg-blue-100 text-blue-800', 'mp3_256': 'bg-sky-100 text-sky-800', 'mp3_192': 'bg-amber-100 text-amber-800', 'any': 'bg-red-100 text-red-800'} %}
-<span class="rounded px-1.5 py-0.5 text-xs font-medium {{ colors.get(tier, 'bg-slate-100 text-slate-700') }}" data-quality="{{ tier }}">{{ t('quality.' ~ tier) }}</span>
+{# needs `tier`: the key of a quality profile #}
+{% set colors = {'slate': 'bg-slate-100 text-slate-700', 'indigo': 'bg-indigo-100 text-indigo-800', 'green': 'bg-green-100 text-green-800', 'red': 'bg-red-100 text-red-800', 'amber': 'bg-amber-100 text-amber-800', 'blue': 'bg-blue-100 text-blue-800', 'sky': 'bg-sky-100 text-sky-800', 'purple': 'bg-purple-100 text-purple-800', 'teal': 'bg-teal-100 text-teal-800', 'fuchsia': 'bg-fuchsia-100 text-fuchsia-800'} %}
+{% set profile = quality_profiles.get(tier) %}
+<span class="rounded px-1.5 py-0.5 text-xs font-medium {{ colors.get(profile.color if profile else 'slate', colors['slate']) }}" data-quality="{{ tier }}">{{ profile.name if profile else tier }}</span>

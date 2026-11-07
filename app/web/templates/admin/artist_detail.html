@@ -50,7 +50,7 @@
         <tr>
           <td class="px-3 py-2">{{ cover(group) }}</td>
           <td class="px-3 py-2"><div class="font-medium">{{ album.title }}</div><div class="text-xs text-slate-500">{{ album.year or '—' }} · {{ album.format or '' }}</div></td>
-          <td class="px-3 py-2 text-xs">{{ t('quality.' ~ album.quality_tier) }}</td>
+          <td class="px-3 py-2 text-xs">{{ quality_profiles.name(album.quality_tier) }}</td>
           <td class="px-3 py-2 text-xs">
             {% set colors = {'matched': 'bg-green-100 text-green-800', 'tentative': 'bg-amber-100 text-amber-800', 'manual': 'bg-blue-100 text-blue-800', 'unmatched': 'bg-slate-200 text-slate-700', 'none': 'bg-slate-200 text-slate-700'} %}
             <span class="rounded px-2 py-0.5 {{ colors[album.match_status] }}">{{ t('match.status.' ~ album.match_status) }}</span>

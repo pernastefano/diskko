@@ -1,10 +1,9 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.quality import DEFAULT_QUALITY, QUALITY_TIERS
+from app.quality import DEFAULT_QUALITY
 
 DEFAULT_SECRET_KEY = "change-me"
 
@@ -27,7 +26,7 @@ class Settings(BaseSettings):
     # Sessions / auth
     session_cookie_name: str = "diskko_session"
     session_ttl_hours: int = 24 * 14
-    min_password_length: int = 10
+    min_password_length: int = 8
 
     # Job engine
     jobs_enabled: bool = True
@@ -59,15 +58,8 @@ class Settings(BaseSettings):
     coverart_enabled: bool = True
     lastfm_api_key: str = ""
 
-    # Downloads: the quality a request must reach unless it says otherwise
+    # Downloads: key of the quality profile a request must reach unless it says otherwise
     default_quality: str = DEFAULT_QUALITY
-
-    @field_validator("default_quality")
-    @classmethod
-    def _known_quality(cls, value: str) -> str:
-        if value not in QUALITY_TIERS:
-            raise ValueError(f"default_quality must be one of: {', '.join(QUALITY_TIERS)}")
-        return value
 
     @property
     def queue_concurrency(self) -> dict[str, int]:

@@ -45,7 +45,7 @@
     <table class="w-full text-sm">
       <tbody class="divide-y divide-slate-100">
         {% for tier, count in tiers %}
-          <tr><td class="py-1">{{ t('quality.' ~ tier) }}</td><td class="py-1 text-right tabular-nums">{{ count }}</td></tr>
+          <tr><td class="py-1">{{ tier }}</td><td class="py-1 text-right tabular-nums">{{ count }}</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -5,6 +5,7 @@ from app.jobs.handlers import (  # noqa: F401
     fetch_covers,
     housekeeping,
     integration_check,
+    reclassify_quality,
     scan_library,
     sync_artist,
     sync_pending,

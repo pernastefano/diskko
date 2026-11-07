@@ -93,10 +93,13 @@ riavviare:
   modulo e, dove esiste, il "Test connessione". I token e le chiavi non vengono mai mostrati dopo il
   salvataggio: lasciando il campo vuoto si mantiene il valore attuale.
 - **Job**: quanti job di ogni tipo girano insieme (MusicBrainz resta sempre a 1).
-- **Album e qualità**: i tipi di album considerati "mancanti" (uguali per tutti gli utenti) e la
-  qualità predefinita dei download: *FLAC Standard* (16-bit / 44,1 kHz, il predefinito), *FLAC Studio*
-  (24-bit o 16-bit / 48 kHz), *FLAC Hi-Res* (24-bit / 96 kHz) e *FLAC Master* (24-bit / 192 kHz),
-  oltre ai livelli MP3.
+- **Album**: i tipi di album considerati "mancanti" (uguali per tutti gli utenti).
+- **Qualità**: i profili di qualità, completamente configurabili. Si parte da *FLAC Master* (24/192),
+  *FLAC Hi-Res* (24/96), *FLAC Standard* (16/44,1, il predefinito), *MP3 320 / V0*, *MP3 ≥ 256*,
+  *MP3 ≥ 192* e *Qualsiasi / bassa*; si possono aggiungere, modificare (nome, requisiti, colore),
+  riordinare, eliminare o ripristinare. Un file ottiene il miglior profilo che soddisfa e un album
+  vale quanto la sua traccia peggiore. Ogni modifica avvia un job che ricalcola la libreria. Le soglie
+  di frequenza dei profili FLAC iniziali sono 88,2 e 176,4 kHz, così contano anche i multipli di 44,1.
 - **Utenti**: creazione e reimpostazione della password in finestre modali, ruoli, attivazione ed
   eliminazione.
 

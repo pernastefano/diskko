@@ -6,6 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from app.models import SOURCE_FILESYSTEM
+from app.quality import DEFAULT_PROFILES, ProfileSet
 from app.services.library.grouping import group_tracks
 from app.services.library.provider import (
     LibraryError,
@@ -16,7 +17,6 @@ from app.services.library.provider import (
     ScanReporter,
     ScanStats,
 )
-from app.services.library.quality import classify_track
 from app.services.library.tags import (
     AUDIO_EXTENSIONS,
     AudioFileInfo,
@@ -47,7 +47,9 @@ def _fallback_title(rel_path: str) -> tuple[str, int | None]:
     return stem, None
 
 
-def to_scanned_track(rel_path: str, size: int, mtime_ns: int, info: AudioFileInfo) -> ScannedTrack:
+def to_scanned_track(
+    rel_path: str, size: int, mtime_ns: int, info: AudioFileInfo, profiles: ProfileSet
+) -> ScannedTrack:
     fallback_title, fallback_no = _fallback_title(rel_path)
     return ScannedTrack(
         path=rel_path,
@@ -58,11 +60,12 @@ def to_scanned_track(rel_path: str, size: int, mtime_ns: int, info: AudioFileInf
         disc_no=info.disc_no,
         codec=info.codec,
         lossless=info.lossless,
+        v0=info.v0,
         bitrate=info.bitrate,
         bit_depth=info.bit_depth,
         sample_rate=info.sample_rate,
         duration=info.duration,
-        quality_tier=classify_track(
+        quality_tier=profiles.classify(
             lossless=info.lossless,
             bitrate_kbps=info.bitrate,
             bit_depth=info.bit_depth,
@@ -87,9 +90,14 @@ class FilesystemProvider(LibraryProvider):
     source = SOURCE_FILESYSTEM
 
     def __init__(
-        self, root: Path, *, reader: Callable[[Path], AudioFileInfo] = read_audio_file
+        self,
+        root: Path,
+        profiles: ProfileSet = DEFAULT_PROFILES,
+        *,
+        reader: Callable[[Path], AudioFileInfo] = read_audio_file,
     ) -> None:
         self.root = Path(root)
+        self.profiles = profiles
         self._read = reader
 
     # ---------------------------------------------------------------- discovery
@@ -165,9 +173,9 @@ class FilesystemProvider(LibraryProvider):
                     tracks.append(known[rel])
                 continue
             stats.files_read += 1
-            tracks.append(to_scanned_track(rel, size, mtime_ns, info))
+            tracks.append(to_scanned_track(rel, size, mtime_ns, info, self.profiles))
         if stats.errors > warnings:
             reporter.log(f"{stats.errors - warnings} more unreadable file(s) not listed", "warning")
 
         reporter.progress(60, "Grouping albums")
-        return ScanOutput(artists=group_tracks(tracks), stats=stats)
+        return ScanOutput(artists=group_tracks(tracks, self.profiles), stats=stats)

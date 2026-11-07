@@ -12,10 +12,13 @@ from sqlalchemy import select
 from app.auth.deps import DB, AdminAuth, require_admin
 from app.config import Settings
 from app.i18n import has_key
-from app.models import ROLE_USER, ROLES, User
-from app.quality import QUALITY_TIERS
+from app.jobs import engine
+from app.models import ACTIVE_STATUSES, ROLE_USER, ROLES, Job, QualityProfile, User
+from app.quality import BIT_DEPTHS, BITRATES_KBPS, COLORS, KINDS, SAMPLE_RATES_HZ
+from app.services import quality_profiles as profiles_service
 from app.services.musicbrainz.categories import CATEGORIES
 from app.services.musicbrainz.missing import get_missing_types, set_missing_types
+from app.services.quality_profiles import ProfileError, default_key
 from app.services.runtime_config import (
     FIELDS,
     QUEUES,
@@ -27,15 +30,17 @@ from app.services.runtime_config import (
     parse_value,
     save_values,
 )
+from app.web.routers.jobs import notify_worker
 from app.web.routers.status import integration_card
 from app.web.templating import render
 
 router = APIRouter(prefix="/settings", dependencies=[Depends(require_admin)])
 
-SECTIONS = ("library", "integrations", "jobs", "albums", "users")
+SECTIONS = ("library", "integrations", "jobs", "albums", "quality", "users")
+RECLASSIFY_KEY = "reclassify_quality"
 GROUPS = ("plex", "slskd", "musicbrainz", "coverart", "lastfm")
 TESTABLE = ("plex", "slskd", "musicbrainz")  # integrations with a connection test
-CHOICE_LABELS = {"library_source": "library.source.", "default_quality": "quality.full."}
+CHOICE_LABELS = {"library_source": "library.source."}
 FOLDER_LISTING_CAP = 100_000
 
 
@@ -153,10 +158,8 @@ def _page(
         ctx["queues"] = [(q, shown[q], q == "musicbrainz") for q in QUEUES]
         ctx["fields"] = _fields(request, db, fields_of("jobs"), None, errors)
     elif section == "albums":
-        ctx["fields"] = _fields(request, db, fields_of("albums"), submitted, errors)
         ctx["categories"] = CATEGORIES
         ctx["selected_types"] = get_missing_types(db)
-        ctx["tiers"] = QUALITY_TIERS
     else:  # pragma: no cover - guarded by the route
         raise HTTPException(status_code=404, detail="not_found")
     return render(request, f"settings/{section}.html", ctx, status_code=status_code)
@@ -204,6 +207,63 @@ def render_users_section(
     return render(request, "settings/users.html", ctx, status_code=status_code)
 
 
+def render_quality_section(
+    request: Request,
+    db: DB,
+    *,
+    status_code: int = 200,
+    modal: str = "",
+    edit_id: int | None = None,
+    form: dict[str, str] | None = None,
+    modal_error: str | None = None,
+):
+    """The profile list; the add/edit dialog opens on its own after a failed attempt."""
+    params = request.query_params
+    rows = list(db.scalars(select(QualityProfile).order_by(QualityProfile.rank.desc())))
+    if modal not in ("create", "edit"):
+        modal = ""
+    editing = next((r for r in rows if r.id == edit_id), None)
+    if modal == "edit" and editing is None:
+        modal = ""
+    error = None
+    key = f"error.{params.get('error', '')}"
+    if params.get("error") and has_key(key):
+        error = key
+    values = form or {}
+    if editing is not None and not form:
+        values = {
+            "name": editing.name,
+            "kind": editing.kind,
+            "color": editing.color,
+            "min_bit_depth": str(editing.min_bit_depth or ""),
+            "min_sample_rate": f"{(editing.min_sample_rate or 0) / 1000:g}"
+            if editing.min_sample_rate
+            else "",
+            "min_bitrate": str(editing.min_bitrate or ""),
+            "accept_v0": "1" if editing.accept_v0 else "",
+        }
+    ctx = {
+        "section": "quality",
+        "sections": SECTIONS,
+        "profiles": rows,
+        "default_key": default_key(db),
+        "kinds": KINDS,
+        "colors": COLORS,
+        "bit_depths": [str(b) for b in BIT_DEPTHS],
+        "sample_rates": [f"{hz / 1000:g}" for hz in SAMPLE_RATES_HZ],  # kHz, as shown and posted
+        "bitrates": [str(b) for b in BITRATES_KBPS],
+        "modal": modal,
+        "editing": editing,
+        "form": values,
+        "modal_error": modal_error,
+        "error": error,
+        "active_job": db.scalar(
+            select(Job.id).where(Job.dedupe_key == RECLASSIFY_KEY, Job.status.in_(ACTIVE_STATUSES))
+        ),
+    }
+    return render(request, "settings/quality.html", ctx, status_code=status_code)
+
+
 @router.get("")
 def settings_index():
     return RedirectResponse("/settings/library", status_code=303)
@@ -215,6 +275,8 @@ def settings_page(request: Request, db: DB, section: str):
         raise HTTPException(status_code=404, detail="not_found")
     if section == "users":
         return render_users_section(request, db)
+    if section == "quality":
+        return render_quality_section(request, db)
     return _page(request, db, section)
 
 
@@ -281,14 +343,106 @@ async def save_jobs(request: Request, db: DB, auth: AdminAuth):
     return await _save(request, db, "jobs", fields_of("jobs"))
 
 
-@router.post("/albums/quality")
-async def save_quality(request: Request, db: DB, auth: AdminAuth):
-    return await _save(request, db, "albums", fields_of("albums"))
-
-
 @router.post("/albums/types")
 async def save_missing_types(request: Request, db: DB, auth: AdminAuth):
     form = await request.form()
     set_missing_types(db, form.getlist("types"))
     db.commit()
     return RedirectResponse("/settings/albums?flash=settings_saved", status_code=303)
+
+
+# ---------------------------------------------------------------------- quality
+
+
+def _profiles_changed(request: Request, db: DB, auth: AdminAuth, *, recompute: bool = True):
+    """Save, refresh what the app keeps in memory and start the re-evaluation of the library."""
+    db.commit()
+    apply_runtime_config(request.app)
+    if recompute:
+        engine.enqueue(db, RECLASSIFY_KEY, {}, dedupe_key=RECLASSIFY_KEY, created_by=auth.user.id)
+        notify_worker(request)
+    return RedirectResponse("/settings/quality?flash=quality_saved", status_code=303)
+
+
+def _quality_error(code: str) -> RedirectResponse:
+    return RedirectResponse(f"/settings/quality?error={code}", status_code=303)
+
+
+async def _profile_form(request: Request) -> dict[str, str]:
+    form = await request.form()
+    return {k: v for k, v in form.items() if isinstance(v, str)}
+
+
+@router.post("/quality/profiles")
+async def create_quality_profile(request: Request, db: DB, auth: AdminAuth):
+    form = await _profile_form(request)
+    try:
+        profiles_service.create_profile(db, profiles_service.parse_form(form))
+    except ProfileError as exc:
+        db.rollback()
+        return render_quality_section(
+            request, db, status_code=400, modal="create", form=form, modal_error=f"error.{exc.code}"
+        )
+    return _profiles_changed(request, db, auth)
+
+
+@router.post("/quality/profiles/{profile_id}")
+async def update_quality_profile(request: Request, db: DB, auth: AdminAuth, profile_id: int):
+    form = await _profile_form(request)
+    try:
+        profiles_service.update_profile(db, profile_id, profiles_service.parse_form(form))
+    except ProfileError as exc:
+        db.rollback()
+        if exc.code == "quality_not_found":
+            return _quality_error(exc.code)
+        return render_quality_section(
+            request,
+            db,
+            status_code=400,
+            modal="edit",
+            edit_id=profile_id,
+            form=form,
+            modal_error=f"error.{exc.code}",
+        )
+    return _profiles_changed(request, db, auth)
+
+
+@router.post("/quality/profiles/{profile_id}/move")
+async def move_quality_profile(request: Request, db: DB, auth: AdminAuth, profile_id: int):
+    form = await _profile_form(request)
+    direction = form.get("direction", "")
+    if direction not in ("up", "down"):
+        raise HTTPException(status_code=404, detail="not_found")
+    try:
+        profiles_service.move_profile(db, profile_id, direction)
+    except ProfileError as exc:
+        db.rollback()
+        return _quality_error(exc.code)
+    return _profiles_changed(request, db, auth)
+
+
+@router.post("/quality/profiles/{profile_id}/delete")
+async def delete_quality_profile(request: Request, db: DB, auth: AdminAuth, profile_id: int):
+    try:
+        profiles_service.delete_profile(db, profile_id)
+    except ProfileError as exc:
+        db.rollback()
+        return _quality_error(exc.code)
+    return _profiles_changed(request, db, auth)
+
+
+@router.post("/quality/default")
+async def set_default_quality(request: Request, db: DB, auth: AdminAuth):
+    form = await _profile_form(request)
+    try:
+        profiles_service.set_default(db, form.get("key", ""))
+    except ProfileError as exc:
+        db.rollback()
+        return _quality_error(exc.code)
+    return _profiles_changed(request, db, auth, recompute=False)
+
+
+@router.post("/quality/restore")
+async def restore_quality_profiles(request: Request, db: DB, auth: AdminAuth):
+    profiles_service.restore_defaults(db)
+    return _profiles_changed(request, db, auth)

@@ -138,7 +138,6 @@ def bulk_library(db, artists=100, rgs_per_artist=6, albums_per_artist=3, seed=7,
                             "any",
                             "mp3_320",
                             "flac_standard",
-                            "flac_studio",
                             "flac_hires",
                             "flac_master",
                         ]

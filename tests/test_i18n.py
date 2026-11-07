@@ -16,7 +16,7 @@ from app.i18n import (
 )
 from app.integrations.status import INTEGRATION_NAMES
 from app.models import JOB_STATUSES, MATCH_STATUSES, MB_STATUSES, THEMES, User
-from app.quality import QUALITY_TIERS
+from app.quality import COLORS, KINDS
 from app.services.musicbrainz.categories import CATEGORIES
 from app.services.runtime_config import FIELDS, QUEUES
 from app.web.routers.settings import GROUPS, SECTIONS
@@ -61,7 +61,8 @@ def test_all_used_keys_exist():
         used |= {f"flash.{c}" for c in re.findall(r"flash=(\w+)", text)}
         used |= {f"role.{r}" for r in ("admin", "user")}
         used |= {f"job.status.{s}" for s in JOB_STATUSES}
-        used |= {f"quality.{t}" for t in QUALITY_TIERS}
+        used |= {f"quality.kind.{k}" for k in KINDS}
+        used |= {f"quality.color.{c}" for c in COLORS}
         used |= {f"category.{c}" for c in CATEGORIES}
         used |= {f"mb.status.{s}" for s in MB_STATUSES}
         used |= {f"match.status.{s}" for s in MATCH_STATUSES}
@@ -78,7 +79,6 @@ def test_all_used_keys_exist():
             f"settings.queue.{q}.hint" for q in QUEUES
         }
         used |= {f"settings.section.{x}" for x in SECTIONS} | {"settings.yes", "settings.no"}
-        used |= {f"quality.full.{t}" for t in QUALITY_TIERS}
         used |= {f"preferences.theme.{t}" for t in THEMES}
         used |= {f"preferences.theme.{t}.hint" for t in THEMES}
         used |= {f"settings.check.{c}" for c in ("not_found", "not_directory", "not_readable")}

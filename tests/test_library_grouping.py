@@ -1,13 +1,21 @@
+from app.quality import DEFAULT_PROFILES
 from app.services.library.grouping import (
     UNKNOWN_ALBUM,
     UNKNOWN_ARTIST,
     VARIOUS_ARTISTS,
     album_dir_of,
-    group_tracks,
     name_key,
     sort_name_for,
 )
+from app.services.library.grouping import (
+    group_tracks as _group_tracks,
+)
 from app.services.library.provider import ScannedTrack
+
+
+def group_tracks(tracks):
+    return _group_tracks(tracks, DEFAULT_PROFILES)
+
 
 MBID_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 MBID_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"

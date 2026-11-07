@@ -21,6 +21,7 @@ from plexapi.server import PlexServer
 
 from app.config import Settings
 from app.models import SOURCE_PLEX
+from app.quality import DEFAULT_PROFILES, LOSSLESS_CODECS, ProfileSet
 from app.services.library.grouping import (
     VARIOUS_ARTISTS,
     build_album,
@@ -37,13 +38,11 @@ from app.services.library.provider import (
     ScanReporter,
     ScanStats,
 )
-from app.services.library.quality import classify_track
 from app.services.library.tags import clean_mbid
 
 Reporter = ScanReporter | RecordingReporter
 
 CONTAINER_SIZE = 1000
-LOSSLESS_CODECS = frozenset({"flac", "alac", "wav", "aiff", "ape", "wavpack", "tta"})
 _CODEC_ALIASES = {"ogg": "vorbis", "wv": "wavpack", "pcm_s16le": "wav", "pcm_s24le": "wav"}
 
 
@@ -119,8 +118,16 @@ def _timestamp_ns(value: Any) -> int:
 class PlexProvider(LibraryProvider):
     source = SOURCE_PLEX
 
-    def __init__(self, settings: Settings, *, server_factory=None, timeout: int = 30) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        profiles: ProfileSet = DEFAULT_PROFILES,
+        *,
+        server_factory=None,
+        timeout: int = 30,
+    ) -> None:
         self.settings = settings
+        self.profiles = profiles
         self._server_factory = server_factory or (
             lambda url, token: PlexServer(url, token, timeout=timeout)
         )
@@ -271,7 +278,7 @@ class PlexProvider(LibraryProvider):
                 bit_depth=bit_depth,
                 sample_rate=getattr(stream, "samplingRate", None),
                 duration=duration_ms / 1000 if duration_ms else None,
-                quality_tier=classify_track(
+                quality_tier=self.profiles.classify(
                     lossless=lossless,
                     bitrate_kbps=bitrate,
                     bit_depth=bit_depth,
@@ -297,7 +304,7 @@ class PlexProvider(LibraryProvider):
                 path = posixpath.commonpath(sorted({posixpath.dirname(p) for p in paths}))
             except ValueError:  # mix of absolute and relative paths
                 path = fallback
-        built = build_album(path, members)
+        built = build_album(path, members, self.profiles)
         built.title = album.title or built.title
         built.year = getattr(album, "year", None) or built.year
         built.mbid_release = mbid_from_guids(album) or built.mbid_release

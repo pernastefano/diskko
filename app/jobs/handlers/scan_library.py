@@ -9,13 +9,15 @@ from app.jobs.registry import job_handler
 from app.services.library import build_provider
 from app.services.library.provider import LibraryError, ScanReporter
 from app.services.library.scan import run_scan
+from app.services.quality_profiles import load_profiles
 
 
 @job_handler("scan_library", queue="library", max_attempts=2, backoff_base=60)
 async def scan_library(ctx: JobContext) -> None:
     force = bool(ctx.payload.get("force", False))
     try:
-        provider = build_provider(ctx.settings)
+        profiles = await ctx.run_db(load_profiles)
+        provider = build_provider(ctx.settings, profiles)
         await ctx.log(
             f"Scanning the {provider.source} library" + (" (full rescan)" if force else "")
         )

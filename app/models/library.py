@@ -62,7 +62,7 @@ class LibraryAlbum(Base):
     title: Mapped[str] = mapped_column(String(512))
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     format: Mapped[str | None] = mapped_column(String(16), nullable=True)  # dominant codec
-    quality_tier: Mapped[str] = mapped_column(String(16), default="any")
+    quality_tier: Mapped[str] = mapped_column(String(48), default="any")
     bitrate: Mapped[int | None] = mapped_column(Integer, nullable=True)  # average, kbps
     track_count: Mapped[int] = mapped_column(Integer, default=0)
     disc_count: Mapped[int] = mapped_column(Integer, default=1)
@@ -105,11 +105,12 @@ class LibraryTrack(Base):
     disc_no: Mapped[int | None] = mapped_column(Integer, nullable=True)
     codec: Mapped[str | None] = mapped_column(String(16), nullable=True)
     lossless: Mapped[bool] = mapped_column(Boolean, default=False)
+    v0: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))  # LAME V0
     bitrate: Mapped[int | None] = mapped_column(Integer, nullable=True)  # kbps
     bit_depth: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration: Mapped[float | None] = mapped_column(Float, nullable=True)  # seconds
-    quality_tier: Mapped[str] = mapped_column(String(16), default="any")
+    quality_tier: Mapped[str] = mapped_column(String(48), default="any")
     # Tags kept to group tracks into albums without reading the files again.
     artist: Mapped[str | None] = mapped_column(String(255), nullable=True)
     album_artist: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -6,8 +6,8 @@ from collections import Counter
 from collections.abc import Iterable
 from pathlib import PurePosixPath
 
+from app.quality import ProfileSet, dominant
 from app.services.library.provider import ScannedAlbum, ScannedArtist, ScannedTrack
-from app.services.library.quality import album_quality, dominant
 
 VARIOUS_ARTISTS = "Various Artists"
 UNKNOWN_ARTIST = "Unknown Artist"
@@ -68,7 +68,7 @@ def _resolve_artist(adir: str, tracks: list[ScannedTrack]) -> tuple[str, str | N
     return name, mbid, sort, False
 
 
-def build_album(adir: str, tracks: list[ScannedTrack]) -> ScannedAlbum:
+def build_album(adir: str, tracks: list[ScannedTrack], profiles: ProfileSet) -> ScannedAlbum:
     fallback = adir.split("/")[-1] if adir else UNKNOWN_ALBUM
     bitrates = [t.bitrate for t in tracks if t.bitrate]
     return ScannedAlbum(
@@ -76,7 +76,7 @@ def build_album(adir: str, tracks: list[ScannedTrack]) -> ScannedAlbum:
         title=_most_common(t.album_title for t in tracks) or fallback,
         year=_most_common(t.year for t in tracks),
         format=dominant(t.codec for t in tracks),
-        quality_tier=album_quality(t.quality_tier for t in tracks),
+        quality_tier=profiles.album_quality(t.quality_tier for t in tracks),
         bitrate=round(sum(bitrates) / len(bitrates)) if bitrates else None,
         disc_count=max([t.disc_no or 1 for t in tracks] + [1]),
         total_size=sum(t.file_size for t in tracks),
@@ -88,7 +88,7 @@ def build_album(adir: str, tracks: list[ScannedTrack]) -> ScannedAlbum:
     )
 
 
-def group_tracks(tracks: Iterable[ScannedTrack]) -> list[ScannedArtist]:
+def group_tracks(tracks: Iterable[ScannedTrack], profiles: ProfileSet) -> list[ScannedArtist]:
     """Albums are (album folder, album title); artists are merged by MBID or by name."""
     buckets: dict[tuple[str, str], list[ScannedTrack]] = {}
     for track in tracks:
@@ -99,7 +99,7 @@ def group_tracks(tracks: Iterable[ScannedTrack]) -> list[ScannedArtist]:
     artists: dict[str, ScannedArtist] = {}
     for (adir, _), members in buckets.items():
         name, mbid, sort, compilation = _resolve_artist(adir, members)
-        album = build_album(adir, members)
+        album = build_album(adir, members, profiles)
         album.is_compilation = compilation
         key = f"mbid:{mbid}" if mbid else f"name:{name_key(name)}"
         artist = artists.setdefault(key, ScannedArtist(name=name, sort_name=sort, mbid=mbid))

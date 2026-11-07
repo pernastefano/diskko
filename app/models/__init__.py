@@ -39,6 +39,7 @@ from app.models.musicbrainz import (
     ArtistReview,
     ReleaseGroup,
 )
+from app.models.quality import QualityProfile
 from app.models.user import ROLE_ADMIN, ROLE_USER, ROLES, THEMES, Setting, User, UserSession
 
 __all__ = [
@@ -81,6 +82,7 @@ __all__ = [
     "JobLog",
     "LibraryAlbum",
     "LibraryTrack",
+    "QualityProfile",
     "Setting",
     "User",
     "UserSession",

@@ -1,0 +1,147 @@
+{% extends "settings/_layout.html" %}
+{% block settings_body %}
+{% set form_title = t('quality.edit') if modal == 'edit' else t('quality.add') %}
+{# One Alpine scope for the page: the add/edit dialog and the buttons that open it #}
+<div x-data='{
+       open: {{ "true" if modal else "false" }},
+       kind: {{ (form.get("kind") or "lossless")|tojson }},
+       action: {{ ("/settings/quality/profiles/" ~ editing.id if modal == "edit" and editing else "/settings/quality/profiles")|tojson }},
+       title: {{ form_title|tojson }},
+       edit(id, title, data) { this.action = "/settings/quality/profiles/" + id; this.title = title; this.fill(data); this.open = true; },
+       add() { this.action = "/settings/quality/profiles"; this.title = {{ t("quality.add")|tojson }}; this.fill({kind: "lossless", color: "slate", min_bit_depth: "16", min_sample_rate: "44.1", min_bitrate: "320"}); this.open = true; },
+       fill(data) { this.kind = data.kind || "lossless"; this.$nextTick(() => { for (const f of this.$refs.form.elements) { if (f.name && f.name !== "csrf_token") { const v = data[f.name]; if (f.type === "checkbox") f.checked = !!v; else f.value = v == null ? "" : v; } } }); }
+     }'
+     @keydown.escape.window="open = false"
+     x-effect="if (open) $nextTick(() => $refs.profileName && $refs.profileName.focus())">
+
+  <div class="mb-1 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-lg font-semibold">{{ t('quality.title') }}</h2>
+    <button type="button" @click="add()" data-open="create"
+            class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('quality.add') }}</button>
+  </div>
+  <p class="mb-4 text-sm text-slate-500">{{ t('quality.intro') }}</p>
+
+  {% if error %}<p role="alert" class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-error>{{ t(error) }}</p>{% endif %}
+  {% if active_job %}<p class="mb-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800" data-recomputing>{{ t('quality.recomputing') }} <a class="underline" href="/admin/jobs/{{ active_job }}">{{ t('quality.recomputing_link') }}</a></p>{% endif %}
+
+  <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="px-4 py-2">{{ t('quality.col.profile') }}</th>
+          <th class="px-4 py-2">{{ t('quality.col.rule') }}</th>
+          <th class="px-4 py-2">{{ t('quality.col.default') }}</th>
+          <th class="px-4 py-2">{{ t('field.actions') }}</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100" id="profiles-body">
+        {% for p in profiles %}
+        {% set tier = p.key %}
+        <tr data-profile="{{ p.key }}">
+          <td class="px-4 py-2">{% include "_quality_badge.html" %}</td>
+          <td class="px-4 py-2 text-slate-600">
+            {% if p.kind == 'lossless' %}{{ t('quality.rule.lossless', bits=p.min_bit_depth, khz=('%g' % ((p.min_sample_rate or 0) / 1000))) }}
+            {% elif p.kind == 'lossy' %}{{ t('quality.rule.lossy_v0' if p.accept_v0 else 'quality.rule.lossy', kbps=p.min_bitrate) }}
+            {% else %}{{ t('quality.rule.any') }}{% endif %}
+          </td>
+          <td class="px-4 py-2">
+            {% if p.key == default_key %}
+              <span class="rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-800" data-default>{{ t('quality.is_default') }}</span>
+            {% else %}
+              <form method="post" action="/settings/quality/default">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="key" value="{{ p.key }}">
+                <button class="text-xs text-indigo-600 hover:underline">{{ t('quality.make_default') }}</button>
+              </form>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2">
+            <div class="flex flex-wrap items-center gap-2">
+              {% for direction, label, off in (('up', t('quality.move_up'), loop.first), ('down', t('quality.move_down'), loop.last)) %}
+              <form method="post" action="/settings/quality/profiles/{{ p.id }}/move">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="direction" value="{{ direction }}">
+                <button {% if off %}disabled{% endif %} title="{{ label }}" aria-label="{{ label }}" data-move="{{ direction }}"
+                        class="rounded border border-slate-300 px-2 py-0.5 text-xs hover:bg-slate-100 disabled:opacity-40">{{ '↑' if direction == 'up' else '↓' }}</button>
+              </form>
+              {% endfor %}
+              <button type="button" data-edit="{{ p.key }}"
+                      @click='edit({{ p.id }}, {{ t("quality.edit")|tojson }}, {{ {"name": p.name, "kind": p.kind, "color": p.color, "min_bit_depth": (p.min_bit_depth or ""), "min_sample_rate": (("%g" % (p.min_sample_rate / 1000)) if p.min_sample_rate else ""), "min_bitrate": (p.min_bitrate or ""), "accept_v0": p.accept_v0}|tojson }})'
+                      class="text-xs text-indigo-600 hover:underline">{{ t('action.edit') }}</button>
+              <form method="post" action="/settings/quality/profiles/{{ p.id }}/delete" onsubmit="return confirm({{ t('quality.delete_confirm')|tojson|forceescape }})">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button data-delete="{{ p.key }}" class="text-xs text-red-600 hover:underline">{{ t('action.delete') }}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form method="post" action="/settings/quality/restore" class="mt-4"
+        onsubmit="return confirm({{ t('quality.restore_confirm')|tojson|forceescape }})">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button data-restore class="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100">{{ t('quality.restore') }}</button>
+  </form>
+
+  {# ---- add / edit #}
+  <div x-show="open" x-cloak data-modal="profile" class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
+       @click.self="open = false" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+    <div class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl">
+      <h3 id="profile-title" class="mb-4 text-lg font-semibold" x-text="title">{{ form_title }}</h3>
+      {% if modal and modal_error %}<p role="alert" class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-modal-error>{{ t(modal_error) }}</p>{% endif %}
+      <form method="post" x-ref="form" :action="action" action="{{ '/settings/quality/profiles/' ~ editing.id if modal == 'edit' and editing else '/settings/quality/profiles' }}" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+          <label for="profile-name" class="block text-sm font-medium">{{ t('quality.field.name') }}</label>
+          <input id="profile-name" x-ref="profileName" name="name" value="{{ form.get('name', '') }}" required maxlength="80" autocomplete="off"
+                 class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label for="profile-kind" class="block text-sm font-medium">{{ t('quality.field.kind') }}</label>
+          <select id="profile-kind" name="kind" x-model="kind" class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+            {% for k in kinds %}<option value="{{ k }}" {% if k == (form.get('kind') or 'lossless') %}selected{% endif %}>{{ t('quality.kind.' ~ k) }}</option>{% endfor %}
+          </select>
+        </div>
+        <div x-show="kind === 'lossless'" class="space-y-4">
+          <div>
+            <label for="profile-bits" class="block text-sm font-medium">{{ t('quality.field.bit_depth') }}</label>
+            <select id="profile-bits" name="min_bit_depth" class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+              {% for v in bit_depths %}<option value="{{ v }}" {% if v == form.get('min_bit_depth', '16')|string %}selected{% endif %}>{{ v }} bit</option>{% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-slate-500">{{ t('quality.hint.bit_depth') }}</p>
+          </div>
+          <div>
+            <label for="profile-rate" class="block text-sm font-medium">{{ t('quality.field.sample_rate') }}</label>
+            <select id="profile-rate" name="min_sample_rate" class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+              {% for v in sample_rates %}<option value="{{ v }}" {% if v == form.get('min_sample_rate', '44.1')|string %}selected{% endif %}>{{ v }} kHz</option>{% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-slate-500">{{ t('quality.hint.sample_rate') }}</p>
+          </div>
+        </div>
+        <div x-show="kind === 'lossy'" class="space-y-4">
+          <div>
+            <label for="profile-bitrate" class="block text-sm font-medium">{{ t('quality.field.bitrate') }}</label>
+            <select id="profile-bitrate" name="min_bitrate" class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+              {% for v in bitrates %}<option value="{{ v }}" {% if v == form.get('min_bitrate', '320')|string %}selected{% endif %}>{{ v }} kbps</option>{% endfor %}
+            </select>
+          </div>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="accept_v0" value="1" {% if form.get('accept_v0') %}checked{% endif %}> {{ t('quality.field.accept_v0') }}</label>
+        </div>
+        <div>
+          <label for="profile-color" class="block text-sm font-medium">{{ t('quality.field.color') }}</label>
+          <select id="profile-color" name="color" class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+            {% for c in colors %}<option value="{{ c }}" {% if c == (form.get('color') or 'slate') %}selected{% endif %}>{{ t('quality.color.' ~ c) }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="open = false" class="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100">{{ t('action.cancel') }}</button>
+          <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('action.save') }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

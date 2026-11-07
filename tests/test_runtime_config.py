@@ -102,8 +102,6 @@ def test_numbers_are_range_checked():
 def test_choices():
     assert ok("library_source", "plex") == "plex"
     assert bad("library_source", "spotify") == "choice_invalid"
-    assert ok("default_quality", "flac_master") == "flac_master"
-    assert bad("default_quality", "lossless") == "choice_invalid"  # the old name is gone
 
 
 def test_booleans():
@@ -159,7 +157,7 @@ def test_concurrency():
 def test_every_field_has_a_section_and_exists_on_settings():
     names = set(Settings.model_fields)
     assert set(FIELDS) <= names
-    assert {f.section for f in FIELDS.values()} == {"library", "integrations", "jobs", "albums"}
+    assert {f.section for f in FIELDS.values()} == {"library", "integrations", "jobs", "quality"}
     for secret in (f for f in FIELDS.values() if f.kind == "secret"):
         assert secret.key in ("plex_token", "slskd_api_key", "lastfm_api_key")
 
@@ -519,10 +517,8 @@ def test_secrets_never_appear_in_the_job_redaction_list_when_blank(settings):
     assert "" not in settings.secret_values
 
 
-def test_default_quality_is_flac_standard_and_validated(settings):
+def test_default_quality_is_flac_standard(settings):
     assert settings.default_quality == "flac_standard"
-    with pytest.raises(ValueError):
-        Settings(_env_file=None, default_quality="lossless")
 
 
 def test_rc_module_exports_what_the_pages_need():
