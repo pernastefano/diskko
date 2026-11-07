@@ -42,7 +42,7 @@ SECTIONS = ("library", "integrations", "jobs", "albums", "quality", "users")
 RECLASSIFY_KEY = "reclassify_quality"
 GROUPS = ("plex", "slskd", "musicbrainz", "coverart", "lastfm")
 TESTABLE = ("plex", "slskd", "musicbrainz", "lastfm")  # integrations with a connection test
-CHOICE_LABELS = {"library_source": "library.source."}
+CHOICE_LABELS = {"library_source": "library.source.", "slskd_mode": "slskd.mode."}
 FOLDER_LISTING_CAP = 100_000
 
 

@@ -256,16 +256,16 @@ def test_every_missing_album_has_a_request_button(admin_client, band):
     assert 'hx-post="/artist/' in text and 'name="csrf_token"' in text
 
 
-def test_the_button_is_only_a_placeholder_for_now(app, admin_client, band):
+def test_without_slskd_the_button_explains_why(app, admin_client, band):
     url = f"/artist/{band['id']}/request/{band['rgs']['two']}"
     r = post(admin_client, url, headers=HX, page=f"/artist/{band['id']}")
-    assert r.status_code == 200 and "Downloads are not available yet." in r.text
+    assert r.status_code == 200 and "SLSKD is not set up yet" in r.text
     assert 'id="request-' in r.text and "<html" not in r.text
     with app.state.session_factory() as db:
         assert db.scalar(select(func.count(Job.id))) == 0  # nothing was queued
 
 
-def test_without_javascript_the_button_redirects(admin_client, band):
+def test_without_javascript_and_without_slskd_the_button_redirects(admin_client, band):
     r = post(
         admin_client,
         f"/artist/{band['id']}/request/{band['rgs']['two']}",
@@ -275,7 +275,7 @@ def test_without_javascript_the_button_redirects(admin_client, band):
         r.status_code == 303
         and r.headers["location"] == f"/artist/{band['id']}?flash=request_unavailable"
     )
-    assert "Downloads are not available yet." in admin_client.get(r.headers["location"]).text
+    assert "SLSKD is not set up yet" in admin_client.get(r.headers["location"]).text
 
 
 def test_the_request_button_needs_csrf_and_a_login(admin_client, band, new_client):

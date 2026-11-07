@@ -82,6 +82,29 @@ copertina) e quelli mancanti, raggruppati per tipo secondo le preferenze dell'ut
 "Richiedi download" è per ora solo un segnaposto: i download arrivano con le fasi successive.
 Le copertine mancanti si scaricano in background quando si apre la pagina.
 
+## Richiedere un album (SLSKD)
+
+Dalla pagina di un artista, "Richiedi download" su un album mancante avvia una richiesta (la
+trovi in **Richieste**: ognuno vede le proprie, gli amministratori tutte):
+
+1. **Ricerca** su Soulseek tramite SLSKD (URL e chiave API in Impostazioni > Integrazioni; la
+   chiave deve avere il ruolo `ReadWrite` o `Administrator`).
+2. **Selezione**: le cartelle trovate sono raggruppate per utente, si scartano quelle che non sono
+   l'album (nome, numero di tracce) o che stanno sotto la qualità minima (i profili di qualità), e
+   le altre ricevono un punteggio (nome, completezza, qualità, disponibilità dell'utente). I primi
+   N candidati (default 5) sono salvati.
+3. **Scelta**: in modalità automatica si scarica il migliore; in modalità manuale la richiesta si
+   ferma su "Scegli" e si sceglie tra i candidati dalla pagina della richiesta.
+4. **Download**: un job segue i trasferimenti. Se un utente è offline, un file continua a fallire,
+   non arriva nulla per 10 minuti o si resta in coda remota per ore, passa al candidato successivo.
+5. I file finiscono nella cartella download di SLSKD, in `diskko/<id richiesta>/` (una
+   sottocartella per disco); la richiesta diventa **Scaricato**, in attesa dell'elaborazione.
+
+Se non c'è nessun risultato la richiesta si può rilanciare con un altro testo di ricerca o
+scegliendo a mano. `DOWNLOADS_DIR` è la cartella download come la vede Diskko (facoltativa: serve a
+verificare che i file siano arrivati). Soglie in `.env`: `SLSKD_STALL_MINUTES`,
+`SLSKD_QUEUE_MINUTES`, `SLSKD_MAX_HOURS`, `SLSKD_FILE_RETRIES`.
+
 ## Stato dei servizi
 
 L'icona **Stato** nella barra in alto riassume la connessione ai servizi **configurati** (Plex,

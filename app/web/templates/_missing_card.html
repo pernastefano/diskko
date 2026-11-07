@@ -5,7 +5,7 @@
     <div class="line-clamp-2 text-sm font-medium" title="{{ g.title }}">{{ g.title }}</div>
     <div class="text-xs text-slate-500">{{ g.year or '—' }}{% if g.disambiguation %} · {{ g.disambiguation }}{% endif %}</div>
   </div>
-  {% set status = statuses.get(g.id) %}
+  {% set status = statuses.get(g.id) %}{% set info = infos.get(g.id) if infos is defined else none %}
   {% include "_request_control.html" %}
   {% set preview_group = g %}{% include "_preview_control.html" %}
 </li>

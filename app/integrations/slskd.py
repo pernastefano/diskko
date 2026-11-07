@@ -21,6 +21,12 @@ class Slskd(Integration):
             return CheckResult(False, "auth_failed")
         if resp.status_code != 200:
             return CheckResult(False, "http_error", str(resp.status_code))
+        try:
+            server = resp.json().get("server")
+        except (ValueError, AttributeError):
+            server = None
+        if isinstance(server, dict) and server.get("isConnected") is False:
+            return CheckResult(False, "soulseek_offline", _version(resp))
         return CheckResult(True, "ok", _version(resp))
 
 

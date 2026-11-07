@@ -172,7 +172,6 @@ def test_only_runtime_safe_settings_are_editable():
         "jobs_enabled",
         "env",
         "session_ttl_hours",
-        "downloads_dir",
         "min_password_length",
     ):
         assert key not in FIELDS

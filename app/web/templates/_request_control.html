@@ -1,9 +1,20 @@
 {# "Request download" for a missing release group.
-   Needs: artist, g (release group), status (request status or none), unavailable (bool) #}
-<div class="request-control mt-2" id="request-{{ g.id }}">
+   Needs: artist, g (release group), status (request status or none), unavailable (bool).
+   Optional: info (the request: id, progress). The control polls itself while a request runs. #}
+{% set running = status in ('queued', 'searching', 'candidate_found', 'downloading', 'downloaded', 'postprocessing', 'importing') %}
+<div class="request-control mt-2" id="request-{{ g.id }}"
+     {% if running and info %}hx-get="/requests/{{ info.id }}/control" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
   {% if status %}
-    {% set colors = {'queued': 'bg-slate-200 text-slate-700', 'searching': 'bg-blue-100 text-blue-800', 'candidate_found': 'bg-blue-100 text-blue-800', 'downloading': 'bg-blue-100 text-blue-800', 'postprocessing': 'bg-indigo-100 text-indigo-800', 'importing': 'bg-indigo-100 text-indigo-800', 'completed': 'bg-green-100 text-green-800', 'failed': 'bg-red-100 text-red-800', 'cancelled': 'bg-slate-200 text-slate-700', 'no_results': 'bg-amber-100 text-amber-800'} %}
-    <span class="rounded px-2 py-1 text-xs {{ colors.get(status, 'bg-slate-100 text-slate-700') }}" data-request-status="{{ status }}">{{ t('request.status.' ~ status) }}</span>
+    {% set colors = {'queued': 'bg-slate-200 text-slate-700', 'searching': 'bg-blue-100 text-blue-800', 'candidate_found': 'bg-blue-100 text-blue-800', 'awaiting_choice': 'bg-amber-100 text-amber-800', 'downloading': 'bg-blue-100 text-blue-800', 'downloaded': 'bg-indigo-100 text-indigo-800', 'postprocessing': 'bg-indigo-100 text-indigo-800', 'importing': 'bg-indigo-100 text-indigo-800', 'completed': 'bg-green-100 text-green-800', 'failed': 'bg-red-100 text-red-800', 'cancelled': 'bg-slate-200 text-slate-700', 'no_results': 'bg-amber-100 text-amber-800'} %}
+    {% if info %}<a href="/requests/{{ info.id }}" class="no-underline">{% endif %}
+    <span class="rounded px-2 py-1 text-xs {{ colors.get(status, 'bg-slate-100 text-slate-700') }}" data-request-status="{{ status }}">{{ t('request.status.' ~ status) }}{% if status == 'downloading' and info %} {{ info.progress|round|int }}%{% endif %}</span>
+    {% if info %}</a>{% endif %}
+    {% if status in ('failed', 'no_results') %}
+      <form method="post" action="/artist/{{ artist.id }}/request/{{ g.id }}" hx-post="/artist/{{ artist.id }}/request/{{ g.id }}" hx-target="#request-{{ g.id }}" hx-swap="outerHTML" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="text-xs text-indigo-700 underline" data-request-again>{{ t('requests.try_again') }}</button>
+      </form>
+    {% endif %}
   {% else %}
     <form method="post" action="/artist/{{ artist.id }}/request/{{ g.id }}"
           hx-post="/artist/{{ artist.id }}/request/{{ g.id }}" hx-target="#request-{{ g.id }}" hx-swap="outerHTML">

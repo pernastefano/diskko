@@ -10,9 +10,12 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
 from app.auth.deps import DB, UserAuth
+from app.config import Settings
 from app.jobs import engine
 from app.jobs.handlers.sync_artist import sync_dedupe_key
 from app.models import ACTIVE_STATUSES, Artist, Job, ReleaseGroup, utcnow
+from app.services import downloads as svc
+from app.services.downloads import request_infos, slskd_configured
 from app.services.library_views import (
     PAGE_SIZE,
     SORTS,
@@ -172,7 +175,9 @@ def _sync_active(db: DB, artist_id: int) -> bool:
     )
 
 
-def _artist_context(db: DB, auth: UserAuth, artist: Artist, show_all: bool) -> dict:
+def _artist_context(
+    db: DB, auth: UserAuth, artist: Artist, show_all: bool, settings: Settings
+) -> dict:
     types = get_missing_types(db)
     sections = build_artist_sections(db, artist.id, types, show_all=show_all)
     group_ids = [g.id for _, items in sections.missing for g in items]
@@ -183,6 +188,8 @@ def _artist_context(db: DB, auth: UserAuth, artist: Artist, show_all: bool) -> d
         "types": types,
         "show_all": show_all,
         "statuses": request_statuses(db, auth.user.id, group_ids),
+        "infos": request_infos(db, group_ids),
+        "slskd_ready": slskd_configured(settings),
         "covers_active": _cover_job_active(db, artist.id),
         "syncing": _sync_active(db, artist.id),
         "unavailable": set(),
@@ -192,7 +199,7 @@ def _artist_context(db: DB, auth: UserAuth, artist: Artist, show_all: bool) -> d
 @router.get("/artist/{artist_id}")
 def artist_page(request: Request, db: DB, auth: UserAuth, artist_id: int, all: str = ""):
     artist = _artist_or_404(db, artist_id)
-    ctx = _artist_context(db, auth, artist, show_all=all == "1")
+    ctx = _artist_context(db, auth, artist, all == "1", request.app.state.settings)
     _ensure_covers(request, db, auth, artist, ctx["sections"], ctx["types"])
     ctx["covers_active"] = _cover_job_active(db, artist_id)
     ctx["syncing"] = _sync_active(db, artist_id)
@@ -204,17 +211,52 @@ def artist_page(request: Request, db: DB, auth: UserAuth, artist_id: int, all: s
 def artist_sections(request: Request, db: DB, auth: UserAuth, artist_id: int, all: str = ""):
     """The two lists alone; polled while covers are still downloading."""
     artist = _artist_or_404(db, artist_id)
-    return render(request, "_artist_sections.html", _artist_context(db, auth, artist, all == "1"))
+    return render(
+        request,
+        "_artist_sections.html",
+        _artist_context(db, auth, artist, all == "1", request.app.state.settings),
+    )
 
 
 @router.post("/artist/{artist_id}/request/{group_id}")
 def request_download(request: Request, db: DB, auth: UserAuth, artist_id: int, group_id: int):
-    """Placeholder: the real request flow arrives with the download phases."""
+    """Ask for an album: a search job finds it on Soulseek and downloads the best candidate."""
     _artist_or_404(db, artist_id)
     group = db.get(ReleaseGroup, group_id)
     if group is None or group.artist_id != artist_id:
         raise HTTPException(status_code=404, detail="not_found")
+    settings = request.app.state.settings
+    if not slskd_configured(settings):
+        if is_htmx(request):
+            ctx = {
+                "artist": db.get(Artist, artist_id),
+                "g": group,
+                "status": None,
+                "unavailable": True,
+            }
+            return render(request, "_request_control.html", ctx)
+        return RedirectResponse(f"/artist/{artist_id}?flash=request_unavailable", status_code=303)
+    created_request, created = svc.create_request(
+        db, auth.user.id, group_id, default_mode=settings.slskd_mode
+    )
+    if created:
+        engine.enqueue(
+            db,
+            "slskd_search",
+            {"request_id": created_request.id},
+            dedupe_key=svc.search_dedupe_key(created_request.id),
+            created_by=auth.user.id,
+        )
+        db.commit()
+        notify_worker(request)
     if is_htmx(request):
-        ctx = {"artist": db.get(Artist, artist_id), "g": group, "status": None, "unavailable": True}
+        info = svc.request_infos(db, [group_id]).get(group_id)
+        ctx = {
+            "artist": db.get(Artist, artist_id),
+            "g": group,
+            "status": info.status if info else None,
+            "info": info,
+            "unavailable": False,
+        }
         return render(request, "_request_control.html", ctx)
-    return RedirectResponse(f"/artist/{artist_id}?flash=request_unavailable", status_code=303)
+    return RedirectResponse(f"/artist/{artist_id}?flash=request_created", status_code=303)

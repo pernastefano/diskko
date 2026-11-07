@@ -31,6 +31,7 @@
         {% if user %}
           <a href="/library" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.browse') }}</a>
           <a href="/search" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.search') }}</a>
+          <a href="/requests" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.requests') }}</a>
         {% endif %}
         {% if user and user.is_admin %}
           <a href="/admin/artists" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.artists') }}</a>

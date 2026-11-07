@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # Job engine
     jobs_enabled: bool = True
-    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2,library:1,coverart:2,discovery:2"
+    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:6,library:1,coverart:2,discovery:2"
     job_poll_interval: float = 1.0
     job_retention_days: int = 30
     # How often the connection to every configured service is checked (0 turns it off). Five
@@ -50,6 +50,15 @@ class Settings(BaseSettings):
     plex_token: str = ""
     slskd_url: str = ""
     slskd_api_key: str = ""
+    # Searching and downloading through SLSKD
+    slskd_search_timeout: int = 30  # seconds without a new answer before a search ends
+    slskd_candidates: int = 5  # candidates kept (and shown for a manual choice)
+    slskd_mode: str = "auto"  # auto: download the best candidate; manual: the user picks one
+    slskd_poll_seconds: float = 5.0  # how often a running download is looked at
+    slskd_stall_minutes: float = 10  # no byte received for this long: try the next candidate
+    slskd_queue_minutes: float = 120  # waiting this long in the remote queue: try the next one
+    slskd_max_hours: float = 12  # one candidate may take this long at most
+    slskd_file_retries: int = 2  # a failed file is asked again this many times
     mb_user_agent: str = ""
     musicbrainz_url: str = "https://musicbrainz.org/ws/2"
     coverart_url: str = "https://coverartarchive.org"

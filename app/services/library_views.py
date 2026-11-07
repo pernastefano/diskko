@@ -230,7 +230,8 @@ def describe_format(album: LibraryAlbum) -> str:
 def request_statuses(db: Session, user_id: int, release_group_ids: list[int]) -> dict[int, str]:
     """{release_group_id: status} of the user's download requests.
 
-    Download requests arrive with phases 7-8; until then nothing has been requested. The pages
-    already render every status, so only this function needs to change.
+    The library is shared, so the running request of an album shows for every user.
     """
-    return {}
+    from app.services.downloads import request_statuses as _statuses
+
+    return _statuses(db, release_group_ids)
