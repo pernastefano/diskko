@@ -4,11 +4,10 @@
 <li class="flex flex-col rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
   <a href="{{ page }}" aria-label="{{ album.title }}" data-album-link>{{ cover(group, 'aspect-square w-full', album.title) }}</a>
   <div class="mt-2 flex-1">
-    <div class="line-clamp-2 text-sm font-medium" title="{{ album.title }}"><a href="{{ page }}" class="hover:underline" data-album-link>{{ album.title }}</a>{% if album.match_status == 'tentative' %} <span class="text-amber-600" title="{{ t('artist.tentative_hint') }}">~</span>{% endif %}</div>
-    <div class="text-xs text-slate-500">{{ album.year or '—' }} · {{ t('lib.tracks_count', n=album.track_count) }}</div>
+    <div class="flex items-center gap-1 text-sm font-medium"><a href="{{ page }}" class="min-w-0 truncate hover:underline" title="{{ album.title }}" data-album-link>{{ album.title }}</a>{% if album.match_status == 'tentative' %}<span class="shrink-0 text-amber-600" title="{{ t('artist.tentative_hint') }}">~</span>{% endif %}</div>
+    <div class="truncate text-xs text-slate-500">{{ album.year or '—' }} · {{ t('lib.tracks_count', n=album.track_count) }}</div>
   </div>
-  <div class="mt-2 flex flex-wrap items-center gap-1">
-    {% set tier = album.quality_tier %}{% include "_quality_badge.html" %}
-    {% set fmt = album|album_format %}{% if fmt %}<span class="text-xs text-slate-500">{{ fmt }}</span>{% endif %}
+  <div class="mt-2 flex min-w-0 items-center">
+    {% set tier = album.quality_tier %}{% set truncate_badge = true %}{% include "_quality_badge.html" %}
   </div>
 </li>

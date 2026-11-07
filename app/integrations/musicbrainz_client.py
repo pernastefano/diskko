@@ -250,6 +250,13 @@ class MusicBrainzClient:
         data = await self._get(f"artist/{mbid}", {}, force=force)
         return _parse_artist(data) if data else None
 
+    async def artist_wikidata(self, mbid: str, *, force: bool = False) -> str | None:
+        """The artist's Wikidata id (`inc=url-rels`: relations[] {type, url {resource}})."""
+        from app.integrations.wikipedia import wikidata_id
+
+        data = await self._get(f"artist/{mbid}", {"inc": "url-rels"}, force=force)
+        return wikidata_id((data or {}).get("relations") or [])
+
     async def browse_releases(
         self, release_group_mbid: str, *, force: bool = False
     ) -> list[ReleaseData] | None:

@@ -1,0 +1,46 @@
+{# needs: artist, state (ready|loading|unavailable|failed), tracks, alive (ids with a playable preview) #}
+<section id="artist-top" class="mt-8" {% if state == 'loading' %}hx-get="/artist/{{ artist.id }}/top" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'unavailable' or (state == 'ready' and not tracks) %}
+    {# nothing to show: no section at all #}
+  {% else %}
+    <h2 class="mb-3 text-xl font-semibold">{{ t('artist.top') }}</h2>
+    {% if not tracks and state == 'loading' %}
+      <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500" data-top-state="loading">{{ t('artist.top.loading') }}</p>
+    {% elif not tracks and state == 'failed' %}
+      <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-top-state="failed">{{ t('artist.top.failed') }}
+        <button type="button" hx-post="/artist/{{ artist.id }}/top?retry=1" hx-target="#artist-top" hx-swap="outerHTML" class="underline">{{ t('action.retry') }}</button></p>
+    {% else %}
+      <ol class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm" data-top-state="ready">
+        {% for t_ in tracks %}
+          <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2" data-top-track="{{ t_.position }}">
+            <span class="w-6 shrink-0 text-right text-sm tabular-nums text-slate-400">{{ t_.position }}</span>
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-sm font-medium" title="{{ t_.title }}">{{ t_.title }}</div>
+              {% if t_.album_title %}<div class="truncate text-xs text-slate-500" title="{{ t_.album_title }}">{{ t_.album_title }}</div>{% endif %}
+            </div>
+            {% if t_.duration_s %}<span class="shrink-0 text-xs tabular-nums text-slate-500">{{ t_.duration_s // 60 }}:{{ '%02d' % (t_.duration_s % 60) }}</span>{% endif %}
+            <div class="w-56 max-w-full shrink-0">
+              {% if t_.id in alive %}
+                <div x-data="{ broken: false }">
+                  <audio x-show="!broken" controls preload="none" referrerpolicy="no-referrer" src="{{ t_.preview_url }}" @error="broken = true" class="h-8 w-56 max-w-full"></audio>
+                  <span x-show="broken" x-cloak class="text-xs text-amber-700">{{ t('preview.expired') }}
+                    <button type="button" hx-post="/artist/{{ artist.id }}/top?retry=1" hx-target="#artist-top" hx-swap="outerHTML" class="underline">{{ t('preview.reload') }}</button></span>
+                </div>
+              {% elif t_.preview_url and state == 'loading' %}
+                <span class="text-xs text-slate-400" data-preview-renewing>{{ t('artist.top.renewing') }}</span>
+              {% else %}
+                <span class="text-xs text-slate-400" title="{{ t('album.note.no_preview') }}">—</span>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+      <p class="mt-2 text-xs text-slate-500" data-top-credit>
+        {{ t('album.preview_hint') }}
+        {% if 'deezer' in providers %}{{ t('preview.credit_deezer') }}{% endif %}
+        {% if 'itunes' in providers %}{{ t('preview.credit_itunes') }}{% endif %}
+        {% if 'lastfm' in providers %}{{ t('artist.top.credit_lastfm') }}{% endif %}
+      </p>
+    {% endif %}
+  {% endif %}
+</section>

@@ -15,6 +15,8 @@ CAPABILITIES: dict[str, tuple[str, tuple[str, ...]]] = {
     "covers": ("providers_covers", ("coverartarchive", "deezer")),
     "previews": ("providers_previews", ("itunes", "deezer")),
     "similar": ("providers_similar", ("lastfm", "listenbrainz")),
+    "toptracks": ("providers_toptracks", ("deezer", "lastfm")),
+    "bio": ("providers_bio", ("wikipedia", "lastfm")),
 }
 
 

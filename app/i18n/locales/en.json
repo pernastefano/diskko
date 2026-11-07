@@ -637,5 +637,21 @@
   "settings.jobtype.sync_artist_metadata": "Artist metadata sync",
   "settings.jobtype.sync_pending_artists": "Sync pending artists",
   "settings.library.scan.title": "Scan the library",
-  "settings.library.scan.hint": "Scan now for new and changed files. A full rescan re-reads every file, even the unchanged ones."
+  "settings.library.scan.hint": "Scan now for new and changed files. A full rescan re-reads every file, even the unchanged ones.",
+  "artist.top": "Top 10 tracks",
+  "artist.top.loading": "Looking for the most played tracks…",
+  "artist.top.failed": "The top tracks could not be loaded.",
+  "artist.top.renewing": "Renewing…",
+  "artist.top.credit_lastfm": "Top tracks from Last.fm.",
+  "artist.bio.credit_wikipedia": "Text from Wikipedia (CC BY-SA).",
+  "artist.bio.credit_lastfm": "Text from Last.fm.",
+  "artist.bio.read_more": "Read more",
+  "artist.bio.loading": "Loading the description…",
+  "settings.field.providers_toptracks": "Top tracks",
+  "settings.hint.providers_toptracks": "Deezer gives the list with previews. Last.fm (needs its API key) gives only the list: iTunes then adds the previews it has for sure.",
+  "settings.field.providers_bio": "Artist description",
+  "settings.hint.providers_bio": "Wikipedia is found through MusicBrainz (it needs the artist's MusicBrainz id). Last.fm needs its API key.",
+  "provider.wikipedia": "Wikipedia",
+  "settings.jobtype.fetch_artist_profile": "Artist profile (picture, description)",
+  "settings.jobtype.fetch_top_tracks": "Artist top tracks"
 }

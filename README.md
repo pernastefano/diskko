@@ -100,8 +100,14 @@ licenze proprie e restano solo nella tua cache locale.
 `/library` (la pagina iniziale) mostra gli artisti a griglia o a elenco, con ricerca mentre scrivi,
 barra A–Z, filtro "solo con album mancanti" e ordinamento per nome, mancanti o aggiunti di recente.
 Le pagine da 48 artisti si caricano scorrendo, e funziona anche senza JavaScript con i link
-Precedente/Successiva. `/artist/<id>` mostra gli album posseduti (con badge di qualità, formato e
-copertina) e quelli mancanti, raggruppati per tipo secondo le preferenze dell'utente. Il pulsante
+Precedente/Successiva. `/artist/<id>` mostra l'immagine dell'artista, una **breve descrizione**
+(al massimo due frasi, da Wikipedia nella lingua dell'interfaccia, altrimenti da Last.fm, sempre con
+l'attribuzione), la **top 10 dei brani** con anteprima da 30 secondi (da Deezer; se non risponde,
+lista di Last.fm con le anteprime che iTunes ha con certezza), poi gli album posseduti (titolo su una
+riga, anno e tracce, etichetta di qualità) e quelli mancanti, raggruppati per tipo secondo le
+preferenze dell'utente. Descrizione e top 10 si caricano in background alla prima visita e si
+aggiornano (descrizione ogni 30 giorni, lista ogni 7; i link di anteprima di Deezer scadono dopo
+pochi minuti e vengono rinnovati). Le sorgenti si scelgono in Impostazioni → Servizi. Il pulsante
 "Richiedi download" è per ora solo un segnaposto: i download arrivano con le fasi successive.
 Le copertine mancanti si scaricano in background quando si apre la pagina.
 

@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     lastfm_url: str = "https://ws.audioscrobbler.com/2.0/"
     listenbrainz_url: str = "https://labs.api.listenbrainz.org"
     itunes_url: str = "https://itunes.apple.com"
+    wikidata_url: str = "https://www.wikidata.org/w/api.php"
+    wikipedia_url: str = "https://{lang}.wikipedia.org"  # {lang} is replaced: en, it
     deezer_url: str = "https://api.deezer.com"
     preview_country: str = "US"  # iTunes catalogue to search (two-letter country code)
     coverart_min_interval: float = 0.5  # seconds between Cover Art Archive requests
@@ -83,6 +85,8 @@ class Settings(BaseSettings):
     providers_covers: str = "coverartarchive,deezer"
     providers_previews: str = "itunes,deezer"
     providers_similar: str = "lastfm,listenbrainz"
+    providers_toptracks: str = "deezer,lastfm"  # Last.fm lists, iTunes adds the previews
+    providers_bio: str = "wikipedia,lastfm"
     providers_metadata: str = "musicbrainz,deezer"  # MusicBrainz first; Deezer fills the gaps
     provider_breaker_threshold: int = 5  # consecutive failures that pause a service
     provider_breaker_cooldown_minutes: int = 10

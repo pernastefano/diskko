@@ -44,6 +44,11 @@ class Artist(Base):
     # Fallback metadata provider (when the artist is not on MusicBrainz) and its artist id
     provider: Mapped[str | None] = mapped_column(String(16), nullable=True)
     provider_artist_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # The artist at Deezer (for the picture and the top tracks) and when the profile (picture,
+    # biography) and the top tracks were last looked up.
+    deezer_artist_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    profile_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    top_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     in_library: Mapped[bool] = mapped_column(Boolean, default=True)
     # The artist's picture (an address at Deezer, not a copy) and when it was last looked up.
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)

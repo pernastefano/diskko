@@ -27,7 +27,12 @@ from app.integrations.cached_http import (
     ServiceError,
     TransientError,
 )
-from app.integrations.discovery_types import AlbumCandidate, ArtistCandidate, PreviewData
+from app.integrations.discovery_types import (
+    AlbumCandidate,
+    ArtistCandidate,
+    PreviewData,
+    TopTrackData,
+)
 from app.integrations.musicbrainz_client import ReleaseGroupData
 from app.services.musicbrainz.titles import album_key
 
@@ -79,6 +84,17 @@ def store_url(value: Any) -> str | None:
     return str(value) if ok else None
 
 
+def audio_url(value: Any) -> str | None:
+    """A preview address, only if it is an https address at a known audio host (it ends up in
+    the page as the source of a player)."""
+    parsed = urlsplit(str(value or ""))
+    host = (parsed.hostname or "").lower()
+    ok = parsed.scheme == "https" and any(
+        host == h or host.endswith("." + h) for h in ("dzcdn.net", "mzstatic.com", "apple.com")
+    )
+    return str(value) if ok else None
+
+
 def picture_url(value: Any) -> str | None:
     """A Deezer picture address, only if it is an https address at Deezer's image servers."""
     parsed = urlsplit(str(value or ""))
@@ -116,6 +132,37 @@ class ItunesClient(CachedJsonClient):
                     raw.get("trackCount"),
                     _year(raw.get("releaseDate")),
                     store_url(raw.get("collectionViewUrl")),
+                )
+            )
+        return found
+
+    async def search_songs(self, artist: str, title: str, *, force=False) -> list[TopTrackData]:
+        """Songs matching "artist title" with their preview address (Search API, entity=song:
+        trackName, artistName, collectionName, trackTimeMillis, trackViewUrl, previewUrl)."""
+        data = await self.get_json(
+            f"{self.settings.itunes_url.rstrip('/')}/search",
+            {
+                "term": f"{artist} {title}",
+                "media": "music",
+                "entity": "song",
+                "limit": 5,
+                "country": self.settings.preview_country.upper(),
+            },
+            ttl=SEARCH_TTL,  # iTunes preview addresses do not expire
+            force=force,
+        )
+        found = []
+        for raw in (data or {}).get("results", []):
+            if raw.get("wrapperType") != "track" or raw.get("kind") != "song":
+                continue
+            found.append(
+                TopTrackData(
+                    str(raw.get("trackName") or ""),
+                    str(raw.get("collectionName") or "") or None,
+                    int(raw["trackTimeMillis"]) // 1000 if raw.get("trackTimeMillis") else None,
+                    store_url(raw.get("trackViewUrl")),
+                    audio_url(raw.get("previewUrl")),
+                    str(raw.get("artistName") or "") or None,
                 )
             )
         return found
@@ -248,6 +295,35 @@ class DeezerClient(CachedJsonClient):
                     found[key] = group
             index += len(rows)
         return list(found.values())
+
+    async def artist_top(self, artist_id: str, *, limit: int = 10) -> list[TopTrackData]:
+        """The most popular tracks of an artist, with signed 30 s preview addresses.
+
+        GET /artist/{id}/top?limit=n -> {"data": [{"id", "title", "duration" (s), "preview",
+        "link", "album": {"title"}}], "total"}. The preview addresses expire after about
+        15 minutes: the answer is never cached.
+        """
+        if not str(artist_id).isdigit():
+            raise ValueError("invalid Deezer artist id")
+        data = await self.get_json(
+            f"{self.settings.deezer_url.rstrip('/')}/artist/{artist_id}/top",
+            {"limit": limit},
+            ttl=None,
+        )
+        tracks = []
+        for raw in (data or {}).get("data") or []:
+            if not raw.get("title"):
+                continue
+            tracks.append(
+                TopTrackData(
+                    str(raw["title"]),
+                    str((raw.get("album") or {}).get("title") or "") or None,
+                    int(raw["duration"]) if raw.get("duration") else None,
+                    store_url(raw.get("link")),
+                    audio_url(raw.get("preview")),
+                )
+            )
+        return tracks
 
     async def album_tracks(self, album_id: str) -> list[PreviewData]:
         data = await self.get_json(

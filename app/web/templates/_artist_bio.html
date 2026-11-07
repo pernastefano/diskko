@@ -1,0 +1,14 @@
+{# needs: artist, state (ready|loading|none), bio (ArtistBio or none), short #}
+<div id="artist-bio" {% if state == 'loading' %}hx-get="/artist/{{ artist.id }}/bio" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if bio %}
+    <p class="text-sm leading-relaxed text-slate-700" data-bio>{{ short }}</p>
+    <p class="mt-1 text-xs text-slate-500" data-bio-credit>
+      {% if bio.source == 'wikipedia' %}{{ t('artist.bio.credit_wikipedia') }}{% elif bio.source == 'lastfm' %}{{ t('artist.bio.credit_lastfm') }}{% endif %}
+      {% if bio.url %}· <a href="{{ bio.url }}" target="_blank" rel="noopener noreferrer" class="underline">{{ t('artist.bio.read_more') }}</a>{% endif %}
+    </p>
+  {% elif state == 'loading' %}
+    <p class="text-sm text-slate-400" data-bio-state="loading">{{ t('artist.bio.loading') }}</p>
+  {% endif %}
+</div>
+{# the picture may have been found by the job: replace it where it is #}
+{% set oob = true %}{% include "_artist_image.html" %}

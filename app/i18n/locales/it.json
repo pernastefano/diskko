@@ -637,5 +637,21 @@
   "settings.jobtype.sync_artist_metadata": "Sincronizzazione metadati artista",
   "settings.jobtype.sync_pending_artists": "Sincronizzazione artisti in attesa",
   "settings.library.scan.title": "Scansione della libreria",
-  "settings.library.scan.hint": "Avvia subito la ricerca di file nuovi o modificati. La riscansione completa rilegge ogni file, anche quelli invariati."
+  "settings.library.scan.hint": "Avvia subito la ricerca di file nuovi o modificati. La riscansione completa rilegge ogni file, anche quelli invariati.",
+  "artist.top": "Top 10 brani",
+  "artist.top.loading": "Cerco i brani più ascoltati…",
+  "artist.top.failed": "Non è stato possibile caricare i brani più ascoltati.",
+  "artist.top.renewing": "Rinnovo…",
+  "artist.top.credit_lastfm": "Brani più ascoltati da Last.fm.",
+  "artist.bio.credit_wikipedia": "Testo da Wikipedia (CC BY-SA).",
+  "artist.bio.credit_lastfm": "Testo da Last.fm.",
+  "artist.bio.read_more": "Leggi tutto",
+  "artist.bio.loading": "Carico la descrizione…",
+  "settings.field.providers_toptracks": "Brani più ascoltati",
+  "settings.hint.providers_toptracks": "Deezer dà la lista con le anteprime. Last.fm (serve la sua chiave API) dà solo la lista: iTunes aggiunge poi le anteprime che ha con certezza.",
+  "settings.field.providers_bio": "Descrizione dell'artista",
+  "settings.hint.providers_bio": "Wikipedia si trova tramite MusicBrainz (serve l'MBID dell'artista). Last.fm richiede la sua chiave API.",
+  "provider.wikipedia": "Wikipedia",
+  "settings.jobtype.fetch_artist_profile": "Profilo artista (immagine, descrizione)",
+  "settings.jobtype.fetch_top_tracks": "Brani più ascoltati dell'artista"
 }

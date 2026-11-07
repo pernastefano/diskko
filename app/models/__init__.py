@@ -78,6 +78,15 @@ from app.models.musicbrainz import (
     ArtistReview,
     ReleaseGroup,
 )
+from app.models.profile import (
+    BIO_LASTFM,
+    BIO_WIKIPEDIA,
+    TOP_DEEZER,
+    TOP_ITUNES,
+    TOP_LASTFM,
+    ArtistBio,
+    ArtistTopTrack,
+)
 from app.models.quality import QualityProfile
 from app.models.user import ROLE_ADMIN, ROLE_USER, ROLES, THEMES, Setting, User, UserSession
 
@@ -112,6 +121,13 @@ __all__ = [
     "PreviewTrack",
     "ReleaseTrack",
     "TracklistFetch",
+    "BIO_LASTFM",
+    "BIO_WIKIPEDIA",
+    "TOP_DEEZER",
+    "TOP_ITUNES",
+    "TOP_LASTFM",
+    "ArtistBio",
+    "ArtistTopTrack",
     "SimilarArtist",
     "SimilarFetch",
     "MATCH_MANUAL",

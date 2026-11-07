@@ -16,6 +16,7 @@ from app.services.runtime_config import apply_runtime_config
 from app.web.errors import register_error_handlers
 from app.web.routers import (
     albums,
+    artist_profile,
     artists,
     auth,
     covers,
@@ -109,6 +110,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings_pages.router,
         covers.router,
         discovery.router,
+        artist_profile.router,
         status.router,
         pages.router,
     ):

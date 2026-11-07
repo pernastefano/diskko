@@ -30,6 +30,22 @@ class ArtistCandidate:
 
 
 @dataclass(frozen=True)
+class TopTrackData:
+    title: str
+    album: str | None = None
+    duration_s: int | None = None
+    track_url: str | None = None  # the track at the provider
+    preview_url: str | None = None
+    artist: str | None = None  # who the provider says plays it (to check a search result)
+
+
+@dataclass(frozen=True)
+class BioData:
+    text: str  # plain text, as long as the provider gave it
+    url: str | None = None  # the page it comes from, shown as the credit
+
+
+@dataclass(frozen=True)
 class PreviewData:
     disc: int
     position: int

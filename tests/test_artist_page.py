@@ -26,7 +26,7 @@ def section(html, name):
 
 
 def titles_in(html):
-    return re.findall(r'class="line-clamp-2 text-sm font-medium[^"]*" title="([^"]*)"', html)
+    return re.findall(r'class="[^"]*\btruncate\b[^"]*" title="([^"]*)" data-album-link', html)
 
 
 @pytest.fixture
@@ -122,14 +122,22 @@ def test_quality_badges(admin_client, band):
     assert "bg-purple-100" in text and "bg-blue-100" in text and "bg-red-100" in text
 
 
-def test_format_and_track_count(admin_client, band):
+def test_cards_show_year_and_track_count_but_not_the_file_format(admin_client, band):
     text = page(admin_client, f"/artist/{band['id']}")
-    assert (
-        "FLAC" in text
-        and "MP3 · 320 kbps" in text
-        and "11 track(s)" in text
-        and "14 track(s)" in text
-    )
+    assert "11 track(s)" in text and "14 track(s)" in text
+    assert "MP3 · 320 kbps" not in text  # the format line is gone
+    assert re.search(r'<span class="text-xs text-slate-500">(FLAC|MP3)', text) is None
+
+
+def test_titles_and_badges_are_cut_instead_of_wrapping(admin_client, band):
+    text = page(admin_client, f"/artist/{band['id']}")
+    assert "line-clamp" not in text
+    titles = re.findall(r'<a [^>]*class="([^"]*)" title="[^"]*" data-album-link', text)
+    assert titles and all("truncate" in c for c in titles)
+    badge = re.search(r'<span class="([^"]*)" data-quality="flac_hires"', text).group(1)
+    assert "truncate" in badge and "max-w-full" in badge
+    assert 'title="FLAC Hi-Res (24/96)" data-quality' not in text  # title comes after the name
+    assert re.search(r'data-quality="flac_hires" title="FLAC Hi-Res \(24/96\)"', text)
 
 
 @pytest.mark.parametrize(
