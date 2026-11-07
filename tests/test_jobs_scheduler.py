@@ -50,7 +50,9 @@ async def test_unknown_timezone_falls_back_to_utc(settings, session_factory):
 
 
 async def test_housekeeping_job_purges_old_jobs(settings, session_factory):
-    wsettings = settings.model_copy(update={"job_poll_interval": 0.02, "job_retention_days": 30})
+    wsettings = settings.model_copy(
+        update={"job_poll_interval": 0.02, "job_retention_success_days": 30}
+    )
     with session_factory() as db:
         old = engine.enqueue(db, "test.steps", {"steps": 1, "step_seconds": 0})
         engine.claim_next(db, "default")

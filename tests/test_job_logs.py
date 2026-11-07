@@ -2,13 +2,22 @@
 
 from datetime import timedelta
 
+import pytest
 from markupsafe import Markup
+from sqlalchemy import func, select
 
+from app.config import Settings
 from app.jobs import engine
+from app.jobs.engine import RetentionPolicy, purge_jobs
+from app.jobs.handlers.housekeeping import retention_policy
 from app.jobs.labels import job_label
-from app.models import STATUS_FAILED, STATUS_SUCCEEDED, utcnow
+from app.jobs.worker import JobWorker
+from app.models import STATUS_FAILED, STATUS_SUCCEEDED, Job, JobLog, utcnow
+from app.services.runtime_config import FIELDS, FieldError, parse_value
 from app.web.templating import mark
+from tests.conftest import post
 from tests.dbhelpers import make_artist, make_rg
+from tests.test_jobs_worker import enqueue, logs, wait_for_status
 
 
 def add(db, type_="test.steps", status=STATUS_SUCCEEDED, age_days=0.0, label=None, lines=()):
@@ -186,3 +195,237 @@ def test_routine_jobs_are_hidden_unless_asked_for(db, admin_client):
     assert shown.count("check_integrations") >= 1 and shown.count("housekeeping") >= 1
     hidden = admin_client.get("/admin/jobs").text
     assert "check_integrations</div>" not in hidden
+
+
+# ---------------------------------------------------------------------------- retention
+
+
+POLICY = RetentionPolicy(routine_days=1, success_days=14, failed_days=60)
+
+
+def kept(db):
+    db.expire_all()
+    return {j.id for j in db.scalars(select(Job))}
+
+
+def test_each_kind_of_job_is_kept_as_long_as_the_policy_says(db):
+    routine_old = add(db, type_="check_integrations", age_days=2)
+    routine_new = add(db, type_="check_integrations", age_days=0.5)
+    failed_routine_old = add(
+        db, type_="housekeeping", status=STATUS_FAILED, age_days=2
+    )  # routine wins
+    ok_old, ok_new = add(db, age_days=15), add(db, age_days=13)
+    bad_old, bad_new = (
+        add(db, status=STATUS_FAILED, age_days=61),
+        add(db, status=STATUS_FAILED, age_days=59),
+    )
+    cancelled_old = add(db, status="cancelled", age_days=15)
+    removed = purge_jobs(db, POLICY)
+    assert removed == 5
+    assert kept(db) == {routine_new.id, ok_new.id, bad_new.id}
+    assert all(
+        j not in kept(db)
+        for j in (routine_old.id, failed_routine_old.id, ok_old.id, bad_old.id, cancelled_old.id)
+    )
+
+
+def test_the_logs_go_with_their_jobs(db):
+    old = add(db, age_days=40, lines=["a", "b"])
+    new = add(db, age_days=1, lines=["c"])
+    purge_jobs(db, POLICY)
+    assert db.scalar(select(func.count(JobLog.id)).where(JobLog.job_id == old.id)) == 0
+    assert (
+        db.scalar(select(func.count(JobLog.id)).where(JobLog.job_id == new.id)) == 2
+    )  # c + Queued
+
+
+def test_jobs_still_running_or_waiting_are_never_purged(db):
+    running = add(db, status="running", age_days=90)
+    queued = add(db, status="queued", age_days=90)
+    unfinished = add(db, age_days=90)
+    unfinished.finished_at = None
+    db.commit()
+    assert purge_jobs(db, POLICY) == 0
+    assert kept(db) == {running.id, queued.id, unfinished.id}
+
+
+def test_a_per_type_value_wins_over_the_categories(db):
+    scans = add(db, type_="scan_library", age_days=40)
+    scans_failed = add(db, type_="scan_library", status=STATUS_FAILED, age_days=40)
+    covers = add(db, type_="fetch_covers", age_days=8)
+    other = add(db, type_="fetch_tracklist", age_days=8)
+    policy = RetentionPolicy(1, 14, 60, {"scan_library": 90, "fetch_covers": 7})
+    purge_jobs(db, policy)
+    assert scans.id in kept(db) and scans_failed.id in kept(db)  # kept 90 days, even the failed one
+    assert covers.id not in kept(db)  # 8 days old, but this type is kept 7
+    assert other.id in kept(db)  # the general rule: 14 days
+    longer = add(db, type_="scan_library", age_days=100)
+    purge_jobs(db, policy)
+    assert longer.id not in kept(db)
+
+
+def test_a_per_type_value_can_also_shorten_a_routine_type(db):
+    j = add(db, type_="check_integrations", age_days=3)
+    purge_jobs(db, RetentionPolicy(1, 14, 60, {"check_integrations": 5}))
+    assert j.id in kept(db)  # the override (5 days) replaces the routine value (1 day)
+
+
+def test_at_least_one_day_whatever_the_value(db):
+    fresh = add(db, age_days=0.2)
+    purge_jobs(db, RetentionPolicy(0, 0, 0))
+    assert fresh.id in kept(db)
+
+
+def test_the_defaults():
+    s = Settings(_env_file=None)
+    assert (
+        s.job_retention_routine_days,
+        s.job_retention_success_days,
+        s.job_retention_failed_days,
+    ) == (1, 14, 60)
+    assert s.retention_overrides == {}
+    policy = retention_policy(s)
+    assert (policy.routine_days, policy.success_days, policy.failed_days) == (1, 14, 60)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("scan_library:90,fetch_covers:7", {"scan_library": 90, "fetch_covers": 7}),
+        (" scan_library : 5 , bad, x:0, y:-1, z:abc ", {"scan_library": 5}),
+        ("a:1,b:2,junk,c:0", {"a": 1, "b": 2}),
+        ("", {}),
+    ],
+)
+def test_overrides_are_parsed_leniently(raw, expected):
+    assert Settings(_env_file=None, job_retention_overrides=raw).retention_overrides == expected
+
+
+def test_the_settings_validate_what_is_typed():
+    field = FIELDS["job_retention_overrides"]
+    assert parse_value(field, "Scan_Library:90,fetch_covers:7") == "scan_library:90,fetch_covers:7"
+    assert parse_value(field, "a:1\nb:2") == "a:1,b:2"
+    assert parse_value(field, "") == ""
+    for bad in (
+        "scan_library",
+        "scan_library:0",
+        "scan_library:abc",
+        "x:99999",
+        "UPPER CASE:3",
+        "a:1;b:2",
+    ):
+        with pytest.raises(FieldError):
+            parse_value(field, bad)
+    days = FIELDS["job_retention_failed_days"]
+    assert parse_value(days, "30") == 30
+    for bad in ("0", "-5", "abc", "99999"):
+        with pytest.raises(FieldError):
+            parse_value(days, bad)
+
+
+def test_the_retention_is_configured_in_the_job_settings(app, admin_client, db):
+    text = admin_client.get("/settings/jobs").text
+    for name in (
+        "job_retention_routine_days",
+        "job_retention_success_days",
+        "job_retention_failed_days",
+        "job_retention_overrides",
+    ):
+        assert f'name="{name}"' in text
+    assert "How long jobs and their logs are kept" in text
+    r = post(
+        admin_client,
+        "/settings/jobs",
+        {
+            "queue_default": "2",
+            "job_retention_routine_days": "2",
+            "job_retention_success_days": "7",
+            "job_retention_failed_days": "30",
+            "job_retention_overrides": "scan_library:90",
+        },
+        page="/settings/jobs",
+    )
+    assert r.status_code == 303
+    s = app.state.settings
+    assert (
+        s.job_retention_routine_days,
+        s.job_retention_success_days,
+        s.job_retention_failed_days,
+    ) == (2, 7, 30)
+    assert s.retention_overrides == {"scan_library": 90}
+
+
+def test_the_job_settings_refuse_less_than_a_day(admin_client, app):
+    for bad in ("0", "-1", "abc"):
+        r = post(
+            admin_client,
+            "/settings/jobs",
+            {"queue_default": "2", "job_retention_failed_days": bad},
+            page="/settings/jobs",
+        )
+        assert r.status_code == 400, bad
+    assert app.state.settings.job_retention_failed_days == 60
+    bad = post(
+        admin_client,
+        "/settings/jobs",
+        {"job_retention_overrides": "nonsense"},
+        page="/settings/jobs",
+    )
+    assert bad.status_code == 400 and "job_type:days" in bad.text
+
+
+async def test_the_housekeeping_job_applies_the_policy_and_says_what_it_did(
+    settings, session_factory
+):
+    s = settings.model_copy(
+        update={"job_poll_interval": 0.02, "job_retention_overrides": "fetch_covers:30"}
+    )
+    with session_factory() as db:
+        old_ok = add(db, age_days=20)
+        old_covers = add(db, type_="fetch_covers", age_days=20)
+        old_routine = add(db, type_="check_integrations", age_days=3)
+        fresh = add(db, age_days=1)
+        ids = (old_ok.id, old_covers.id, old_routine.id, fresh.id)
+    worker = JobWorker(s, session_factory)
+    await worker.start()
+    job_id = enqueue(session_factory, "housekeeping")
+    worker.notify()
+    await wait_for_status(session_factory, job_id, STATUS_SUCCEEDED)
+    await worker.stop()
+    with session_factory() as db:
+        left = {j.id for j in db.scalars(select(Job))}
+    assert ids[1] in left and ids[3] in left and ids[0] not in left and ids[2] not in left
+    messages = logs(session_factory, job_id)
+    assert any(m.startswith("Removed 2 finished job(s)") and "30" in m for m in messages)
+
+
+def test_the_database_can_be_compacted(session_factory):
+    engine.compact_database(session_factory)  # does not raise; the file keeps working
+    with session_factory() as db:
+        assert db.scalar(select(func.count(Job.id))) == 0
+
+
+def test_a_big_cleanup_gives_the_space_back(settings, session_factory, monkeypatch):
+    import asyncio
+
+    from app.jobs.handlers import housekeeping as hk
+
+    called = []
+    monkeypatch.setattr(hk, "COMPACT_AFTER", 2)
+    monkeypatch.setattr(hk.engine, "compact_database", lambda factory: called.append(1))
+
+    async def go():
+        s = settings.model_copy(update={"job_poll_interval": 0.02})
+        with session_factory() as db:
+            for _ in range(3):
+                add(db, age_days=40)
+        worker = JobWorker(s, session_factory)
+        await worker.start()
+        job_id = enqueue(session_factory, "housekeeping")
+        worker.notify()
+        await wait_for_status(session_factory, job_id, STATUS_SUCCEEDED)
+        await worker.stop()
+        return logs(session_factory, job_id)
+
+    messages = asyncio.run(go())
+    assert called == [1] and "The database file was compacted" in messages

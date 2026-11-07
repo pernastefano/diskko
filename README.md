@@ -137,7 +137,11 @@ le icone si aggiornano da sole ogni 15 secondi.
 
 Ogni job ha un'etichetta che dice su cosa lavora (artista, album...) e i log riportano i dettagli
 (per esempio la copertina di quale album). Da **Job** si può cercare un testo in tutti i log; i job di
-routine (controlli dei servizi, pulizia) sono nascosti finché non li si vuole vedere. 
+routine (controlli dei servizi, pulizia) sono nascosti finché non li si vuole vedere. Ogni notte
+vengono cancellati i job conclusi più vecchi della conservazione, con i loro log: **1 giorno** per
+i job di routine, **14** per gli altri riusciti, **60** per i falliti. I giorni (minimo 1) e un
+valore per singolo tipo di job si cambiano in Impostazioni > Job.
+
 ## Scoprire musica
 
 - **Cerca** (voce nel menu): cerca qualsiasi artista su MusicBrainz, anche se non è nella libreria.

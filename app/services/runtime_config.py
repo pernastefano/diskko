@@ -78,6 +78,10 @@ FIELDS: dict[str, Field] = {
         Field("lastfm_api_key", "secret", "integrations", "lastfm"),
         # jobs
         Field("job_queue_concurrency", "concurrency", "jobs", "jobs"),
+        Field("job_retention_routine_days", "int", "jobs", "retention", minimum=1, maximum=3650),
+        Field("job_retention_success_days", "int", "jobs", "retention", minimum=1, maximum=3650),
+        Field("job_retention_failed_days", "int", "jobs", "retention", minimum=1, maximum=3650),
+        Field("job_retention_overrides", "retention", "jobs", "retention", max_length=500),
         # quality: the key must name an existing profile, checked where it is saved
         Field("default_quality", "text", "quality", "quality", required=True, max_length=48),
     )
@@ -160,6 +164,23 @@ def _int(field: Field, raw: str) -> int:
     return value
 
 
+_RETENTION_ENTRY = re.compile(r"^[a-z][a-z0-9_.]{0,63}:\d{1,4}$")
+
+
+def _retention(field: Field, raw: str) -> str:
+    """'type:days' pairs, one per job type; each at least 1 day. Normalised to 'a:1,b:2'."""
+    value = _text(field, raw.replace("\r", "").replace("\n", ","))
+    entries: dict[str, int] = {}
+    for part in filter(None, (p.strip().lower() for p in value.split(","))):
+        if not _RETENTION_ENTRY.match(part):
+            raise FieldError("retention_invalid")
+        name, _, days = part.partition(":")
+        if not 1 <= int(days) <= 3650:
+            raise FieldError("number_range")
+        entries[name] = int(days)
+    return ",".join(f"{n}:{d}" for n, d in entries.items())
+
+
 def _cron(field: Field, raw: str) -> str:
     value = _text(field, raw)
     if value:
@@ -221,6 +242,7 @@ def parse_value(field: Field, raw: Any) -> Any:
         "path": _path,
         "int": _int,
         "cron": _cron,
+        "retention": _retention,
         "path_map": _path_map,
     }[field.kind](field, text)
 

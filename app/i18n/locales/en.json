@@ -571,5 +571,16 @@
   "jobs.search_placeholder": "Text in any log line, label or type…",
   "jobs.show_routine": "Show routine jobs (service checks, cleanup)",
   "jobs.search_short": "Type at least 3 characters to search.",
-  "jobs.search_found": "{n} job(s) with “{q}” in a log line, label or type."
+  "jobs.search_found": "{n} job(s) with “{q}” in a log line, label or type.",
+  "settings.retention.title": "How long jobs and their logs are kept",
+  "settings.retention.intro": "Finished jobs older than this are deleted every night, together with their logs (at least 1 day). Routine jobs are the ones that run all day: service checks and the cleanup itself.",
+  "settings.field.job_retention_routine_days": "Routine jobs (days)",
+  "settings.hint.job_retention_routine_days": "Service checks and the cleanup, whatever their outcome.",
+  "settings.field.job_retention_success_days": "Successful jobs (days)",
+  "settings.hint.job_retention_success_days": "Every other job that succeeded or was cancelled.",
+  "settings.field.job_retention_failed_days": "Failed jobs (days)",
+  "settings.hint.job_retention_failed_days": "Every other job that failed: they explain what went wrong.",
+  "settings.field.job_retention_overrides": "Per job type",
+  "settings.hint.job_retention_overrides": "Optional, “type:days” separated by commas, for example scan_library:90,fetch_covers:7. It wins over the values above.",
+  "settings.error.retention_invalid": "Use “job_type:days” pairs separated by commas."
 }

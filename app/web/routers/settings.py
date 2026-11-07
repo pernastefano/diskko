@@ -164,7 +164,7 @@ def _page(
         if submitted:
             shown.update({q: str(submitted.get(f"queue_{q}", shown[q])) for q in QUEUES})
         ctx["queues"] = [(q, shown[q], q == "musicbrainz") for q in QUEUES]
-        ctx["fields"] = _fields(request, db, fields_of("jobs"), None, errors)
+        ctx["fields"] = _fields(request, db, fields_of("jobs"), submitted, errors)
     elif section == "albums":
         ctx["categories"] = CATEGORIES
         ctx["selected_types"] = get_missing_types(db)

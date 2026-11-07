@@ -571,5 +571,16 @@
   "jobs.search_placeholder": "Testo in una riga di log, etichetta o tipo…",
   "jobs.show_routine": "Mostra i job di routine (controlli dei servizi, pulizia)",
   "jobs.search_short": "Scrivi almeno 3 caratteri per cercare.",
-  "jobs.search_found": "{n} job con “{q}” in una riga di log, etichetta o tipo."
+  "jobs.search_found": "{n} job con “{q}” in una riga di log, etichetta o tipo.",
+  "settings.retention.title": "Per quanto si conservano i job e i loro log",
+  "settings.retention.intro": "I job conclusi più vecchi di questi giorni vengono cancellati ogni notte insieme ai log (minimo 1 giorno). I job di routine sono quelli che girano tutto il giorno: controlli dei servizi e la pulizia stessa.",
+  "settings.field.job_retention_routine_days": "Job di routine (giorni)",
+  "settings.hint.job_retention_routine_days": "Controlli dei servizi e pulizia, qualunque sia l'esito.",
+  "settings.field.job_retention_success_days": "Job riusciti (giorni)",
+  "settings.hint.job_retention_success_days": "Ogni altro job riuscito o annullato.",
+  "settings.field.job_retention_failed_days": "Job falliti (giorni)",
+  "settings.hint.job_retention_failed_days": "Ogni altro job fallito: spiegano cosa è andato storto.",
+  "settings.field.job_retention_overrides": "Per tipo di job",
+  "settings.hint.job_retention_overrides": "Facoltativo, “tipo:giorni” separati da virgole, per esempio scan_library:90,fetch_covers:7. Ha la precedenza sui valori sopra.",
+  "settings.error.retention_invalid": "Usa coppie “tipo_job:giorni” separate da virgole."
 }

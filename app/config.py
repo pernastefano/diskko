@@ -32,7 +32,12 @@ class Settings(BaseSettings):
     jobs_enabled: bool = True
     job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:6,library:1,coverart:2,discovery:2"
     job_poll_interval: float = 1.0
-    job_retention_days: int = 30
+    # How many days finished jobs and their logs are kept (at least 1). The jobs that run all day
+    # (service checks, the cleanup) go quickly; failures stay longer, they explain what went wrong.
+    job_retention_routine_days: int = 1
+    job_retention_success_days: int = 14
+    job_retention_failed_days: int = 60
+    job_retention_overrides: str = ""  # "scan_library:90,fetch_covers:7": days per job type
     # How often the connection to every configured service is checked (0 turns it off). Five
     # minutes keeps the status icon fresh and costs a handful of tiny requests.
     status_check_minutes: int = 5
@@ -78,6 +83,16 @@ class Settings(BaseSettings):
 
     # Downloads: key of the quality profile a request must reach unless it says otherwise
     default_quality: str = DEFAULT_QUALITY
+
+    @property
+    def retention_overrides(self) -> dict[str, int]:
+        """Parse 'type:days,type:days'. Invalid entries are ignored; the least is 1 day."""
+        result: dict[str, int] = {}
+        for part in self.job_retention_overrides.split(","):
+            name, _, days = part.strip().partition(":")
+            if name and days.strip().isdigit() and int(days) >= 1:
+                result[name.strip()] = int(days)
+        return result
 
     @property
     def queue_concurrency(self) -> dict[str, int]:

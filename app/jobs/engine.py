@@ -7,7 +7,7 @@ commits its own short transaction.
 import json
 import random
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -414,17 +414,42 @@ def recover_interrupted(db: Session) -> int:
     return len(jobs)
 
 
-def purge_old(db: Session, days: int) -> int:
-    """Delete finished jobs (and, by FK cascade, their logs) older than `days`."""
-    cutoff = utcnow() - timedelta(days=days)
-    result = db.execute(
-        delete(Job).where(
-            and_(Job.status.in_(TERMINAL_STATUSES), Job.finished_at.is_not(None)),
-            Job.finished_at < cutoff,
-        )
-    )
+@dataclass(frozen=True)
+class RetentionPolicy:
+    """How many days finished jobs (and their logs) are kept; at least 1 each."""
+
+    routine_days: int = 1  # the jobs that run all day, whatever their outcome
+    success_days: int = 14  # everything else that succeeded or was cancelled
+    failed_days: int = 60  # everything else that failed
+    overrides: dict[str, int] = field(default_factory=dict)  # per job type, wins over the rest
+
+
+def purge_jobs(
+    db: Session, policy: RetentionPolicy, *, now: Callable[[], datetime] = utcnow
+) -> int:
+    """Delete the finished jobs that are older than the policy allows; the logs go with them
+    (FK cascade). Returns how many jobs were removed."""
+    moment = now()
+    finished = and_(Job.status.in_(TERMINAL_STATUSES), Job.finished_at.is_not(None))
+    old = lambda days: Job.finished_at < moment - timedelta(days=max(days, 1))  # noqa: E731
+    overridden = list(policy.overrides)
+    rules = [and_(Job.type == job_type, old(days)) for job_type, days in policy.overrides.items()]
+    rest = [Job.type.not_in(overridden)] if overridden else []
+    rules.append(and_(Job.type.in_(ROUTINE_TYPES), *rest, old(policy.routine_days)))
+    ordinary = [Job.type.not_in(ROUTINE_TYPES), *rest]
+    rules.append(and_(*ordinary, Job.status == STATUS_FAILED, old(policy.failed_days)))
+    rules.append(and_(*ordinary, Job.status != STATUS_FAILED, old(policy.success_days)))
+    result = db.execute(delete(Job).where(finished, or_(*rules)))
     db.commit()
     return result.rowcount
+
+
+def compact_database(session_factory) -> None:
+    """Give the space of deleted rows back to the disk (SQLite keeps it otherwise)."""
+    engine_ = session_factory.kw["bind"]
+    with engine_.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        conn.exec_driver_sql("PRAGMA wal_checkpoint(TRUNCATE)")
+        conn.exec_driver_sql("VACUUM")
 
 
 FAILURE_WINDOW = timedelta(hours=24)  # how long a failure keeps the Jobs icon red

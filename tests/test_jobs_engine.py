@@ -241,23 +241,6 @@ def test_recover_ignores_queued_and_finished_jobs(jdb):
     assert engine.recover_interrupted(jdb) == 1  # only the still-running first job
 
 
-def test_purge_old_removes_finished_jobs_and_logs(jdb):
-    old = engine.enqueue(jdb, "test.noop")
-    fresh = engine.enqueue(jdb, "test.noop")
-    running = engine.enqueue(jdb, "test.noop")
-    for j in (old, fresh):
-        engine.claim_next(jdb, "default")
-        engine.finish_success(jdb, j.id)
-    jdb.refresh(old)
-    old.finished_at = utcnow() - timedelta(days=40)
-    running.started_at = utcnow() - timedelta(days=90)
-    jdb.commit()
-    assert engine.purge_old(jdb, 30) == 1
-    assert jdb.get(Job, old.id) is None
-    assert jdb.get(Job, fresh.id) is not None and jdb.get(Job, running.id) is not None
-    assert _logs(jdb, old.id) == []
-
-
 def test_list_jobs_filters_and_paginates(jdb):
     for _ in range(5):
         engine.enqueue(jdb, "test.noop")

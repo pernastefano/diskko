@@ -21,6 +21,17 @@
     {% endfor %}
   </div>
   {% set f = fields.job_queue_concurrency %}{{ status_line(f) }}
+
+  <div class="border-t border-slate-200 pt-4">
+    <h3 class="font-semibold">{{ t('settings.retention.title') }}</h3>
+    <p class="mb-3 text-sm text-slate-500">{{ t('settings.retention.intro') }}</p>
+    <div class="grid gap-4 md:grid-cols-3">
+      {{ field(fields.job_retention_routine_days, 'number', status=False) }}
+      {{ field(fields.job_retention_success_days, 'number', status=False) }}
+      {{ field(fields.job_retention_failed_days, 'number', status=False) }}
+    </div>
+    <div class="mt-4">{{ field(fields.job_retention_overrides, status=False) }}</div>
+  </div>
   {{ save_button() }}
 </form>
 {% endblock %}
