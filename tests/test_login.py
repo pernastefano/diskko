@@ -14,7 +14,7 @@ def test_login_success_sets_hardened_cookie(admin_client, new_client):
     assert "diskko_session=" in cookie
     assert "httponly" in cookie and "samesite=lax" in cookie
     assert "secure" not in cookie  # plain-http base URL
-    assert c.get("/library").status_code == 200
+    assert c.get("/dashboard").status_code == 200
 
 
 def test_session_cookie_is_secure_on_https(tmp_path):
@@ -69,7 +69,7 @@ def test_logout_revokes_session(admin_client, db):
     r = post(admin_client, "/logout")
     assert r.status_code == 303 and r.headers["location"] == "/login"
     assert db.scalar(select(func.count(UserSession.id))) == 0
-    assert admin_client.get("/library").status_code == 303
+    assert admin_client.get("/dashboard").status_code == 303
 
 
 def test_login_next_redirects_to_local_path(admin_client, new_client):
@@ -112,14 +112,14 @@ def test_login_page_when_already_logged_in_redirects(admin_client):
 def test_tampered_cookie_is_anonymous(admin_client, new_client):
     c = new_client()
     c.cookies.set("diskko_session", "garbage")
-    assert c.get("/library").status_code == 303
+    assert c.get("/dashboard").status_code == 303
 
 
 def test_expired_session_is_rejected(admin_client, db):
     row = db.scalar(select(UserSession))
     row.expires_at = utcnow().replace(year=2000)
     db.commit()
-    assert admin_client.get("/library").status_code == 303
+    assert admin_client.get("/dashboard").status_code == 303
     assert db.scalar(select(func.count(UserSession.id))) == 0
 
 
@@ -131,7 +131,7 @@ def test_session_slides_when_used(admin_client, db):
     row.last_seen = utcnow() - timedelta(hours=1)
     row.expires_at = old_expiry
     db.commit()
-    r = admin_client.get("/library")
+    r = admin_client.get("/dashboard")
     assert r.status_code == 200
     assert "diskko_session" in r.headers.get("set-cookie", "")
     db.expire_all()
@@ -139,5 +139,5 @@ def test_session_slides_when_used(admin_client, db):
 
 
 def test_login_replaces_previous_session_of_same_browser(admin_client, db):
-    login(admin_client, "admin", page="/library")
+    login(admin_client, "admin", page="/dashboard")
     assert db.scalar(select(func.count(UserSession.id))) == 1

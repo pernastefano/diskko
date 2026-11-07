@@ -454,7 +454,7 @@ def test_no_polling_when_nothing_is_downloading(admin_client, band):
 
 
 def test_italian(admin_client, band):
-    post(admin_client, "/lang", {"lang": "it", "next": "/library"})
+    post(admin_client, "/lang", {"lang": "it", "next": "/dashboard"})
     text = page(admin_client, f"/artist/{band['id']}")
     for expected in (
         "Nella tua libreria",

@@ -1,0 +1,17 @@
+{# Grid tile of one owned album: needs `r` (AlbumRow) #}
+{% set al = r.album %}
+<a href="{{ r.url }}" class="group block overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-indigo-300 hover:shadow focus:outline-none focus:ring-2 focus:ring-indigo-500" data-album="{{ al.id }}">
+  {% if r.cover %}
+    <img src="/covers/{{ r.cover }}" alt="" loading="lazy" class="aspect-square w-full object-cover">
+  {% else %}
+    <div class="flex aspect-square w-full items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 text-4xl font-semibold text-slate-500" aria-hidden="true">{{ (al.title[:1] or '?')|upper }}</div>
+  {% endif %}
+  <div class="p-3">
+    <div class="truncate font-medium group-hover:text-indigo-700" title="{{ al.title }}">{{ al.title }}</div>
+    <div class="truncate text-xs text-slate-500" title="{{ r.artist.name }}">{{ r.artist.name }}{% if al.year %} · {{ al.year }}{% endif %}</div>
+    <div class="mt-1 flex flex-wrap items-center gap-1">
+      {% set tier = al.quality_tier %}{% include "_quality_badge.html" %}
+      {% set fmt = al|album_format %}{% if fmt %}<span class="text-xs text-slate-500">{{ fmt }}</span>{% endif %}
+    </div>
+  </div>
+</a>

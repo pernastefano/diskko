@@ -399,7 +399,7 @@ def test_restoring_the_initial_profiles(app, admin_client):
 
 
 def test_the_page_is_in_italian(admin_client):
-    post(admin_client, "/lang", {"lang": "it", "next": "/library"})
+    post(admin_client, "/lang", {"lang": "it", "next": "/dashboard"})
     text = page(admin_client)
     assert "Profili di qualità" in text and "Aggiungi profilo" in text
     assert "Ripristina i profili iniziali" in text

@@ -3,6 +3,7 @@
 from app.jobs.handlers import (  # noqa: F401
     check_integrations,
     download_monitor,
+    fetch_artist_images,
     fetch_covers,
     fetch_similar,
     fetch_tracklist,

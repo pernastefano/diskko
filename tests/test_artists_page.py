@@ -56,55 +56,61 @@ def page(client, path):
 
 def test_the_library_needs_a_login(client, admin_client, new_client):
     anon = new_client()
-    for path in ("/library", "/library/items"):
+    for path in ("/artists", "/artists/items"):
         r = anon.get(path)
         assert r.status_code == 303 and r.headers["location"].startswith("/login")
 
 
 def test_the_library_is_open_to_every_user(admin_client, user_client, lib):
     for client in (admin_client, user_client):
-        assert "Alpha" in page(client, "/library")
+        assert "Alpha" in page(client, "/artists")
 
 
-def test_the_home_page_is_the_library(admin_client, new_client):
+def test_the_home_page_is_the_dashboard(admin_client, new_client):
     r = admin_client.get("/")
-    assert r.status_code == 303 and r.headers["location"] == "/library"
+    assert r.status_code == 303 and r.headers["location"] == "/dashboard"
     anon = new_client().get("/")
     assert anon.status_code == 303 and anon.headers["location"].startswith("/login")
 
 
 def test_menu_links(admin_client, user_client):
-    admin, user = page(admin_client, "/library"), page(user_client, "/library")
-    assert 'href="/library"' in admin and 'href="/library"' in user
-    assert "Library admin" in admin and "/admin/library" not in user
+    admin, user = page(admin_client, "/artists"), page(user_client, "/artists")
+    for text in (admin, user):
+        for link in ("/dashboard", "/artists", "/albums", "/search", "/requests"):
+            assert f'href="{link}"' in text, link
+    assert 'href="/admin/artists"' in admin and "Artist management" in admin
+    assert 'href="/admin/artists"' not in user and "/admin/library" not in admin + user
 
 
 # ---------------------------------------------------------------- content
 
 
 def test_empty_library(admin_client):
-    text = page(admin_client, "/library")
+    text = page(admin_client, "/artists")
     assert "The library is empty" in text and "0 artist(s)" in text
 
 
 def test_tiles_show_albums_and_missing_state(admin_client, lib):
-    text = page(admin_client, "/library")
+    text = page(admin_client, "/artists")
     assert names_in(text) == ["Alpha", "Beta", "Gamma"]
     assert "3 artist(s)" in text
-    assert "1 album(s)" in text
-    assert "2 missing" in text  # Alpha: Alpha 1, Alpha 2 (the live album is not a selected type)
-    assert "No metadata" in text  # Beta has not been synced
-    assert "Complete" in text  # Gamma owns everything
+    chips = dict(
+        zip(names_in(text), re.findall(r'data-ownership="(\w+)"[^>]*>([^<]*)<', text), strict=True)
+    )
+    # Alpha owns 1 and misses 2 (the live album is not a selected type): "1 / 2", yellow
+    assert chips["Alpha"] == ("yellow", "1 / 2")
+    assert chips["Beta"][0] == "unknown" and "No metadata" in chips["Beta"][1]  # not synced yet
+    assert chips["Gamma"] == ("green", "1 / 0")  # owns everything: nothing missing
 
 
 def test_cover_or_initial(admin_client, lib):
-    text = page(admin_client, "/library")
+    text = page(admin_client, "/artists")
     assert 'src="/covers/cover-alpha.jpg"' in text and 'loading="lazy"' in text
     assert text.count('aria-hidden="true">B</div>') == 1  # Beta has no cover: its initial
 
 
 def test_each_tile_links_to_the_artist(admin_client, lib):
-    text = page(admin_client, "/library")
+    text = page(admin_client, "/artists")
     for artist_id in lib.values():
         assert f'href="/artist/{artist_id}"' in text
 
@@ -112,17 +118,17 @@ def test_each_tile_links_to_the_artist(admin_client, lib):
 def test_artist_names_are_escaped(app, admin_client):
     with app.state.session_factory() as db:
         make_artist(db, '<script>alert("x")</script>')
-    text = page(admin_client, "/library")
+    text = page(admin_client, "/artists")
     assert "<script>alert" not in text and "&lt;script&gt;" in text
 
 
 def test_missing_counts_follow_the_system_wide_types(admin_client, user_client, lib):
-    assert "2 missing" in page(admin_client, "/library") and "2 missing" in page(
-        user_client, "/library"
+    assert "2 missing" in page(admin_client, "/artists") and "2 missing" in page(
+        user_client, "/artists"
     )
     post(admin_client, "/settings/albums/types", {"types": ["live"]}, page="/settings/albums")
     for client in (admin_client, user_client):  # the same for everybody
-        text = page(client, "/library")
+        text = page(client, "/artists")
         assert "1 missing" in text and "2 missing" not in text
 
 
@@ -130,57 +136,57 @@ def test_missing_counts_follow_the_system_wide_types(admin_client, user_client, 
 
 
 def test_search_filters_the_page_and_the_fragment(admin_client, lib):
-    assert names_in(page(admin_client, "/library?q=alp")) == ["Alpha"]
-    fragment = page(admin_client, "/library/items?q=gam")
+    assert names_in(page(admin_client, "/artists?q=alp")) == ["Alpha"]
+    fragment = page(admin_client, "/artists/items?q=gam")
     assert names_in(fragment) == ["Gamma"] and "<html" not in fragment
-    assert "No artists match these filters." in page(admin_client, "/library/items?q=zzz")
+    assert "No artists match these filters." in page(admin_client, "/artists/items?q=zzz")
 
 
 def test_the_search_box_updates_the_tiles_by_htmx(admin_client, lib):
-    text = page(admin_client, "/library")
+    text = page(admin_client, "/artists")
     box = re.search(r'<input id="q"[^>]*>', text, re.S).group(0)
-    assert 'hx-get="/library/items"' in box and 'hx-target="#tiles"' in box
+    assert 'hx-get="/artists/items"' in box and 'hx-target="#tiles"' in box
     assert "delay:300ms" in box and 'hx-sync="this:replace"' in box
 
 
 def test_letter_bar_and_filter(admin_client, lib):
-    text = page(admin_client, "/library")
-    assert 'href="/library?letter=A"' in text and 'href="/library?letter=G"' in text
-    assert 'href="/library?letter=Z"' not in text  # no artist starts with Z: not a link
-    assert names_in(page(admin_client, "/library?letter=g")) == ["Gamma"]
-    assert names_in(page(admin_client, "/library?letter=%23")) == []
-    assert "bg-indigo-600 text-white" in page(admin_client, "/library?letter=A")
+    text = page(admin_client, "/artists")
+    assert 'href="/artists?letter=A"' in text and 'href="/artists?letter=G"' in text
+    assert 'href="/artists?letter=Z"' not in text  # no artist starts with Z: not a link
+    assert names_in(page(admin_client, "/artists?letter=g")) == ["Gamma"]
+    assert names_in(page(admin_client, "/artists?letter=%23")) == []
+    assert "bg-indigo-600 text-white" in page(admin_client, "/artists?letter=A")
 
 
 def test_only_missing(admin_client, lib):
-    assert names_in(page(admin_client, "/library?missing=1")) == ["Alpha"]
-    assert 'name="missing" value="1" checked' in page(admin_client, "/library?missing=1")
+    assert names_in(page(admin_client, "/artists?missing=1")) == ["Alpha"]
+    assert 'name="missing" value="1" checked' in page(admin_client, "/artists?missing=1")
 
 
 def test_sorting(admin_client, lib):
-    assert names_in(page(admin_client, "/library?sort=missing"))[0] == "Alpha"
-    assert names_in(page(admin_client, "/library?sort=recent"))[0] == "Gamma"  # added last
-    assert names_in(page(admin_client, "/library?sort=bogus")) == ["Alpha", "Beta", "Gamma"]
-    assert '<option value="missing" selected>' in page(admin_client, "/library?sort=missing")
+    assert names_in(page(admin_client, "/artists?sort=missing"))[0] == "Alpha"
+    assert names_in(page(admin_client, "/artists?sort=recent"))[0] == "Gamma"  # added last
+    assert names_in(page(admin_client, "/artists?sort=bogus")) == ["Alpha", "Beta", "Gamma"]
+    assert '<option value="missing" selected>' in page(admin_client, "/artists?sort=missing")
 
 
 def test_list_view(admin_client, lib):
-    text = page(admin_client, "/library?view=list")
+    text = page(admin_client, "/artists?view=list")
     assert row_names(text) == ["Alpha", "Beta", "Gamma"] and "grid-cols-1" in text
     assert "sm:hidden" in text and "hidden w-28" in text  # details move under the name on phones
     assert names_in(text) == []  # no tiles in list mode
-    assert row_names(page(admin_client, "/library/items?view=list")) == ["Alpha", "Beta", "Gamma"]
+    assert row_names(page(admin_client, "/artists/items?view=list")) == ["Alpha", "Beta", "Gamma"]
 
 
 def test_unknown_parameters_are_ignored(admin_client, lib):
-    text = page(admin_client, "/library?view=cube&letter=%C3%9F&page=0&sort=x&missing=maybe")
+    text = page(admin_client, "/artists?view=cube&letter=%C3%9F&page=0&sort=x&missing=maybe")
     assert names_in(text) == ["Alpha", "Beta", "Gamma"]
 
 
 def test_links_keep_the_filters(admin_client, lib):
-    text = page(admin_client, "/library?q=a&sort=missing&view=list")
+    text = page(admin_client, "/artists?q=a&sort=missing&view=list")
     assert "q=a&amp;sort=missing" in text or "q=a&sort=missing" in text
-    assert 'href="/library?q=a&sort=missing"' in text.replace(
+    assert 'href="/artists?q=a&sort=missing"' in text.replace(
         "&amp;", "&"
     )  # switch to grid keeps them
 
@@ -195,18 +201,18 @@ def big(app, admin_client):
 
 
 def test_the_first_page_has_a_scroll_sentinel(admin_client, big):
-    text = page(admin_client, "/library")
+    text = page(admin_client, "/artists")
     assert len(names_in(text)) == PAGE_SIZE and "130 artist(s)" in text
     sentinel = re.search(r'<div[^>]*hx-trigger="revealed"[^>]*>', text).group(0)
-    assert 'hx-get="/library/items?page=2"' in sentinel and 'hx-swap="outerHTML"' in sentinel
+    assert 'hx-get="/artists/items?page=2"' in sentinel and 'hx-swap="outerHTML"' in sentinel
 
 
 def test_scrolling_through_every_page_shows_each_artist_once(admin_client, big):
-    seen, url = [], "/library"
+    seen, url = [], "/artists"
     for _ in range(10):
         html = page(admin_client, url)
         seen += names_in(html)
-        sentinel = re.search(r'hx-get="(/library/items\?[^"]+)"[^>]*hx-trigger="revealed"', html)
+        sentinel = re.search(r'hx-get="(/artists/items\?[^"]+)"[^>]*hx-trigger="revealed"', html)
         if not sentinel:
             break
         url = sentinel.group(1).replace("&amp;", "&")
@@ -215,14 +221,14 @@ def test_scrolling_through_every_page_shows_each_artist_once(admin_client, big):
 
 
 def test_the_last_page_has_no_sentinel(admin_client, big):
-    last = page(admin_client, "/library/items?page=3")
+    last = page(admin_client, "/artists/items?page=3")
     assert len(names_in(last)) == 130 - 2 * PAGE_SIZE and 'hx-trigger="revealed"' not in last
-    beyond = page(admin_client, "/library/items?page=9")
+    beyond = page(admin_client, "/artists/items?page=9")
     assert names_in(beyond) == [] and "No artists match" not in beyond  # silently empty
 
 
 def test_the_sentinel_keeps_the_filters(admin_client, big):
-    html = page(admin_client, "/library/items?q=artist&sort=missing&view=list")
+    html = page(admin_client, "/artists/items?q=artist&sort=missing&view=list")
     sentinel = (
         re.search(r'hx-get="([^"]+)"[^>]*hx-trigger="revealed"', html)
         .group(1)
@@ -237,11 +243,11 @@ def test_the_sentinel_keeps_the_filters(admin_client, big):
 
 
 def test_plain_links_work_without_javascript(admin_client, big):
-    second = page(admin_client, "/library?page=2")
-    assert 'href="/library"' in second  # previous goes back to the first page, no page parameter
-    assert "/library?page=3" in second and names_in(second)[0] == "Artist 0048"
-    assert "Previous" not in page(admin_client, "/library") and "Next" in page(
-        admin_client, "/library"
+    second = page(admin_client, "/artists?page=2")
+    assert 'href="/artists"' in second  # previous goes back to the first page, no page parameter
+    assert "/artists?page=3" in second and names_in(second)[0] == "Artist 0048"
+    assert "Previous" not in page(admin_client, "/artists") and "Next" in page(
+        admin_client, "/artists"
     )
 
 
@@ -251,9 +257,9 @@ def test_a_thousand_five_hundred_artists(app, admin_client):
     import time
 
     start = time.perf_counter()
-    first = page(admin_client, "/library")
-    deep = page(admin_client, "/library/items?page=32&sort=missing")
-    search = page(admin_client, "/library/items?q=artist 07")
+    first = page(admin_client, "/artists")
+    deep = page(admin_client, "/artists/items?page=32&sort=missing")
+    search = page(admin_client, "/artists/items?q=artist 07")
     assert "1500 artist(s)" in first and len(names_in(first)) == PAGE_SIZE
     assert len(names_in(deep)) == 1500 - 31 * PAGE_SIZE and len(names_in(search)) == 48
     assert time.perf_counter() - start < 3.0
@@ -263,10 +269,10 @@ def test_a_thousand_five_hundred_artists(app, admin_client):
 
 
 def test_italian(admin_client, lib):
-    post(admin_client, "/lang", {"lang": "it", "next": "/library"})
-    text = page(admin_client, "/library")
-    assert "Cerca artisti" in text and "3 artisti" in text and "2 mancanti" in text
-    assert "Senza metadati" in text and "Completo" in text and "Più mancanti" in text
+    post(admin_client, "/lang", {"lang": "it", "next": "/artists"})
+    text = page(admin_client, "/artists")
+    assert "Cerca artisti" in text and "3 artisti" in text and "1 / 2" in text
+    assert "Senza metadati" in text and "Più mancanti" in text
 
 
 def test_every_release_group_type_is_counted_only_when_selected(app, admin_client, lib):
@@ -277,6 +283,6 @@ def test_every_release_group_type_is_counted_only_when_selected(app, admin_clien
         admin_client,
         "/settings/albums/types",
         {"types": ["album", "live"]},
-        page="/admin/library",
+        page="/settings/albums",
     )
-    assert "3 missing" in page(admin_client, "/library")
+    assert "1 / 3" in page(admin_client, "/artists")

@@ -336,9 +336,9 @@ def make_external(db):
 
 def test_similar_artists_load_through_a_job(app, admin_client, db):
     artist = make_external(db)
-    first = post(admin_client, f"/artist/{artist.id}/similar", page="/library")
+    first = post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard")
     assert 'data-similar-state="loading"' in first.text and 'hx-trigger="every 3s"' in first.text
-    again = post(admin_client, f"/artist/{artist.id}/similar", page="/library")
+    again = post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard")
     assert 'data-similar-state="loading"' in again.text
     assert len(jobs(db, "fetch_similar_artists")) == 1
     with respx.mock() as mock:
@@ -353,7 +353,7 @@ def test_similar_artists_load_through_a_job(app, admin_client, db):
 
 def test_listenbrainz_steps_in_when_lastfm_has_nothing(app, admin_client, db):
     artist = make_external(db)
-    post(admin_client, f"/artist/{artist.id}/similar", page="/library")
+    post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard")
     with respx.mock() as mock:
         mock.get(LASTFM).respond(json=load("lastfm_error_6"))
         mock.get(LB).respond(json=load("listenbrainz_similar"))
@@ -365,7 +365,7 @@ def test_listenbrainz_steps_in_when_lastfm_has_nothing(app, admin_client, db):
 
 def test_listenbrainz_steps_in_when_the_lastfm_key_is_refused(app, admin_client, db):
     artist = make_external(db)
-    post(admin_client, f"/artist/{artist.id}/similar", page="/library")
+    post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard")
     with respx.mock() as mock:
         mock.get(LASTFM).respond(403, json={"error": 10, "message": "Invalid API key"})
         mock.get(LB).respond(json=load("listenbrainz_similar"))
@@ -382,7 +382,7 @@ def test_listenbrainz_steps_in_when_the_lastfm_key_is_refused(app, admin_client,
 def test_without_lastfm_the_fallback_is_used(settings, app, admin_client, db):
     app.state.settings = settings.model_copy(update={"lastfm_api_key": ""})
     artist = make_external(db)
-    post(admin_client, f"/artist/{artist.id}/similar", page="/library")
+    post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard")
     with respx.mock() as mock:
         mock.get(LB).respond(json=load("listenbrainz_similar"))
         drain(app)
@@ -391,19 +391,19 @@ def test_without_lastfm_the_fallback_is_used(settings, app, admin_client, db):
 
 def test_nothing_found_anywhere_is_remembered(app, admin_client, db):
     artist = make_external(db)
-    post(admin_client, f"/artist/{artist.id}/similar", page="/library")
+    post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard")
     with respx.mock() as mock:
         mock.get(LASTFM).respond(json=load("lastfm_error_6"))
         mock.get(LB).respond(json=[])
         drain(app)
-    text = post(admin_client, f"/artist/{artist.id}/similar", page="/library").text
+    text = post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard").text
     assert 'data-similar-state="empty"' in text
     assert len(jobs(db, "fetch_similar_artists")) == 1  # fresh: not asked again
 
 
 def test_when_every_provider_fails_the_job_is_retried_not_stored(app, admin_client, db):
     artist = make_external(db)
-    post(admin_client, f"/artist/{artist.id}/similar", page="/library")
+    post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard")
     with respx.mock() as mock:
         mock.get(LASTFM).respond(503)
         mock.get(LB).respond(503)
@@ -416,19 +416,19 @@ def test_when_every_provider_fails_the_job_is_retried_not_stored(app, admin_clie
 def test_similar_artists_need_a_provider(settings, app, admin_client, db):
     app.state.settings = settings.model_copy(update={"lastfm_api_key": "", "mb_user_agent": ""})
     artist = make_external(db)
-    text = post(admin_client, f"/artist/{artist.id}/similar", page="/library").text
+    text = post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard").text
     assert 'data-similar-state="unavailable"' in text and jobs(db) == []
 
 
 def test_a_failed_similar_job_is_reported(admin_client, db):
     artist = make_external(db)
-    post(admin_client, f"/artist/{artist.id}/similar", page="/library")
+    post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard")
     job = jobs(db, "fetch_similar_artists")[0]
     job.status, job.finished_at = STATUS_FAILED, utcnow()
     db.commit()
-    text = post(admin_client, f"/artist/{artist.id}/similar", page="/library").text
+    text = post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard").text
     assert 'data-similar-state="failed"' in text
-    retried = post(admin_client, f"/artist/{artist.id}/similar?retry=1", page="/library").text
+    retried = post(admin_client, f"/artist/{artist.id}/similar?retry=1", page="/dashboard").text
     assert 'data-similar-state="loading"' in retried
 
 
@@ -444,14 +444,14 @@ def test_the_similar_list_links_and_opens_artists(admin_client, db):
     assert f'href="/artist/{owned.id}"' in text  # known artist: a plain link
     assert f'action="/artist/{artist.id}/similar/open"' in text  # unknown, with MBID: opens it
     r = post(
-        admin_client, f"/artist/{artist.id}/similar/open", {"mbid": THOM_YORKE}, page="/library"
+        admin_client, f"/artist/{artist.id}/similar/open", {"mbid": THOM_YORKE}, page="/dashboard"
     )
     new = db.scalar(select(Artist).where(Artist.mbid == THOM_YORKE))
     assert r.status_code == 303 and r.headers["location"] == f"/artist/{new.id}"
     assert new.in_library is False and new.name == "Thom Yorke"
     # only artists of this list can be opened
     other = post(
-        admin_client, f"/artist/{artist.id}/similar/open", {"mbid": NIRVANA}, page="/library"
+        admin_client, f"/artist/{artist.id}/similar/open", {"mbid": NIRVANA}, page="/dashboard"
     )
     assert other.status_code == 404
 
@@ -492,7 +492,7 @@ def test_stale_lists_are_shown_and_refreshed_quietly(admin_client, db):
     disc.store_similar(db, artist.id, [SimilarHit("Muse", None, 0.5)], "lastfm")
     db.get(SimilarFetch, artist.id).fetched_at = utcnow() - timedelta(days=30)
     db.commit()
-    text = post(admin_client, f"/artist/{artist.id}/similar", page="/library").text
+    text = post(admin_client, f"/artist/{artist.id}/similar", page="/dashboard").text
     assert 'data-similar-state="ready"' in text and "Muse" in text
     assert len(jobs(db, "fetch_similar_artists")) == 1  # the refresh
 
@@ -507,7 +507,7 @@ def album_with_group(db, title="Lady Soul"):
 
 def tracks_of(client, group_id, **kw):
     """What the album page asks when it opens: queue what is missing, return the tracks."""
-    return post(client, f"/album/{group_id}/tracks", page="/library", **kw)
+    return post(client, f"/album/{group_id}/tracks", page="/dashboard", **kw)
 
 
 def mount_releases(mock, empty=False):
@@ -649,7 +649,7 @@ def test_reloading_an_expired_preview_asks_again(db, admin_client):
     store_previews(db, group.id, "deezer", "9", [PreviewData(1, 1, "Song", "1", "https://x/1.mp3")])
     db.commit()
     assert jobs(db, "resolve_previews") == []  # the lookup is still fresh
-    post(admin_client, f"/album/{group.id}/tracks?refresh=1", page="/library")
+    post(admin_client, f"/album/{group.id}/tracks?refresh=1", page="/dashboard")
     assert '"force": true' in jobs(db, "resolve_previews")[0].payload_json
 
 
@@ -664,14 +664,14 @@ def test_a_failed_preview_job_is_reported_and_not_retried_in_a_loop(admin_client
     db.commit()
     assert "data-failed" in tracks_of(admin_client, group.id).text
     assert len(jobs(db, "resolve_previews")) == 1
-    post(admin_client, f"/album/{group.id}/tracks?refresh=1", page="/library")
+    post(admin_client, f"/album/{group.id}/tracks?refresh=1", page="/dashboard")
     assert len(jobs(db, "resolve_previews")) == 2  # "reload" tries again
 
 
 def test_unknown_albums_are_404(admin_client):
     assert tracks_of(admin_client, 9999).status_code == 404
     assert admin_client.get("/album/9999/tracks").status_code == 404
-    assert post(admin_client, "/artist/9999/similar", page="/library").status_code == 404
+    assert post(admin_client, "/artist/9999/similar", page="/dashboard").status_code == 404
 
 
 # -------------------------------------------------------------------- housekeeping
@@ -700,7 +700,7 @@ def test_forgotten_external_artists_are_purged(db):
 
 def test_the_nav_has_a_search_link(admin_client, user_client):
     for c in (admin_client, user_client):
-        assert 'href="/search"' in c.get("/library").text
+        assert 'href="/search"' in c.get("/dashboard").text
 
 
 def test_active_statuses_cover_queued_and_running():

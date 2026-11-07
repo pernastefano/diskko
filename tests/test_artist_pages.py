@@ -135,7 +135,7 @@ def test_changing_the_shared_types_changes_the_missing_list_at_once(admin_client
         admin_client,
         "/settings/albums/types",
         {"types": ["single", "live"]},
-        page="/admin/library",
+        page="/dashboard",
     )
     assert r.status_code == 303
     missing = page(admin_client, url).split("Missing albums", 1)[1]
@@ -446,9 +446,9 @@ def test_pages_in_italian(admin_client, band):
 
 
 def test_menu_links(admin_client, user_client):
-    assert 'href="/admin/artists"' in page(admin_client, "/library")
-    assert 'href="/admin/artists"' not in page(user_client, "/library")
-    assert 'href="/account/preferences"' in page(user_client, "/library")
+    assert 'href="/admin/artists"' in page(admin_client, "/dashboard")
+    assert 'href="/admin/artists"' not in page(user_client, "/dashboard")
+    assert 'href="/account/preferences"' in page(user_client, "/dashboard")
 
 
 def test_sync_button_exists_only_when_logged_in_as_admin(user_client, band):

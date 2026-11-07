@@ -202,7 +202,7 @@ def status_link(html):
 
 
 def test_the_status_icon_is_neutral_until_something_is_known(admin_client):
-    link = status_link(admin_client.get("/library").text)
+    link = status_link(admin_client.get("/dashboard").text)
     assert "data-health" not in link and "text-slate-500" in link
 
 
@@ -214,7 +214,7 @@ def test_the_status_icon_is_green_yellow_or_red(admin_client, db):
     )
     for results, state, color in cases:
         record(db, **results)
-        html = admin_client.get("/library").text
+        html = admin_client.get("/dashboard").text
         link = status_link(html)
         assert f'data-health="{state}"' in link and color in link, state
         assert "configured service" in link  # the tooltip says what the colour means
@@ -224,16 +224,16 @@ def test_the_status_icon_is_green_yellow_or_red(admin_client, db):
 
 def test_the_icon_tells_everything_in_words(admin_client, db):
     record(db, itunes=OK, deezer=BAD)
-    link = status_link(admin_client.get("/library").text)
+    link = status_link(admin_client.get("/dashboard").text)
     words = "Status: 1 of 2 configured services connected"
     assert f'title="{words}"' in link and f'aria-label="{words}"' in link
     assert link.count("title=") == 1  # no second, shorter tooltip
-    assert words in admin_client.get("/library").text  # also as text for screen readers
+    assert words in admin_client.get("/dashboard").text  # also as text for screen readers
 
 
 def test_ordinary_users_do_not_get_the_status_icon(user_client, db):
     record(db, itunes=BAD, deezer=BAD)
-    assert "/admin/status" not in user_client.get("/library").text
+    assert "/admin/status" not in user_client.get("/dashboard").text
 
 
 def test_the_status_page_shows_the_summary_and_refreshes_itself(admin_client, db):
@@ -269,4 +269,4 @@ def test_the_automatic_checks_can_be_off(settings, app, admin_client):
 
 def test_the_status_grid_is_for_admins_only(user_client):
     assert user_client.get("/admin/status/grid").status_code == 403
-    assert post(user_client, "/admin/status/test-all", page="/library").status_code == 403
+    assert post(user_client, "/admin/status/test-all", page="/dashboard").status_code == 403

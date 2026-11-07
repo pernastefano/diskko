@@ -181,7 +181,7 @@ def test_user_preference_is_saved_and_follows_login(admin_client, new_client, db
     assert db.scalar(select(User)).language == "it"
     fresh = new_client()  # no cookie, English browser
     login(fresh, "admin")
-    assert "Esci" in fresh.get("/library", headers={"Accept-Language": "en"}).text
+    assert "Esci" in fresh.get("/dashboard", headers={"Accept-Language": "en"}).text
 
 
 def test_setup_stores_detected_language(client, db):

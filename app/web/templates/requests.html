@@ -22,7 +22,7 @@
         {% for row in rows %}{% set r = row.r %}
           <tr data-request="{{ r.id }}">
             <td class="px-3 py-2">
-              <a href="/requests/{{ r.id }}" class="font-medium text-indigo-700 hover:underline">{{ row.group.title }}</a>
+              <a href="/requests/{{ r.id }}" class="font-medium text-indigo-700 hover:underline">{{ row.group.title }}</a>{% if r.upgrade_from %} <span class="ml-1 rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-800" data-upgrade>{{ t('requests.upgrade_tag') }}</span>{% endif %}
               <div class="text-xs text-slate-500"><a href="/artist/{{ row.artist.id }}" class="hover:underline">{{ row.artist.name }}</a>{% if row.group.year %} · {{ row.group.year }}{% endif %}</div>
             </td>
             {% if all_users %}<td class="px-3 py-2 text-slate-600">{{ row.owner }}</td>{% endif %}

@@ -141,10 +141,11 @@ def test_the_button_needs_a_login_and_csrf(admin_client, new_client, album_ids):
 def test_unknown_albums_are_404(admin_client, album_ids):
     artist_id, group_id = album_ids
     assert (
-        post(admin_client, f"/artist/{artist_id}/request/9999", page="/library").status_code == 404
+        post(admin_client, f"/artist/{artist_id}/request/9999", page="/dashboard").status_code
+        == 404
     )
     assert (
-        post(admin_client, f"/artist/9999/request/{group_id}", page="/library").status_code == 404
+        post(admin_client, f"/artist/9999/request/{group_id}", page="/dashboard").status_code == 404
     )
 
 
@@ -179,12 +180,12 @@ def test_the_list_does_not_poll_when_nothing_runs(admin_client, db, album_ids):
 
 def test_the_requests_link_is_in_the_menu_for_everyone(admin_client, user_client):
     for c in (admin_client, user_client):
-        assert 'href="/requests"' in c.get("/library").text
+        assert 'href="/requests"' in c.get("/dashboard").text
 
 
 def test_the_page_follows_the_language(admin_client, db, album_ids):
     request_it(admin_client, album_ids, headers=HX)
-    post(admin_client, "/lang", {"lang": "it", "next": "/library"})
+    post(admin_client, "/lang", {"lang": "it", "next": "/dashboard"})
     text = admin_client.get("/requests").text
     assert "Richieste di download" in text and "In coda" in text
 
@@ -201,7 +202,7 @@ def test_a_request_may_only_be_seen_by_its_owner_or_an_admin(
     for path in ("", "/body", "/control"):
         assert user_client.get(f"/requests/{req.id}{path}").status_code == 404
     assert user_client.get("/requests/9999").status_code == 404
-    assert post(user_client, f"/requests/{req.id}/cancel", page="/library").status_code == 404
+    assert post(user_client, f"/requests/{req.id}/cancel", page="/dashboard").status_code == 404
 
 
 def test_the_detail_shows_candidates_files_and_the_job(admin_client, user_client, db, album_ids):

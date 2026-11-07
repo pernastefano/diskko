@@ -9,6 +9,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     text,
 )
@@ -41,6 +42,9 @@ class Artist(Base):
     mb_source: Mapped[str | None] = mapped_column(String(8), nullable=True)  # tag|auto|manual
     mb_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     in_library: Mapped[bool] = mapped_column(Boolean, default=True)
+    # The artist's picture (an address at Deezer, not a copy) and when it was last looked up.
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 

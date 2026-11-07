@@ -1,4 +1,4 @@
-"""Read models for the user-facing library pages (/library and /artist/<id>).
+"""Read models for the user-facing library pages (/artists, /albums and /artist/<id>).
 
 Everything here is built from a handful of SQL queries per page, whatever the size of the
 library (no per-artist queries): the missing-album counts are aggregated in SQL with the same
@@ -9,11 +9,11 @@ from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from sqlalchemy import exists, func, literal, select
+from sqlalchemy import case, exists, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Artist, LibraryAlbum, ReleaseGroup
-from app.quality import LOSSLESS_CODECS
+from app.quality import LOSSLESS_CODECS, ProfileSet
 from app.services.library.grouping import name_key
 from app.services.musicbrainz.categories import CATEGORIES
 from app.services.musicbrainz.missing import OWNED_STATUSES
@@ -113,6 +113,123 @@ def list_artists(
     for row in result:
         row.cover = covers.get(row.artist.id)
     return result, total
+
+
+# ----------------------------------------------------------------- album listing
+
+ALBUM_SORTS = ("title", "artist", "year", "quality", "recent")
+
+
+@dataclass
+class AlbumRow:
+    album: LibraryAlbum
+    artist: Artist
+    group: ReleaseGroup | None
+
+    @property
+    def url(self) -> str:
+        """The album page: by release group when matched, else the local page."""
+        if self.group is not None and self.album.match_status in OWNED_STATUSES:
+            return f"/album/{self.group.id}"
+        return f"/album/local/{self.album.id}"
+
+    @property
+    def cover(self) -> str | None:
+        g = self.group
+        return g.cover_path if g is not None and g.cover_status == "ok" else None
+
+
+def list_albums(
+    db: Session,
+    profiles: ProfileSet,
+    *,
+    q: str = "",
+    quality: str = "",
+    fmt: str = "",
+    category: str = "",
+    sort: str = "title",
+    page: int = 1,
+    page_size: int = PAGE_SIZE,
+) -> tuple[list[AlbumRow], int]:
+    """One page of the albums in the library and the total number matching the filters."""
+    base = (
+        select(LibraryAlbum, Artist, ReleaseGroup)
+        .join(Artist, Artist.id == LibraryAlbum.artist_id)
+        .outerjoin(
+            ReleaseGroup,
+            (ReleaseGroup.id == LibraryAlbum.release_group_id)
+            & LibraryAlbum.match_status.in_(OWNED_STATUSES),
+        )
+        .where(Artist.in_library.is_(True))
+    )
+    text = q.strip()
+    if text:
+        like = f"%{_escape_like(text.lower())}%"
+        key_like = f"%{_escape_like(name_key(text))}%"
+        base = base.where(
+            or_(
+                func.lower(LibraryAlbum.title).like(like, escape="\\"),
+                Artist.name_key.like(key_like, escape="\\"),
+            )
+        )
+    if quality:
+        base = base.where(LibraryAlbum.quality_tier == quality)
+    if fmt:
+        base = base.where(func.lower(LibraryAlbum.format) == fmt.lower())
+    if category == UNMATCHED:
+        base = base.where(ReleaseGroup.id.is_(None))
+    elif category in CATEGORIES:
+        base = base.where(ReleaseGroup.category == category)
+
+    total = db.scalar(select(func.count()).select_from(base.order_by(None).subquery())) or 0
+    rank = case(
+        {p.key: p.rank for p in profiles.profiles}, value=LibraryAlbum.quality_tier, else_=-1
+    )
+    title = func.lower(LibraryAlbum.title)
+    if sort == "artist":
+        order = (
+            func.lower(Artist.sort_name),
+            LibraryAlbum.year.is_(None),
+            LibraryAlbum.year,
+            title,
+        )
+    elif sort == "year":
+        order = (LibraryAlbum.year.is_(None), LibraryAlbum.year.desc(), title)
+    elif sort == "quality":
+        order = (rank.desc(), title, LibraryAlbum.id)
+    elif sort == "recent":
+        order = (LibraryAlbum.scanned_at.desc(), LibraryAlbum.id.desc())
+    else:
+        order = (title, func.lower(Artist.sort_name), LibraryAlbum.id)
+    page = max(page, 1)
+    rows = db.execute(base.order_by(*order).limit(page_size).offset((page - 1) * page_size)).all()
+    return [AlbumRow(album=r[0], artist=r[1], group=r[2]) for r in rows], total
+
+
+def album_facets(db: Session) -> dict[str, list[str]]:
+    """What the album filters can offer: the formats and the categories actually present."""
+    formats = [
+        f
+        for (f,) in db.execute(
+            select(func.lower(LibraryAlbum.format))
+            .where(LibraryAlbum.format.is_not(None))
+            .distinct()
+        )
+        if f
+    ]
+    present = {
+        c
+        for (c,) in db.execute(
+            select(ReleaseGroup.category)
+            .join(LibraryAlbum, LibraryAlbum.release_group_id == ReleaseGroup.id)
+            .where(LibraryAlbum.match_status.in_(OWNED_STATUSES))
+            .distinct()
+        )
+    }
+    return {
+        "formats": sorted(formats),
+        "categories": [c for c in CATEGORIES if c in present],
+    }
 
 
 def available_letters(db: Session) -> set[str]:

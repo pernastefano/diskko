@@ -1,0 +1,13 @@
+{# One page of albums plus the sentinel that loads the next one when it scrolls into view. #}
+{% for r in rows %}{% include "_album_tile.html" %}
+{% else %}
+  {% if page == 1 %}
+    <p class="col-span-full rounded-lg border border-slate-200 bg-white px-4 py-8 text-center text-slate-500 shadow-sm" data-empty>
+      {{ t('albums.empty_filtered') if p.filtered else t('albums.empty') }}
+    </p>
+  {% endif %}
+{% endfor %}
+{% if next_query %}
+  <div class="col-span-full py-4 text-center text-sm text-slate-400"
+       hx-get="/albums/items?{{ next_query }}" hx-trigger="revealed" hx-swap="outerHTML">{{ t('lib.loading') }}</div>
+{% endif %}

@@ -496,7 +496,7 @@ def test_an_owned_album_shows_its_tracks_and_plays_them_from_disk(admin_client, 
 
 def test_an_owned_album_never_asks_anyone_for_anything(admin_client, db, owned):
     _, group, _, _ = owned
-    r = post(admin_client, f"/album/{group.id}/tracks", page="/library")
+    r = post(admin_client, f"/album/{group.id}/tracks", page="/dashboard")
     assert r.status_code == 200 and r.text.count('data-source="file"') == 3
     assert db.scalars(select(Job)).all() == []
 
@@ -544,8 +544,8 @@ def test_the_page_itself_does_not_queue_anything_but_it_asks_for_the_rest(admin_
 
 def test_opening_the_page_queues_the_tracklist_and_the_previews_once(admin_client, db, remote):
     _, group = remote
-    first = post(admin_client, f"/album/{group.id}/tracks", page="/library")
-    post(admin_client, f"/album/{group.id}/tracks", page="/library")
+    first = post(admin_client, f"/album/{group.id}/tracks", page="/dashboard")
+    post(admin_client, f"/album/{group.id}/tracks", page="/dashboard")
     assert "data-loading" in first.text and 'hx-trigger="every 2s"' in first.text
     assert len(jobs_of(db, "fetch_tracklist")) == 1 and len(jobs_of(db, "resolve_previews")) == 1
     assert jobs_of(db, "fetch_tracklist")[0].queue == "musicbrainz"
@@ -558,7 +558,7 @@ def test_without_a_musicbrainz_contact_only_the_previews_are_asked(
 ):
     _, group = remote
     app.state.settings = settings.model_copy(update={"mb_user_agent": ""})
-    post(admin_client, f"/album/{group.id}/tracks", page="/library")
+    post(admin_client, f"/album/{group.id}/tracks", page="/dashboard")
     assert jobs_of(db, "fetch_tracklist") == [] and len(jobs_of(db, "resolve_previews")) == 1
 
 
@@ -567,7 +567,7 @@ def test_an_old_tracklist_is_shown_while_it_is_refreshed(admin_client, db, remot
     store_tracklist(db, group.id, release("r", None, ["Old Song"]))
     db.get(TracklistFetch, group.id).fetched_at = utcnow() - timedelta(days=40)
     db.commit()
-    text = post(admin_client, f"/album/{group.id}/tracks", page="/library").text
+    text = post(admin_client, f"/album/{group.id}/tracks", page="/dashboard").text
     assert "Old Song" in text
     assert len(jobs_of(db, "fetch_tracklist")) == 1
 
@@ -576,17 +576,17 @@ def test_a_fresh_tracklist_is_not_asked_again(admin_client, db, remote):
     _, group = remote
     store_tracklist(db, group.id, release("r", None, ["Song"]))
     db.commit()
-    post(admin_client, f"/album/{group.id}/tracks", page="/library")
+    post(admin_client, f"/album/{group.id}/tracks", page="/dashboard")
     assert jobs_of(db, "fetch_tracklist") == []
 
 
 def test_a_failed_tracklist_job_is_reported_not_retried_in_a_loop(admin_client, db, remote):
     _, group = remote
-    post(admin_client, f"/album/{group.id}/tracks", page="/library")
+    post(admin_client, f"/album/{group.id}/tracks", page="/dashboard")
     for job in jobs_of(db, "fetch_tracklist") + jobs_of(db, "resolve_previews"):
         job.status, job.finished_at = STATUS_FAILED, utcnow()
     db.commit()
-    text = post(admin_client, f"/album/{group.id}/tracks", page="/library").text
+    text = post(admin_client, f"/album/{group.id}/tracks", page="/dashboard").text
     assert "data-failed" in text and "data-loading" not in text
     assert len(jobs_of(db, "fetch_tracklist")) == 1
 
@@ -598,7 +598,7 @@ def test_an_album_with_no_known_tracks_says_so(admin_client, db, remote):
 
     store_previews(db, group.id, None, None, [])
     db.commit()
-    text = post(admin_client, f"/album/{group.id}/tracks", page="/library").text
+    text = post(admin_client, f"/album/{group.id}/tracks", page="/dashboard").text
     assert "data-no-tracks" in text and "<audio" not in text
 
 
@@ -643,7 +643,7 @@ def test_ordinary_users_can_open_albums_and_play(user_client, owned):
 
 def test_the_album_page_follows_the_language(admin_client, owned):
     _, group, _, _ = owned
-    post(admin_client, "/lang", {"lang": "it", "next": "/library"})
+    post(admin_client, "/lang", {"lang": "it", "next": "/dashboard"})
     text = album_page(admin_client, group.id)
     assert "Nella tua libreria" in text and "Tracce" in text and "3 tracce" in text
 
@@ -774,5 +774,5 @@ def test_cards_have_no_preview_button_and_link_to_the_album(admin_client, db, ow
 
 def test_old_preview_routes_are_gone(admin_client, remote):
     _, group = remote
-    assert post(admin_client, f"/previews/{group.id}", page="/library").status_code in (404, 405)
+    assert post(admin_client, f"/previews/{group.id}", page="/dashboard").status_code in (404, 405)
     assert admin_client.get(f"/previews/{group.id}").status_code in (404, 405)

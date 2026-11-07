@@ -68,6 +68,7 @@ def create_request(
     mode: str | None = None,
     quality_key: str | None = None,
     query: str | None = None,
+    upgrade_from: str | None = None,
 ) -> tuple[DownloadRequest, bool]:
     """A new request, or the one already running for that album. The caller commits.
 
@@ -96,6 +97,7 @@ def create_request(
         quality_key=wanted_quality,
         mode=chosen_mode,
         query_override=" ".join(query.split())[:255] if query and query.strip() else None,
+        upgrade_from=upgrade_from,
     )
     db.add(request)
     db.flush()
@@ -135,6 +137,12 @@ def request_infos(db: Session, release_group_ids: list[int]) -> dict[int, Reques
         for g, i in infos.items()
         if i.status in REQ_ACTIVE or i.status in (REQ_FAILED, REQ_NO_RESULTS)
     }
+
+
+def upgrade_targets(profiles, current_key: str) -> list:
+    """The quality profiles better than the current one, best first (an upgrade aims at one)."""
+    here = profiles.rank(current_key)
+    return [p for p in reversed(profiles.profiles) if p.rank > here]
 
 
 def request_statuses(db: Session, release_group_ids: list[int]) -> dict[int, str]:

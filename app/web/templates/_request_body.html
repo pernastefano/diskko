@@ -3,6 +3,7 @@
   <div class="mb-4 flex flex-wrap items-center gap-3 text-sm">
     {% include "_request_badge.html" %}
     <span class="text-slate-500">{{ t('requests.col.quality') }}: <strong>{{ quality_profiles.name(r.quality_key) }}</strong></span>
+    {% if r.upgrade_from %}<span class="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800" data-upgrade>{{ t('requests.upgrade_from', quality=quality_profiles.name(r.upgrade_from)) }}</span>{% endif %}
     <span class="text-slate-500">{{ t('request.mode.' ~ r.mode) }}</span>
     {% if owner %}<span class="text-slate-500">{{ t('requests.col.user') }}: {{ owner }}</span>{% endif %}
     {% if r.query_used %}<span class="text-slate-500">{{ t('requests.searched', q=r.query_used) }}</span>{% endif %}

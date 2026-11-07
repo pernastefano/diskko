@@ -11,8 +11,8 @@ router = APIRouter()
 
 @router.get("/")
 def home(auth: UserAuth):
-    """The library is the home page."""
-    return RedirectResponse("/library", status_code=303)
+    """The dashboard is the home page."""
+    return RedirectResponse("/dashboard", status_code=303)
 
 
 @router.get("/nav/icons")

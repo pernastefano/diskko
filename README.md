@@ -82,6 +82,21 @@ copertina) e quelli mancanti, raggruppati per tipo secondo le preferenze dell'ut
 "Richiedi download" è per ora solo un segnaposto: i download arrivano con le fasi successive.
 Le copertine mancanti si scaricano in background quando si apre la pagina.
 
+## Pagine
+
+- **Dashboard** (`/dashboard`, la pagina iniziale): conteggi di artisti, album e tracce, album per
+  qualità (ogni voce apre gli album con quella qualità) e ultima scansione. Gli amministratori
+  hanno anche sorgente, cartella, frequenza e i pulsanti di scansione.
+- **Artisti** (`/artists`): per ogni artista l'immagine (da Deezer, altrimenti una copertina o
+  l'iniziale), il nome e "album posseduti / album mancanti": **verde** se non manca nulla,
+  **gialla** se ne hai alcuni e ne mancano altri, **rossa** se non ne hai nessuno.
+- **Album** (`/albums`): tutti gli album posseduti, con ricerca e filtri per **qualità audio**,
+  formato e tipo.
+- **Gestione artisti** (`/admin/artists`, solo amministratori): abbinamenti con MusicBrainz e
+  revisioni.
+- Nella pagina di un album posseduto si può chiedere un **upgrade di qualità** (per esempio da MP3 a
+  FLAC): parte una richiesta di download che cerca almeno quella qualità.
+
 ## Richiedere un album (SLSKD)
 
 Dalla pagina di un artista, "Richiedi download" su un album mancante avvia una richiesta (la

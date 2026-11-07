@@ -21,6 +21,13 @@ class AlbumCandidate:
 
 
 @dataclass(frozen=True)
+class ArtistCandidate:
+    name: str
+    picture_url: str | None
+    fans: int = 0
+
+
+@dataclass(frozen=True)
 class PreviewData:
     disc: int
     position: int

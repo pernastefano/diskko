@@ -9,9 +9,11 @@
     <h1 class="text-3xl font-semibold" data-album-title>{{ title }}</h1>
     <p class="mt-1 text-lg"><a href="/artist/{{ artist.id }}" class="text-indigo-700 hover:underline">{{ artist.name }}</a></p>
     <p class="mt-2 text-sm text-slate-500">
-      {% if year %}{{ year }} · {% endif %}{% if group %}{{ t('category.' ~ group.category) }} · {% endif %}
-      {% if summary.tracks %}{{ t('album.summary', n=summary.tracks, min=(summary.seconds // 60)) }}{% if summary.discs > 1 %} · {{ t('album.discs', n=summary.discs) }}{% endif %}{% endif %}
-      {% if group %} · <a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ group.mbid }}">MusicBrainz ↗</a>{% endif %}
+      {% set parts = [] %}
+      {% if year %}{% set _ = parts.append(year|string) %}{% endif %}
+      {% if group %}{% set _ = parts.append(t('category.' ~ group.category)) %}{% endif %}
+      {% if summary.tracks %}{% set _ = parts.append(t('album.summary', n=summary.tracks, min=(summary.seconds // 60)) ~ (' · ' ~ t('album.discs', n=summary.discs) if summary.discs > 1 else '')) %}{% endif %}
+      {{ parts|join(' · ') }}{% if group %}{{ ' · ' if parts }}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ group.mbid }}">MusicBrainz ↗</a>{% endif %}
     </p>
     <div class="mt-3 flex flex-wrap items-center gap-2">
       {% if mode == 'remote' %}
@@ -24,6 +26,8 @@
     </div>
     {% if mode == 'remote' %}
       <div class="mt-3" data-album-request>{% include "_request_control.html" %}</div>
+    {% elif mode == 'owned' and upgrade %}
+      {% with group=upgrade.group, album=upgrade.album, current=upgrade.current, targets=upgrade.targets, info=upgrade.info, req=upgrade.req, unavailable=upgrade.unavailable %}{% include "_album_upgrade.html" %}{% endwith %}
     {% elif mode == 'local' %}
       <p class="mt-3 text-sm text-slate-500">{{ t('album.local_hint') }}</p>
     {% endif %}

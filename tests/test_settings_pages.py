@@ -92,8 +92,8 @@ def test_every_section_has_a_menu_entry(admin_client):
 
 
 def test_admins_reach_the_settings_from_the_menu(admin_client, user_client):
-    assert 'href="/settings"' in page(admin_client, "/library")
-    assert 'href="/settings"' not in page(user_client, "/library")
+    assert 'href="/settings"' in page(admin_client, "/dashboard")
+    assert 'href="/settings"' not in page(user_client, "/dashboard")
 
 
 # ---------------------------------------------------------------------- library
@@ -540,7 +540,7 @@ def test_the_missing_types_are_a_system_setting(app, admin_client, db):
 
 
 def test_settings_in_italian(admin_client):
-    post(admin_client, "/lang", {"lang": "it", "next": "/library"})
+    post(admin_client, "/lang", {"lang": "it", "next": "/dashboard"})
     assert "Cartella della libreria" in page(admin_client, "/settings/library")
     text = page(admin_client, "/settings/albums")
     assert "Tipi di album mancanti" in text
@@ -551,8 +551,8 @@ def test_settings_in_italian(admin_client):
 
 
 def test_the_library_admin_page_no_longer_has_the_types_form(admin_client):
-    assert 'action="/admin/library/missing-types"' not in page(admin_client, "/admin/library")
-    assert admin_client.post("/admin/library/missing-types").status_code in (403, 404, 405)
+    assert 'action="/dashboard/missing-types"' not in page(admin_client, "/dashboard")
+    assert admin_client.post("/dashboard/missing-types").status_code in (403, 404, 405)
 
 
 def test_nothing_secret_is_stored_outside_the_settings_table(app, admin_client, tmp_path):
@@ -633,9 +633,9 @@ def test_a_custom_crontab_from_the_environment_is_kept_and_shown(app, admin_clie
 
 
 def test_the_library_page_names_the_schedule(app, admin_client):
-    assert "Every day (2:00)" in page(admin_client, "/admin/library")
+    assert "Every day (2:00)" in page(admin_client, "/dashboard")
     app.state.settings.library_scan_cron = "15 4 * * 1"
-    assert "15 4 * * 1" in page(admin_client, "/admin/library")
+    assert "15 4 * * 1" in page(admin_client, "/dashboard")
 
 
 def test_the_library_section_has_no_default_or_override_notes(app, admin_client):

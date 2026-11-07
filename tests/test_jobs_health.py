@@ -76,20 +76,20 @@ def jobs_link(html):
 
 
 def test_the_jobs_icon_is_neutral_when_nothing_is_going_on(admin_client):
-    link = jobs_link(admin_client.get("/library").text)
+    link = jobs_link(admin_client.get("/dashboard").text)
     assert "data-jobs" not in link and "text-slate-500" in link
 
 
 def test_the_jobs_icon_is_yellow_while_jobs_are_in_progress(admin_client, db):
     add(db, status=STATUS_RUNNING)
-    link = jobs_link(admin_client.get("/library").text)
+    link = jobs_link(admin_client.get("/dashboard").text)
     assert 'data-jobs="active"' in link and "bg-amber-100" in link
     assert 'title="Jobs: 1 in progress"' in link
 
 
 def test_the_jobs_icon_is_red_after_a_recent_failure(admin_client, db):
     add(db, status=STATUS_FAILED, finished_ago=timedelta(minutes=5))
-    link = jobs_link(admin_client.get("/library").text)
+    link = jobs_link(admin_client.get("/dashboard").text)
     assert 'data-jobs="failed"' in link and "bg-red-100" in link
     assert 'title="Jobs: 1 failed recently"' in link
 
@@ -98,32 +98,32 @@ def test_red_wins_over_yellow_and_the_tooltip_says_both(admin_client, db):
     add(db, status=STATUS_RUNNING)
     add(db, status=STATUS_QUEUED)
     add(db, type_="housekeeping", status=STATUS_FAILED, finished_ago=timedelta(minutes=5))
-    link = jobs_link(admin_client.get("/library").text)
+    link = jobs_link(admin_client.get("/dashboard").text)
     assert "bg-red-100" in link and "bg-amber-100" not in link
     assert "Jobs: 1 failed recently · 2 in progress" in link
 
 
 def test_an_old_failure_does_not_keep_the_icon_red(admin_client, db):
     add(db, status=STATUS_FAILED, finished_ago=timedelta(hours=30))
-    assert "data-jobs" not in jobs_link(admin_client.get("/library").text)
+    assert "data-jobs" not in jobs_link(admin_client.get("/dashboard").text)
 
 
 def test_the_icon_follows_the_language(admin_client, db):
     add(db, status=STATUS_RUNNING)
-    post(admin_client, "/lang", {"lang": "it", "next": "/library"})
-    assert 'title="Job: 1 in corso"' in jobs_link(admin_client.get("/library").text)
+    post(admin_client, "/lang", {"lang": "it", "next": "/dashboard"})
+    assert 'title="Job: 1 in corso"' in jobs_link(admin_client.get("/dashboard").text)
 
 
 def test_ordinary_users_do_not_get_the_icons(user_client, db):
     add(db, status=STATUS_FAILED, finished_ago=timedelta(minutes=5))
-    assert "nav-icons" not in user_client.get("/library").text
+    assert "nav-icons" not in user_client.get("/dashboard").text
 
 
 # ------------------------------------------------------------- the refreshing partial
 
 
 def test_the_top_bar_refreshes_the_icons_by_itself(admin_client):
-    text = admin_client.get("/library").text
+    text = admin_client.get("/dashboard").text
     assert 'id="nav-icons"' in text and 'hx-get="/nav/icons"' in text
     assert 'hx-trigger="every 15s"' in text
 

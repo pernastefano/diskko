@@ -4,14 +4,18 @@ Slow things (the MusicBrainz track list, the preview lookup) are jobs: the page 
 shows what it has and polls until they are done.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
 from app.auth.deps import DB, UserAuth
+from app.jobs import engine
 from app.jobs.handlers.fetch_tracklist import tracklist_dedupe_key
 from app.jobs.handlers.resolve_previews import previews_dedupe_key
 from app.models import (
     Artist,
+    DownloadRequest,
     LibraryAlbum,
     LibraryTrack,
     PreviewLookup,
@@ -32,7 +36,8 @@ from app.services.downloads import slskd_configured
 from app.services.previews import preview_state
 from app.services.tracklists import load_tracks, tracklist_state
 from app.web.routers.discovery import job_state, queue_job
-from app.web.templating import render
+from app.web.routers.jobs import notify_worker
+from app.web.templating import is_htmx, render
 
 router = APIRouter()
 
@@ -110,6 +115,7 @@ def _group_context(
     if owned is not None:
         rows = owned_rows(db, owned)
         ctx.update(mode="owned", rows=rows, loading=False, lookup=None, tracks_known=True)
+        ctx["upgrade"] = _upgrade_context(request, db, group, owned)
     else:
         remote = _remote_state(request, db, auth, group, enqueue=enqueue, refresh=refresh)
         ctx.update(mode="remote", **remote)
@@ -122,6 +128,81 @@ def _group_context(
         )
     ctx["summary"] = _summary(ctx["rows"])
     return ctx
+
+
+def _upgrade_context(request: Request, db: DB, group: ReleaseGroup, album: LibraryAlbum) -> dict:
+    """What the "upgrade the quality" section of an owned album needs."""
+    profiles = request.app.state.quality_profiles
+    info = downloads_svc.request_infos(db, [group.id]).get(group.id)
+    return {
+        "group": group,
+        "album": album,
+        "current": profiles.name(album.quality_tier),
+        "targets": downloads_svc.upgrade_targets(profiles, album.quality_tier),
+        "info": info,
+        "req": db.get(DownloadRequest, info.id) if info else None,
+        "unavailable": not slskd_configured(request.app.state.settings),
+    }
+
+
+def _owned_group_or_404(db: DB, group_id: int) -> tuple[ReleaseGroup, LibraryAlbum]:
+    group = db.get(ReleaseGroup, group_id)
+    album = owned_album_for(db, group_id) if group else None
+    if group is None or album is None:
+        raise HTTPException(status_code=404, detail="not_found")
+    return group, album
+
+
+@router.get("/album/{group_id}/upgrade")
+def upgrade_poll(request: Request, db: DB, auth: UserAuth, group_id: int):
+    group, album = _owned_group_or_404(db, group_id)
+    return render(request, "_album_upgrade.html", _upgrade_context(request, db, group, album))
+
+
+@router.post("/album/{group_id}/upgrade")
+def upgrade_request(
+    request: Request,
+    db: DB,
+    auth: UserAuth,
+    group_id: int,
+    target: Annotated[str, Form()] = "",
+):
+    """Ask for a better copy of an owned album: a download request that aims at `target`."""
+    group, album = _owned_group_or_404(db, group_id)
+    settings = request.app.state.settings
+    profiles = request.app.state.quality_profiles
+    wanted = profiles.get(target)
+    error = None
+    if not slskd_configured(settings):
+        error = "request_no_slskd"
+    elif wanted is None or wanted.rank <= profiles.rank(album.quality_tier):
+        error = "request_bad_target"
+    if error:
+        if is_htmx(request):
+            ctx = _upgrade_context(request, db, group, album) | {"error": f"error.{error}"}
+            return render(request, "_album_upgrade.html", ctx, status_code=400)
+        return RedirectResponse(f"/album/{group_id}?error={error}", status_code=303)
+    new, created = downloads_svc.create_request(
+        db,
+        auth.user.id,
+        group.id,
+        default_mode=settings.slskd_mode,
+        quality_key=wanted.key,
+        upgrade_from=album.quality_tier,
+    )
+    if created:
+        engine.enqueue(
+            db,
+            "slskd_search",
+            {"request_id": new.id},
+            dedupe_key=downloads_svc.search_dedupe_key(new.id),
+            created_by=auth.user.id,
+        )
+        db.commit()
+        notify_worker(request)
+    if is_htmx(request):
+        return render(request, "_album_upgrade.html", _upgrade_context(request, db, group, album))
+    return RedirectResponse(f"/album/{group_id}", status_code=303)
 
 
 @router.get("/album/local/{album_id}")

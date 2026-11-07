@@ -50,7 +50,7 @@ def test_the_old_users_page_redirects(admin_client):
 
 
 def test_the_menu_has_no_separate_users_link(admin_client):
-    text = page(admin_client, "/library")
+    text = page(admin_client, "/dashboard")
     assert 'href="/admin/users"' not in text and 'href="/settings"' in text
 
 
@@ -169,7 +169,7 @@ def test_creation_needs_csrf(admin_client):
 
 def test_resetting_a_password_from_the_dialog(admin_client, user_client, new_client, db):
     bob = me(db, "bob")
-    assert user_client.get("/library").status_code == 200
+    assert user_client.get("/dashboard").status_code == 200
     r = post(
         admin_client,
         f"/admin/users/{bob.id}/password",
@@ -177,7 +177,7 @@ def test_resetting_a_password_from_the_dialog(admin_client, user_client, new_cli
         page="/settings/users",
     )
     assert r.status_code == 303 and r.headers["location"] == "/settings/users?flash=user_updated"
-    assert user_client.get("/library").status_code == 303  # signed out everywhere
+    assert user_client.get("/dashboard").status_code == 303  # signed out everywhere
     assert (
         db.scalar(
             select(__import__("sqlalchemy").func.count(UserSession.id)).where(
@@ -293,7 +293,7 @@ def test_the_row_has_no_inline_reset_form_any_more(admin_client, user_client, db
 
 
 def test_the_section_in_italian(admin_client, db):
-    post(admin_client, "/lang", {"lang": "it", "next": "/library"})
+    post(admin_client, "/lang", {"lang": "it", "next": "/dashboard"})
     text = page(admin_client)
     for expected in (
         "Utenti",

@@ -24,7 +24,7 @@ def test_setup_creates_admin_and_logs_in(client, db):
     user = db.scalar(select(User))
     assert user.username == "admin"  # normalized to lowercase
     assert user.role == "admin" and user.is_active
-    home = client.get("/library")
+    home = client.get("/dashboard")
     assert home.status_code == 200 and "admin" in home.text
 
 

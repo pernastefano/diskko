@@ -27,7 +27,7 @@ from app.integrations.cached_http import (
     ServiceError,
     TransientError,
 )
-from app.integrations.discovery_types import AlbumCandidate, PreviewData
+from app.integrations.discovery_types import AlbumCandidate, ArtistCandidate, PreviewData
 
 SEARCH_TTL = timedelta(days=30)
 RESULT_LIMIT = 10
@@ -46,6 +46,14 @@ def store_url(value: Any) -> str | None:
     parsed = urlsplit(str(value or ""))
     host = (parsed.hostname or "").lower()
     ok = parsed.scheme == "https" and any(host == h or host.endswith("." + h) for h in STORE_HOSTS)
+    return str(value) if ok else None
+
+
+def picture_url(value: Any) -> str | None:
+    """A Deezer picture address, only if it is an https address at Deezer's image servers."""
+    parsed = urlsplit(str(value or ""))
+    host = (parsed.hostname or "").lower()
+    ok = parsed.scheme == "https" and (host == "dzcdn.net" or host.endswith(".dzcdn.net"))
     return str(value) if ok else None
 
 
@@ -147,6 +155,29 @@ class DeezerClient(CachedJsonClient):
                     str((raw.get("artist") or {}).get("name") or ""),
                     raw.get("nb_tracks"),
                     url=store_url(raw.get("link")),
+                )
+            )
+        return found
+
+    async def search_artists(self, name: str, *, force=False) -> list[ArtistCandidate]:
+        """Artists named like this, with their picture. The answer is NOT sorted by relevance
+        (a tribute band can come first): the caller picks by exact name and number of fans."""
+        clean = " ".join(name.replace('"', " ").split())
+        data = await self.get_json(
+            f"{self.settings.deezer_url.rstrip('/')}/search/artist",
+            {"q": f'artist:"{clean}"', "limit": RESULT_LIMIT},
+            ttl=SEARCH_TTL,
+            force=force,
+        )
+        found = []
+        for raw in (data or {}).get("data", []):
+            if not raw.get("name"):
+                continue
+            found.append(
+                ArtistCandidate(
+                    str(raw["name"]),
+                    picture_url(raw.get("picture_medium")),
+                    int(raw.get("nb_fan") or 0),
                 )
             )
         return found

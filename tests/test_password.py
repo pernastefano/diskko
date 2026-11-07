@@ -32,8 +32,8 @@ def test_change_password_keeps_current_session_drops_others(admin_client, new_cl
     login(other, "admin")
     assert len(db.scalars(select(UserSession)).all()) == 2
     _change(admin_client)
-    assert admin_client.get("/library").status_code == 200
-    assert other.get("/library").status_code == 303
+    assert admin_client.get("/dashboard").status_code == 200
+    assert other.get("/dashboard").status_code == 303
     assert len(db.scalars(select(UserSession)).all()) == 1
 
 

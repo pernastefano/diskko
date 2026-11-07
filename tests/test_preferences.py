@@ -100,7 +100,9 @@ def test_each_user_has_their_own_preferences(admin_client, user_client, db):
     )
     assert (me(db, "bob").language, me(db, "bob").theme) == ("it", "dark")
     assert (me(db, "admin").language, me(db, "admin").theme) == ("en", "light")
-    assert "Ciao" not in page(admin_client, "/library") and "Esci" in page(user_client, "/library")
+    assert "Ciao" not in page(admin_client, "/dashboard") and "Esci" in page(
+        user_client, "/dashboard"
+    )
 
 
 def test_preferences_survive_a_new_login(admin_client, new_client, db):
@@ -112,23 +114,23 @@ def test_preferences_survive_a_new_login(admin_client, new_client, db):
     )
     fresh = new_client()
     login(fresh, "carol")
-    text = page(fresh, "/library")
+    text = page(fresh, "/dashboard")
     assert 'lang="it"' in text and ' dark"' in html_tag(text) or "dark" in html_tag(text)
 
 
 def test_the_theme_is_applied_to_the_page(user_client):
     assert (
         "dark"
-        not in html_tag(page(user_client, "/library")).split('class="')[1].split('"')[0].split()
+        not in html_tag(page(user_client, "/dashboard")).split('class="')[1].split('"')[0].split()
     )
-    assert 'data-theme="auto"' in html_tag(page(user_client, "/library"))
+    assert 'data-theme="auto"' in html_tag(page(user_client, "/dashboard"))
     post(
         user_client,
         "/account/preferences",
         {"language": "en", "theme": "dark"},
         page="/account/preferences",
     )
-    tag = html_tag(page(user_client, "/library"))
+    tag = html_tag(page(user_client, "/dashboard"))
     assert 'data-theme="dark"' in tag and "dark" in tag.split('class="')[1].split('"')[0].split()
     post(
         user_client,
@@ -136,14 +138,14 @@ def test_the_theme_is_applied_to_the_page(user_client):
         {"language": "en", "theme": "light"},
         page="/account/preferences",
     )
-    tag = html_tag(page(user_client, "/library"))
+    tag = html_tag(page(user_client, "/dashboard"))
     assert (
         'data-theme="light"' in tag and "dark" not in tag.split('class="')[1].split('"')[0].split()
     )
 
 
 def test_automatic_follows_the_system_with_a_script_before_the_first_paint(user_client):
-    text = page(user_client, "/library")
+    text = page(user_client, "/dashboard")
     script = re.search(r"<script>\s*\(function \(\) \{.*?</script>", text, re.S).group(0)
     assert "prefers-color-scheme: dark" in script and "addEventListener('change'" in script
     assert text.index(script) < text.index("cdn.tailwindcss.com")  # runs before the styles load
@@ -156,7 +158,7 @@ def test_pages_before_login_use_the_automatic_theme(new_client, admin_client):
 
 def test_the_language_selector_is_only_shown_before_logging_in(admin_client, new_client):
     assert 'id="lang-select"' in new_client().get("/login").text
-    assert 'id="lang-select"' not in page(admin_client, "/library")
+    assert 'id="lang-select"' not in page(admin_client, "/dashboard")
     assert 'id="lang-select"' not in page(admin_client, "/account/preferences")
 
 

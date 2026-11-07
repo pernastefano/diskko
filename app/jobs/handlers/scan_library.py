@@ -38,6 +38,9 @@ async def scan_library(ctx: JobContext) -> None:
                 db, "sync_pending_artists", {}, dedupe_key="sync_pending_artists"
             )
         )
+    await ctx.run_db(  # new artists get their picture
+        lambda db: engine.enqueue(db, "fetch_artist_images", {}, dedupe_key="fetch_artist_images")
+    )
     await ctx.log(
         f"Scan finished in {summary.duration_s}s: {summary.files_seen} file(s), "
         f"{summary.files_read} read, {summary.files_skipped} unchanged, "

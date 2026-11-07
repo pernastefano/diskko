@@ -203,9 +203,9 @@ def test_regular_user_cannot_use_job_pages(admin_client, user_client, make_job):
 
 
 def test_nav_links_for_admin_only(admin_client, user_client):
-    assert "/admin/jobs" in admin_client.get("/library").text
-    assert "/admin/status" in admin_client.get("/library").text
-    assert "/admin/jobs" not in user_client.get("/library").text
+    assert "/admin/jobs" in admin_client.get("/dashboard").text
+    assert "/admin/status" in admin_client.get("/dashboard").text
+    assert "/admin/jobs" not in user_client.get("/dashboard").text
 
 
 def test_job_count_unchanged_by_listing(admin_client, make_job, db):

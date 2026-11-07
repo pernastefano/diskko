@@ -84,6 +84,8 @@ class DownloadRequest(Base):
     status: Mapped[str] = mapped_column(String(20), default=REQ_QUEUED)
     quality_key: Mapped[str] = mapped_column(String(48))  # the minimum quality profile
     mode: Mapped[str] = mapped_column(String(8), default=MODE_AUTO)
+    # Set when the request upgrades an album we already own: the quality it had.
+    upgrade_from: Mapped[str | None] = mapped_column(String(48), nullable=True)
     query_override: Mapped[str | None] = mapped_column(String(255), nullable=True)
     query_used: Mapped[str | None] = mapped_column(String(255), nullable=True)
     candidates_json: Mapped[str] = mapped_column(Text, default="[]")

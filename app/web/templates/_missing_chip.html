@@ -1,8 +1,9 @@
-{# needs `r` (ArtistRow) #}
+{# "owned / missing" of an artist, coloured: green when nothing is missing, yellow when some albums
+   are owned and some missing, red when none is owned. Needs `r` (ArtistRow). #}
 {% if r.artist.metadata_synced_at is none %}
-  <span class="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500" title="{{ t('lib.no_metadata_hint') }}">{{ t('lib.no_metadata') }}</span>
-{% elif r.missing %}
-  <span class="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800">{{ t('lib.missing_count', n=r.missing) }}</span>
+  <span class="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500" title="{{ t('lib.no_metadata_hint') }}" data-ownership="unknown">{{ t('lib.no_metadata') }}</span>
 {% else %}
-  <span class="rounded bg-green-100 px-1.5 py-0.5 text-green-800">{{ t('lib.complete') }}</span>
+  {% set tone = 'red' if not r.albums else ('green' if not r.missing else 'yellow') %}
+  <span class="rounded px-1.5 py-0.5 font-medium tabular-nums {{ {'red': 'bg-red-100 text-red-800', 'green': 'bg-green-100 text-green-800', 'yellow': 'bg-amber-100 text-amber-800'}[tone] }}"
+        title="{{ t('lib.owned_missing_title', owned=r.albums, missing=r.missing) }}" data-ownership="{{ tone }}">{{ r.albums }} / {{ r.missing }}</span>
 {% endif %}

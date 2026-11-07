@@ -32,6 +32,7 @@ class Schedule:
 SCHEDULES: list[Schedule] = [
     Schedule("housekeeping", "30 3 * * *"),
     Schedule("sync_pending_artists", "30 4 * * *"),
+    Schedule("fetch_artist_images", "40 4 * * *"),
 ]
 
 

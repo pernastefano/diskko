@@ -10,5 +10,5 @@
 {% endfor %}
 {% if next_query %}
   <div class="col-span-full py-4 text-center text-sm text-slate-400"
-       hx-get="/library/items?{{ next_query }}" hx-trigger="revealed" hx-swap="outerHTML">{{ t('lib.loading') }}</div>
+       hx-get="/artists/items?{{ next_query }}" hx-trigger="revealed" hx-swap="outerHTML">{{ t('lib.loading') }}</div>
 {% endif %}

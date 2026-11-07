@@ -17,10 +17,13 @@ from app.models import ACTIVE_STATUSES, Artist, Job, ReleaseGroup, utcnow
 from app.services import downloads as svc
 from app.services.downloads import request_infos, slskd_configured
 from app.services.library_views import (
+    ALBUM_SORTS,
     PAGE_SIZE,
     SORTS,
+    album_facets,
     available_letters,
     build_artist_sections,
+    list_albums,
     list_artists,
     request_statuses,
 )
@@ -95,22 +98,106 @@ def _context(db: DB, auth: UserAuth, params: LibraryParams) -> dict:
     }
 
 
-@router.get("/library")
-def library_page(
+@router.get("/artists")
+def artists_page(
     request: Request, db: DB, auth: UserAuth, params: Annotated[LibraryParams, Depends(_params)]
 ):
     ctx = _context(db, auth, params)
     ctx["letters"] = available_letters(db)
     ctx["alphabet"] = [*"ABCDEFGHIJKLMNOPQRSTUVWXYZ", "#"]
-    return render(request, "library.html", ctx)
+    return render(request, "artists.html", ctx)
 
 
-@router.get("/library/items")
-def library_items(
+@router.get("/artists/items")
+def artist_items(
     request: Request, db: DB, auth: UserAuth, params: Annotated[LibraryParams, Depends(_params)]
 ):
     """Tiles of one page (HTMX): used by the search box and by the infinite scroll."""
-    return render(request, "_library_items.html", _context(db, auth, params))
+    return render(request, "_artist_items.html", _context(db, auth, params))
+
+
+# ---------------------------------------------------------------------- album list
+
+
+class AlbumParams:
+    """Normalized filters of the albums page; builds the query strings of its links."""
+
+    def __init__(self, q: str, quality: str, fmt: str, category: str, sort: str, page: int) -> None:
+        self.q = q.strip()[:100]
+        self.quality = quality.strip()[:48]
+        self.fmt = fmt.strip().lower()[:16]
+        self.category = category.strip()[:24]
+        self.sort = sort if sort in ALBUM_SORTS else "title"
+        self.page = max(page, 1)
+
+    @property
+    def filtered(self) -> bool:
+        return bool(self.q or self.quality or self.fmt or self.category)
+
+    def query(self, **overrides: object) -> str:
+        values = {
+            "q": self.q,
+            "quality": self.quality,
+            "fmt": self.fmt,
+            "category": self.category,
+            "sort": self.sort if self.sort != "title" else "",
+            "page": self.page if self.page > 1 else "",
+        }
+        values.update(overrides)
+        return urlencode({k: v for k, v in values.items() if v not in ("", None)})
+
+
+def _album_params(
+    q: str = "",
+    quality: str = "",
+    fmt: str = "",
+    category: str = "",
+    sort: str = "title",
+    page: int = 1,
+) -> AlbumParams:
+    return AlbumParams(q, quality, fmt, category, sort, page)
+
+
+def _album_context(request: Request, db: DB, params: AlbumParams) -> dict:
+    profiles = request.app.state.quality_profiles
+    rows, total = list_albums(
+        db,
+        profiles,
+        q=params.q,
+        quality=params.quality,
+        fmt=params.fmt,
+        category=params.category,
+        sort=params.sort,
+        page=params.page,
+    )
+    pages = max(math.ceil(total / PAGE_SIZE), 1)
+    return {
+        "rows": rows,
+        "total": total,
+        "page": params.page,
+        "pages": pages,
+        "p": params,
+        "next_query": params.query(page=params.page + 1) if params.page < pages else None,
+    }
+
+
+@router.get("/albums")
+def albums_page(
+    request: Request, db: DB, auth: UserAuth, params: Annotated[AlbumParams, Depends(_album_params)]
+):
+    ctx = _album_context(request, db, params)
+    ctx["profiles"] = list(reversed(request.app.state.quality_profiles.profiles))
+    ctx["sorts"] = ALBUM_SORTS
+    ctx.update(album_facets(db))
+    return render(request, "albums.html", ctx)
+
+
+@router.get("/albums/items")
+def album_items(
+    request: Request, db: DB, auth: UserAuth, params: Annotated[AlbumParams, Depends(_album_params)]
+):
+    """Tiles of one page (HTMX): used by the search box and by the infinite scroll."""
+    return render(request, "_album_items.html", _album_context(request, db, params))
 
 
 # ------------------------------------------------------------------ artist page

@@ -1,10 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 
-from app.auth.deps import DB, AdminAuth, require_admin
+from app.auth.deps import DB, AdminAuth, UserAuth
 from app.jobs import engine
 from app.models import ACTIVE_STATUSES, Artist, Job, LibraryAlbum, LibraryTrack
 from app.quality import DEFAULT_PROFILES
@@ -13,21 +13,21 @@ from app.services.runtime_config import schedule_id
 from app.web.routers.jobs import notify_worker
 from app.web.templating import render
 
-router = APIRouter(prefix="/admin/library", dependencies=[Depends(require_admin)])
+router = APIRouter()
 
 SCAN_DEDUPE_KEY = "scan_library"
 
 
-def _tier_rows(request: Request, counts: dict[str, int]) -> list[tuple[str, int]]:
-    """(profile name, albums) from the best profile down, then keys that no longer exist."""
+def _tier_rows(request: Request, counts: dict[str, int]) -> list[tuple[str, int, str]]:
+    """(profile name, albums, key) from the best profile down, then keys that no longer exist."""
     profiles = getattr(request.app.state, "quality_profiles", DEFAULT_PROFILES)
-    rows = [(p.name, counts.get(p.key, 0)) for p in reversed(profiles.profiles)]
-    rows += [(key, n) for key, n in counts.items() if profiles.get(key) is None]
+    rows = [(p.name, counts.get(p.key, 0), p.key) for p in reversed(profiles.profiles)]
+    rows += [(key, n, key) for key, n in counts.items() if profiles.get(key) is None]
     return rows
 
 
-@router.get("")
-def library_page(request: Request, db: DB):
+@router.get("/dashboard")
+def dashboard(request: Request, db: DB, auth: UserAuth):
     settings = request.app.state.settings
     tiers = dict(
         db.execute(
@@ -56,10 +56,10 @@ def library_page(request: Request, db: DB):
         "last": last_scan(db),
         "active_job": active_job,
     }
-    return render(request, "admin/library.html", ctx)
+    return render(request, "dashboard.html", ctx)
 
 
-@router.post("/scan")
+@router.post("/dashboard/scan")
 def library_scan(request: Request, db: DB, auth: AdminAuth, force: Annotated[str, Form()] = ""):
     job = engine.enqueue(
         db,

@@ -27,15 +27,16 @@
   <header class="border-b border-slate-200 bg-white">
     <nav class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3" x-data="{ open: false }">
       <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
-        <a href="/" class="text-lg font-bold tracking-tight text-indigo-600">DISKKO</a>
+        <a href="/dashboard" class="text-lg font-bold tracking-tight text-indigo-600">DISKKO</a>
         {% if user %}
-          <a href="/library" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.browse') }}</a>
+          <a href="/dashboard" class="text-sm font-medium text-slate-600 hover:text-slate-900" data-nav-link="dashboard">{{ t('nav.dashboard') }}</a>
+          <a href="/artists" class="text-sm font-medium text-slate-600 hover:text-slate-900" data-nav-link="artists">{{ t('nav.artists') }}</a>
+          <a href="/albums" class="text-sm font-medium text-slate-600 hover:text-slate-900" data-nav-link="albums">{{ t('nav.albums') }}</a>
           <a href="/search" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.search') }}</a>
           <a href="/requests" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.requests') }}</a>
         {% endif %}
         {% if user and user.is_admin %}
-          <a href="/admin/artists" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.artists') }}</a>
-          <a href="/admin/library" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.library') }}</a>
+          <a href="/admin/artists" class="text-sm font-medium text-slate-600 hover:text-slate-900" data-nav-link="artist-admin">{{ t('nav.artist_admin') }}</a>
         {% endif %}
       </div>
       <div class="flex items-center gap-1 text-sm">

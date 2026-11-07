@@ -56,6 +56,8 @@ class Job(Base):
         ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True
     )
     dedupe_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # What the job is about, in words (an artist, an album...): shown and searchable.
+    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
     # NULL means "ready now"; otherwise the earliest time the job may be claimed (retry backoff).
