@@ -172,6 +172,27 @@ scegliendo a mano. `DOWNLOADS_DIR` è la cartella download come la vede Diskko: 
 siano arrivati e a importarli (deve stare sullo stesso NAS, con `MUSIC_DIR` accessibile in scrittura). Soglie in `.env`: `SLSKD_STALL_MINUTES`,
 `SLSKD_QUEUE_MINUTES`, `SLSKD_MAX_HOURS`, `SLSKD_FILE_RETRIES`.
 
+## Più utenti: richieste, registro attività e notifiche
+
+- **Richieste** (`/requests`): ogni utente vede le proprie, l'admin quelle di tutti (e può filtrare per
+  utente). Filtri per stato (in corso, completate, fallite o annullate), 50 per pagina, e nella riga
+  il pulsante Annulla (se è in corso) o Cerca di nuovo (se è fallita). L'admin può annullare e
+  riprovare le richieste di chiunque; una richiesta riprovata resta dell'utente che l'aveva fatta.
+- **Qualità delle mie richieste**: in Preferenze ogni utente sceglie la qualità a cui puntano le sue
+  richieste (o quella del sistema). I **tipi di album** "mancanti" restano invece uguali per tutti,
+  come li imposta l'admin.
+- **Registro attività** (`/admin/audit`, dal menu delle Impostazioni, solo admin): chi ha fatto cosa
+  e quando: richieste (create, annullate, riprovate, scelte, upgrade), accessi riusciti e falliti
+  (solo il nome usato), account (creati, ruolo, attivazione, password reimpostata, eliminati),
+  impostazioni salvate (i nomi dei campi, mai i valori dei segreti), decisioni sugli artisti e sugli
+  abbinamenti, aggiornamenti di album, scansioni manuali di libreria e di Plex. Filtri per utente,
+  azione e data; non si registra l'indirizzo IP. Le voci si conservano 365 giorni
+  (`AUDIT_RETENTION_DAYS`, in Impostazioni → Job) e la pulizia notturna le toglie.
+- **Notifiche in app**: la campanella nell'intestazione conta quelle non lette e si aggiorna da sola.
+  Il proprietario di una richiesta viene avvisato (una volta per evento) quando è completata, fallita,
+  senza risultati o in attesa della sua scelta; `/notifications` le elenca, con "segna come letta"
+  e "segna tutte". Le lette si cancellano dopo 30 giorni. Non ci sono quote per utente.
+
 ## Importare un download in libreria
 
 Quando un download è completo parte il job `postprocess` (uno alla volta, nella coda `library`):

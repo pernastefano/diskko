@@ -14,6 +14,7 @@ from app.config import Settings
 from app.jobs import engine
 from app.jobs.handlers.sync_artist import sync_dedupe_key
 from app.models import ACTIVE_STATUSES, Artist, Job, ReleaseGroup, utcnow
+from app.services import audit
 from app.services import downloads as svc
 from app.services.downloads import request_infos, slskd_configured
 from app.services.library_views import (
@@ -333,6 +334,16 @@ def request_download(request: Request, db: DB, auth: UserAuth, artist_id: int, g
             {"request_id": created_request.id},
             dedupe_key=svc.search_dedupe_key(created_request.id),
             created_by=auth.user.id,
+        )
+        artist = db.get(Artist, artist_id)
+        audit.record(
+            db,
+            auth.user,
+            "request.created",
+            target_type="request",
+            target_id=created_request.id,
+            label=f"{artist.name} – {group.title}",
+            details={"quality": created_request.quality_key},
         )
         db.commit()
         notify_worker(request)

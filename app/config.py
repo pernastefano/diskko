@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     job_retention_routine_days: int = 1
     job_retention_success_days: int = 14
     job_retention_failed_days: int = 60
+    audit_retention_days: int = 365  # how long the audit log is kept
     job_retention_overrides: str = ""  # "scan_library:90,fetch_covers:7": days per job type
     # How often the connection to every configured service is checked (0 turns it off). Five
     # minutes keeps the status icon fresh and costs a handful of tiny requests.

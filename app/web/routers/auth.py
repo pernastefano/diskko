@@ -17,6 +17,7 @@ from app.auth.sessions import (
 from app.auth.users import UserError, check_password, has_users
 from app.i18n import LANG_COOKIE, SUPPORTED
 from app.models import User
+from app.services import audit
 from app.web.templating import render
 
 router = APIRouter()
@@ -61,6 +62,14 @@ def login_submit(
     elif not user.is_active:
         error = "error.account_disabled"
     if error:
+        audit.record(
+            db,
+            user if user is not None and error == "error.account_disabled" else None,
+            "login.failed",
+            actor_name=username.strip().lower()[:32],
+            details={"reason": "disabled" if error == "error.account_disabled" else "credentials"},
+        )
+        db.commit()
         ctx = {"next": safe_next(next, ""), "username": username, "error": error}
         return render(request, "login.html", ctx, status_code=400)
 
@@ -69,6 +78,7 @@ def login_submit(
         db.commit()
     if auth:  # replace any previous session of this browser
         revoke_session(db, auth.session)
+    audit.record(db, user, "login.ok")
     response = RedirectResponse(safe_next(next), status_code=303)
     set_session_cookie(response, create_session(db, user, settings), settings)
     response.delete_cookie("diskko_csrf", path="/")

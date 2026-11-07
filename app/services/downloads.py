@@ -29,7 +29,9 @@ from app.models import (
     ReleaseGroup,
     utcnow,
 )
+from app.services.app_settings import get_setting
 from app.services.candidate_selection import Candidate, Wanted, group_by_subdir
+from app.services.notifications import notify_request
 from app.services.quality_profiles import default_key, load_profiles
 
 DEST_ROOT = "diskko"  # under the downloads folder: <downloads>/diskko/<request id>/...
@@ -59,6 +61,16 @@ def monitor_dedupe_key(request_id: int) -> str:
 # ----------------------------------------------------------------------- creating
 
 
+USER_QUALITY_KEY = "default_quality"  # a user's own setting: the quality of their requests
+
+
+def user_quality(db: Session, user_id: int) -> str:
+    """The quality a user's new requests aim for: their own choice if it is still a profile,
+    else the one of the system."""
+    chosen = get_setting(db, USER_QUALITY_KEY, "", user_id)
+    return chosen if chosen and load_profiles(db).get(chosen) else default_key(db)
+
+
 def create_request(
     db: Session,
     user_id: int,
@@ -86,7 +98,7 @@ def create_request(
     if active is not None:
         return active, False
     profiles = load_profiles(db)
-    wanted_quality = quality_key if profiles.get(quality_key) else default_key(db)
+    wanted_quality = quality_key if profiles.get(quality_key) else user_quality(db, user_id)
     if not profiles.get(wanted_quality):
         wanted_quality = profiles.lowest.key
     chosen_mode = mode if mode in MODES else (default_mode if default_mode in MODES else MODE_AUTO)
@@ -207,6 +219,7 @@ def set_status(
     if status in REQ_FINISHED:
         request.finished_at = utcnow()
     db.flush()
+    notify_request(db, request, status)  # the owner hears about completed, failed...
     return request
 
 
@@ -386,6 +399,7 @@ def next_candidate(db: Session, request_id: int, reason: str) -> bool:
     request.error = reason[:500]
     request.finished_at = utcnow()
     db.flush()
+    notify_request(db, request, REQ_FAILED)
     return False
 
 

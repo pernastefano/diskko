@@ -1,0 +1,11 @@
+{% from "_icons.html" import icon %}
+{# The bell: the number of notifications not read yet. It refreshes itself. #}
+<div id="nav-bell" hx-get="/nav/notifications" hx-trigger="load, every 30s" hx-swap="outerHTML">
+  <a href="/notifications" data-bell {% if unread %}data-unread="{{ unread }}"{% endif %}
+     title="{{ t('notifications.unread', n=unread) if unread else t('notifications.title') }}"
+     aria-label="{{ t('notifications.unread', n=unread) if unread else t('notifications.title') }}"
+     class="relative block rounded-md p-2 {% if unread %}bg-amber-100 text-amber-800{% else %}text-slate-500 hover:bg-slate-100 hover:text-slate-900{% endif %} focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    {{ icon('bell') }}
+    {% if unread %}<span class="absolute -right-1 -top-1 min-w-[1.1rem] rounded-full bg-red-600 px-1 text-center text-[10px] font-semibold leading-4 text-white" data-unread-count>{{ unread if unread < 100 else '99+' }}</span>{% endif %}
+  </a>
+</div>

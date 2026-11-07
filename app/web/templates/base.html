@@ -63,6 +63,7 @@
         {% endif %}
       </div>
       <div class="flex items-center gap-1 text-sm">
+        {% if user %}{% set unread = 0 %}{% include "_notif_bell.html" %}{% endif %}
         {% if user and user.is_admin %}{% include "_nav_icons.html" %}{% endif %}
         {% if not user %}
           {# before logging in there is no user preference yet #}

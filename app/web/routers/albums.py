@@ -24,6 +24,7 @@ from app.models import (
     PreviewLookup,
     ReleaseGroup,
 )
+from app.services import audit
 from app.services import downloads as downloads_svc
 from app.services.albums import (
     TrackRow,
@@ -220,6 +221,16 @@ def upgrade_request(
             dedupe_key=downloads_svc.search_dedupe_key(new.id),
             created_by=auth.user.id,
         )
+        artist = db.get(Artist, group.artist_id)
+        audit.record(
+            db,
+            auth.user,
+            "request.upgrade",
+            target_type="request",
+            target_id=new.id,
+            label=f"{artist.name} – {group.title}",
+            details={"from": album.quality_tier, "to": wanted.key},
+        )
         db.commit()
         notify_worker(request)
     if is_htmx(request):
@@ -257,6 +268,16 @@ def album_refresh(request: Request, db: DB, auth: AdminAuth, group_id: int):
         dedupe_key=refresh_dedupe_key(group.id),
         created_by=auth.user.id,
     )
+    artist = db.get(Artist, group.artist_id)
+    audit.record(
+        db,
+        auth.user,
+        "album.refresh",
+        target_type="album",
+        target_id=group.id,
+        label=f"{artist.name} – {group.title}",
+    )
+    db.commit()
     notify_worker(request)
     return RedirectResponse(f"/album/{group.id}?flash=album_refresh_queued", status_code=303)
 

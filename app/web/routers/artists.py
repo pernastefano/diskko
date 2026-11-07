@@ -24,6 +24,7 @@ from app.models import (
     LibraryAlbum,
     ReleaseGroup,
 )
+from app.services import audit
 from app.services.library.tags import clean_mbid
 from app.services.musicbrainz import sync
 from app.services.musicbrainz.matching import candidates_for_review, match_artist_albums
@@ -42,6 +43,19 @@ PER_PAGE = 50
 _UUID_IN_TEXT = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
+
+
+def _audit(db: DB, auth: AdminAuth, action: str, artist: Artist, details=None) -> None:
+    audit.record(
+        db,
+        auth.user,
+        action,
+        target_type="artist",
+        target_id=artist.id,
+        label=artist.name,
+        details=details,
+    )
+    db.commit()
 
 
 def parse_mbid_input(raw: str) -> str | None:
@@ -212,8 +226,9 @@ def artist_page(request: Request, db: DB, auth: AdminAuth, artist_id: int):
 def artist_sync(
     request: Request, db: DB, auth: AdminAuth, artist_id: int, force: Annotated[str, Form()] = ""
 ):
-    _artist_or_404(db, artist_id)
+    artist = _artist_or_404(db, artist_id)
     job = queue_sync(request, db, artist_id, auth.user.id, force == "1")
+    _audit(db, auth, "artist.sync", artist, {"force": force == "1", "job": job.id})
     return RedirectResponse(f"/admin/jobs/{job.id}", status_code=303)
 
 
@@ -234,6 +249,7 @@ def artist_resolve(
     sync.choose_candidate(db, artist_id, cleaned, auth.user.id)
     db.commit()
     artist = db.get(Artist, artist_id)
+    _audit(db, auth, "artist.resolved", artist, {"mbid": cleaned})
     if artist.mbid == cleaned:  # not refused as a duplicate
         queue_sync(request, db, artist_id, auth.user.id)
         return RedirectResponse(f"{back}?flash=review_resolved", status_code=303)
@@ -242,9 +258,10 @@ def artist_resolve(
 
 @router.post("/{artist_id}/dismiss")
 def artist_dismiss(db: DB, auth: AdminAuth, artist_id: int, next: Annotated[str, Form()] = ""):
-    _artist_or_404(db, artist_id)
+    artist = _artist_or_404(db, artist_id)
     sync.dismiss_artist(db, artist_id, auth.user.id)
     db.commit()
+    _audit(db, auth, "artist.dismissed", artist)
     back = "/admin/artists/review" if next == "review" else f"/admin/artists/{artist_id}"
     return RedirectResponse(f"{back}?flash=artist_dismissed", status_code=303)
 
@@ -252,9 +269,10 @@ def artist_dismiss(db: DB, auth: AdminAuth, artist_id: int, next: Annotated[str,
 @router.post("/{artist_id}/confirm")
 def artist_confirm(db: DB, auth: AdminAuth, artist_id: int, next: Annotated[str, Form()] = ""):
     """Keep the data a fallback provider gave for an artist that MusicBrainz lacks."""
-    _artist_or_404(db, artist_id)
+    artist = _artist_or_404(db, artist_id)
     sync.confirm_provider(db, artist_id, auth.user.id)
     db.commit()
+    _audit(db, auth, "artist.confirmed", artist)
     back = "/admin/artists/review" if next == "review" else f"/admin/artists/{artist_id}"
     return RedirectResponse(f"{back}?flash=provider_confirmed", status_code=303)
 
@@ -267,9 +285,10 @@ def artist_reset(
     artist_id: int,
     next: Annotated[str, Form()] = "",
 ):
-    _artist_or_404(db, artist_id)
+    artist = _artist_or_404(db, artist_id)
     sync.reset_artist(db, artist_id, auth.user.id)
     db.commit()
+    _audit(db, auth, "artist.reset", artist)
     queue_sync(request, db, artist_id, auth.user.id, force=True)
     back = "/admin/artists/review" if next == "review" else f"/admin/artists/{artist_id}"
     return RedirectResponse(f"{back}?flash=artist_reset", status_code=303)
@@ -310,6 +329,15 @@ def album_match(
         existing.release_group_id, existing.created_by = group_id, auth.user.id
     db.flush()
     match_artist_albums(db, artist_id)
+    audit.record(
+        db,
+        auth.user,
+        "album.match",
+        target_type="album",
+        target_id=album.id,
+        label=f"{artist.name} – {album.title}",
+        details={"choice": choice},
+    )
     db.commit()
     return RedirectResponse(f"/admin/artists/{artist_id}?flash=match_saved", status_code=303)
 

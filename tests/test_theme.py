@@ -16,6 +16,7 @@ IDENTICAL_IN_BOTH_THEMES = {
     "text-white",
     "bg-amber-500",
     "bg-red-500",
+    "bg-red-600",  # the count on the notification bell
     "bg-slate-900",
     "bg-black/50",  # the dark scrim behind a dialog
     "text-slate-100",

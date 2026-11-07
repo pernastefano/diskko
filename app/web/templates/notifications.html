@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ t('notifications.title') }}{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-semibold">{{ t('notifications.title') }}</h1>
+  {% if unread %}
+    <form method="post" action="/notifications/read">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-read-all>{{ t('notifications.read_all') }}</button>
+    </form>
+  {% endif %}
+</div>
+{% if not notes %}
+  <p class="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-slate-500" data-empty>{{ t('notifications.empty') }}</p>
+{% else %}
+  <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm" data-notifications>
+    {% for n in notes %}
+      <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 {{ '' if n.read_at else 'bg-amber-50' }}" data-notification="{{ n.id }}" data-kind="{{ n.kind }}" {% if not n.read_at %}data-unread{% endif %}>
+        <div class="min-w-0">
+          <div class="text-sm font-medium">{{ t('notifications.kind.' ~ n.kind) }}{% if not n.read_at %} <span class="ml-1 rounded bg-amber-200 px-1.5 py-0.5 text-xs text-amber-900">{{ t('notifications.new') }}</span>{% endif %}</div>
+          <div class="truncate text-sm text-slate-700">{% if n.request_id %}<a href="/requests/{{ n.request_id }}" class="text-indigo-700 hover:underline">{{ n.album_label }}</a>{% else %}{{ n.album_label }}{% endif %}</div>
+          {% if n.detail %}<div class="truncate text-xs text-red-700">{{ n.detail }}</div>{% endif %}
+          <div class="text-xs text-slate-500">{{ n.created_at|fmt_dt }}</div>
+        </div>
+        {% if not n.read_at %}
+          <form method="post" action="/notifications/read">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="id" value="{{ n.id }}">
+            <button type="submit" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" data-read>{{ t('notifications.read') }}</button>
+          </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}

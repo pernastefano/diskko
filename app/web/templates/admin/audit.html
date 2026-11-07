@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ t('audit.title') }}{% endblock %}
+{% block content %}
+<h1 class="mb-1 text-2xl font-semibold">{{ t('audit.title') }}</h1>
+<p class="mb-4 max-w-3xl text-sm text-slate-500">{{ t('audit.intro') }}</p>
+
+<form method="get" action="/admin/audit" class="mb-4 flex flex-wrap items-end gap-3" data-audit-filters>
+  <div>
+    <label for="a-user" class="block text-xs text-slate-500">{{ t('audit.col.user') }}</label>
+    <select id="a-user" name="user" class="mt-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+      <option value="">{{ t('audit.filter.everyone') }}</option>
+      {% for name in actors %}<option value="{{ name }}" {% if name == f_user %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="a-action" class="block text-xs text-slate-500">{{ t('audit.col.action') }}</label>
+    <select id="a-action" name="action" class="mt-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+      <option value="">{{ t('audit.filter.all_actions') }}</option>
+      {% for a in actions %}<option value="{{ a }}" {% if a == f_action %}selected{% endif %}>{{ t('audit.action.' ~ a) }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="a-since" class="block text-xs text-slate-500">{{ t('audit.filter.since') }}</label>
+    <input id="a-since" name="since" type="date" value="{{ f_since }}" class="mt-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+  </div>
+  <div>
+    <label for="a-until" class="block text-xs text-slate-500">{{ t('audit.filter.until') }}</label>
+    <input id="a-until" name="until" type="date" value="{{ f_until }}" class="mt-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+  </div>
+  <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100">{{ t('audit.filter.apply') }}</button>
+  <p class="text-sm text-slate-500" data-total>{{ t('audit.total', n=total) }}</p>
+</form>
+
+{% if not rows %}
+  <p class="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-slate-500" data-empty>{{ t('audit.empty') }}</p>
+{% else %}
+  <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-slate-200 text-sm" data-audit-table>
+      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <tr><th class="px-3 py-2">{{ t('audit.col.when') }}</th><th class="px-3 py-2">{{ t('audit.col.user') }}</th>
+            <th class="px-3 py-2">{{ t('audit.col.action') }}</th><th class="px-3 py-2">{{ t('audit.col.target') }}</th>
+            <th class="px-3 py-2">{{ t('audit.col.details') }}</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for row in rows %}{% set e = row.e %}
+          <tr data-audit="{{ e.action }}">
+            <td class="whitespace-nowrap px-3 py-2 text-slate-500">{{ e.at|fmt_dt }}</td>
+            <td class="px-3 py-2">{{ e.actor_name or '—' }}</td>
+            <td class="px-3 py-2 font-medium">{{ t('audit.action.' ~ e.action) }}</td>
+            <td class="px-3 py-2">{% if row.link %}<a href="{{ row.link }}" class="text-indigo-700 hover:underline">{{ e.target_label or ('#' ~ e.target_id) }}</a>{% else %}{{ e.target_label or '' }}{% endif %}</td>
+            <td class="px-3 py-2 text-xs text-slate-500">{% for k, v in row.details.items() %}{{ k }}: {{ v|join(', ') if v is iterable and v is not string else v }}{{ ' · ' if not loop.last }}{% endfor %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pages > 1 %}
+    <nav class="mt-3 flex items-center justify-between text-sm" data-pages>
+      {% if page > 1 %}<a class="text-indigo-600 hover:underline" href="{{ prev_url }}">← {{ t('action.previous') }}</a>{% else %}<span></span>{% endif %}
+      <span class="text-slate-500">{{ t('requests.page_of', page=page, pages=pages) }}</span>
+      {% if page < pages %}<a class="text-indigo-600 hover:underline" href="{{ next_url }}">{{ t('action.next') }} →</a>{% else %}<span></span>{% endif %}
+    </nav>
+  {% endif %}
+{% endif %}
+{% endblock %}

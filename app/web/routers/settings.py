@@ -17,6 +17,7 @@ from app.jobs import engine
 from app.jobs.engine import ROUTINE_TYPES
 from app.models import ACTIVE_STATUSES, ROLE_USER, ROLES, Job, QualityProfile, User
 from app.quality import BIT_DEPTHS, BITRATES_KBPS, COLORS, KINDS, SAMPLE_RATES_HZ
+from app.services import audit
 from app.services import quality_profiles as profiles_service
 from app.services.musicbrainz.categories import CATEGORIES
 from app.services.musicbrainz.missing import get_missing_types, set_missing_types
@@ -343,6 +344,7 @@ async def _save(
     fields: list[Field],
     *,
     error_group: str = "",
+    actor: User | None = None,
 ):
     form = await request.form()
     reset = set(form.getlist("reset")) & {f.key for f in fields}
@@ -359,6 +361,14 @@ async def _save(
             errors=errors,
             error_group=error_group,
         )
+    audit.record(
+        db,
+        actor,
+        "settings.saved",
+        target_type="settings",
+        label=section,
+        details={"section": section, "fields": sorted(f.key for f in fields if f.key in form)},
+    )
     db.commit()
     apply_runtime_config(request.app)
     return RedirectResponse(f"/settings/{section}?flash=settings_saved", status_code=303)
@@ -388,13 +398,17 @@ async def scan_library(request: Request, db: DB, auth: AdminAuth):
         dedupe_key=SCAN_DEDUPE_KEY,
         created_by=auth.user.id,
     )
+    audit.record(
+        db, auth.user, "library.scan", details={"full": form.get("force") == "1", "job": job.id}
+    )
+    db.commit()
     notify_worker(request)
     return RedirectResponse(f"/admin/jobs/{job.id}", status_code=303)
 
 
 @router.post("/library")
 async def save_library(request: Request, db: DB, auth: AdminAuth):
-    return await _save(request, db, "library", fields_of("library"))
+    return await _save(request, db, "library", fields_of("library"), actor=auth.user)
 
 
 @router.post("/integrations/plex/scan")
@@ -403,6 +417,8 @@ async def scan_plex_now(request: Request, db: DB, auth: AdminAuth):
     job = engine.enqueue(
         db, "plex_refresh", {"full": True}, dedupe_key="plex_refresh_full", created_by=auth.user.id
     )
+    audit.record(db, auth.user, "plex.scan", details={"job": job.id})
+    db.commit()
     notify_worker(request)
     return RedirectResponse(f"/admin/jobs/{job.id}", status_code=303)
 
@@ -412,24 +428,37 @@ async def save_integration(request: Request, db: DB, auth: AdminAuth, group: str
     if group not in GROUPS:
         raise HTTPException(status_code=404, detail="not_found")
     return await _save(
-        request, db, "integrations", fields_of("integrations", group), error_group=group
+        request,
+        db,
+        "integrations",
+        fields_of("integrations", group),
+        error_group=group,
+        actor=auth.user,
     )
 
 
 @router.post("/services")
 async def save_services(request: Request, db: DB, auth: AdminAuth):
-    return await _save(request, db, "services", fields_of("services"))
+    return await _save(request, db, "services", fields_of("services"), actor=auth.user)
 
 
 @router.post("/jobs")
 async def save_jobs(request: Request, db: DB, auth: AdminAuth):
-    return await _save(request, db, "jobs", fields_of("jobs"))
+    return await _save(request, db, "jobs", fields_of("jobs"), actor=auth.user)
 
 
 @router.post("/albums/types")
 async def save_missing_types(request: Request, db: DB, auth: AdminAuth):
     form = await request.form()
     set_missing_types(db, form.getlist("types"))
+    audit.record(
+        db,
+        auth.user,
+        "settings.saved",
+        target_type="settings",
+        label="albums",
+        details={"section": "albums", "types": sorted(form.getlist("types"))},
+    )
     db.commit()
     return RedirectResponse("/settings/albums?flash=settings_saved", status_code=303)
 
@@ -439,6 +468,7 @@ async def save_missing_types(request: Request, db: DB, auth: AdminAuth):
 
 def _profiles_changed(request: Request, db: DB, auth: AdminAuth, *, recompute: bool = True):
     """Save, refresh what the app keeps in memory and start the re-evaluation of the library."""
+    audit.record(db, auth.user, "quality.changed", target_type="settings", label="quality")
     db.commit()
     apply_runtime_config(request.app)
     if recompute:

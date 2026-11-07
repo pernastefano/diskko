@@ -138,6 +138,7 @@ FIELDS: dict[str, Field] = {
         Field("job_retention_routine_days", "int", "jobs", "retention", minimum=1, maximum=3650),
         Field("job_retention_success_days", "int", "jobs", "retention", minimum=1, maximum=3650),
         Field("job_retention_failed_days", "int", "jobs", "retention", minimum=1, maximum=3650),
+        Field("audit_retention_days", "int", "jobs", "retention", minimum=1, maximum=3650),
         Field("job_retention_overrides", "retention", "jobs", "retention", max_length=500),
         # quality: the key must name an existing profile, checked where it is saved
         Field("default_quality", "text", "quality", "quality", required=True, max_length=48),

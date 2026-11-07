@@ -1,3 +1,12 @@
+from app.models.audit import (
+    NOTE_COMPLETED,
+    NOTE_FAILED,
+    NOTE_KINDS,
+    NOTE_NEEDS_CHOICE,
+    NOTE_NO_RESULTS,
+    AuditLog,
+    Notification,
+)
 from app.models.base import Base, utcnow
 from app.models.discovery import (
     PREVIEW_DEEZER,
@@ -121,6 +130,13 @@ __all__ = [
     "PreviewTrack",
     "ReleaseTrack",
     "TracklistFetch",
+    "NOTE_COMPLETED",
+    "NOTE_FAILED",
+    "NOTE_KINDS",
+    "NOTE_NEEDS_CHOICE",
+    "NOTE_NO_RESULTS",
+    "AuditLog",
+    "Notification",
     "BIO_LASTFM",
     "BIO_WIKIPEDIA",
     "TOP_DEEZER",
