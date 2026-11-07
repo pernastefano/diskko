@@ -12,8 +12,17 @@ from app.integrations.providers import metadata_fallback_enabled
 from app.jobs import engine
 from app.jobs.context import JobContext
 from app.jobs.errors import PermanentJobError
+from app.jobs.handlers.fetch_artist_profile import profile_dedupe_key
 from app.jobs.registry import job_handler
-from app.models import MB_IGNORED, MB_PROVIDER, MB_RESOLVED, MB_REVIEW, MB_UNMATCHED, SOURCE_DEEZER
+from app.models import (
+    MB_IGNORED,
+    MB_PROVIDER,
+    MB_RESOLVED,
+    MB_REVIEW,
+    MB_UNMATCHED,
+    SOURCE_DEEZER,
+    Artist,
+)
 from app.services import metadata_fallback
 from app.services.musicbrainz import matching, resolution, sync
 
@@ -39,6 +48,8 @@ async def sync_artist_metadata(ctx: JobContext) -> None:
     if data.mb_status == MB_REVIEW and not force:
         await ctx.log(f"{data.name}: waiting for a manual decision in the review queue")
         return
+
+    await _queue_missing_picture(ctx, artist_id, data.name)
 
     try:
         client = MusicBrainzClient(ctx.settings, ctx.session_factory)
@@ -129,6 +140,27 @@ async def sync_artist_metadata(ctx: JobContext) -> None:
             )
         )
     await ctx.progress(100, "Done")
+
+
+async def _queue_missing_picture(ctx: JobContext, artist_id: int, name: str) -> None:
+    """Updating an artist also looks for its picture when it has none (the profile job finds it
+    at Deezer, with the biography). It does not depend on MusicBrainz, so it is queued first."""
+
+    def queue(db) -> bool:
+        artist = db.get(Artist, artist_id)
+        if artist is None or artist.image_url:
+            return False
+        engine.enqueue(
+            db,
+            "fetch_artist_profile",
+            {"artist_id": artist_id},
+            dedupe_key=profile_dedupe_key(artist_id),
+            parent_job_id=ctx.job_id,
+        )
+        return True
+
+    if await ctx.run_db(queue):
+        await ctx.log(f"{name}: no picture yet, looking for it")
 
 
 async def _sync_from_deezer(ctx: JobContext, data, force: bool) -> bool:

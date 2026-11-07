@@ -28,14 +28,18 @@ def profile_dedupe_key(artist_id: int) -> str:
     return f"artist_profile:{artist_id}"
 
 
-async def ensure_deezer_artist(ctx: JobContext, artist_id: int) -> str | None:
-    """The artist's id at Deezer, looked up by exact name when not known yet (the picture is
-    kept too when there is none). None when Deezer has nobody by that name."""
+async def ensure_deezer_artist(
+    ctx: JobContext, artist_id: int, *, picture: bool = True
+) -> str | None:
+    """The artist's id at Deezer, looked up by exact name when not known yet; the picture is
+    looked up too (`picture`) when the artist has none. None when Deezer has nobody by that
+    name."""
     found = await ctx.run_db(
         lambda db: (
             (
                 a.name,
                 a.deezer_artist_id or (a.provider_artist_id if a.provider == "deezer" else None),
+                bool(a.image_url),
             )
             if (a := db.get(Artist, artist_id))
             else None
@@ -43,25 +47,34 @@ async def ensure_deezer_artist(ctx: JobContext, artist_id: int) -> str | None:
     )
     if found is None:
         raise PermanentJobError(f"artist {artist_id} not found")
-    name, known = found
-    if known:
-        return known
+    name, known, has_picture = found
+    has_picture = has_picture or not picture  # not asked for: leave it alone
     async with DeezerClient(ctx.settings, ctx.session_factory) as deezer:
-        pick = pick_deezer_artist(await deezer.search_artists(name), name)
-    if pick is None:
-        await ctx.log(f"{name}: no artist named exactly so at Deezer")
-        return None
+        if known:
+            picture = None if has_picture else await deezer.artist_picture(known)
+            deezer_id = known
+        else:
+            pick = pick_deezer_artist(await deezer.search_artists(name), name)
+            if pick is None:
+                await ctx.log(f"{name}: no artist named exactly so at Deezer")
+                return None
+            deezer_id, picture = pick.provider_id, None if has_picture else pick.picture_url
 
     def save(db):
         artist = db.get(Artist, artist_id)
-        artist.deezer_artist_id = pick.provider_id
-        if not artist.image_url and pick.picture_url:
-            artist.image_url = pick.picture_url
+        artist.deezer_artist_id = deezer_id
+        if picture and not artist.image_url:
+            artist.image_url = picture
+        if not has_picture:
+            artist.image_checked_at = utcnow()
         db.commit()
 
     await ctx.run_db(save)
-    await ctx.log(f"{name}: Deezer artist {pick.provider_id}")
-    return pick.provider_id
+    if not known:
+        await ctx.log(f"{name}: Deezer artist {deezer_id}")
+    if not has_picture:
+        await ctx.log(f"{name}: picture {'found' if picture else 'not found at Deezer'}")
+    return deezer_id
 
 
 @job_handler("fetch_artist_profile", queue="discovery", max_attempts=3, backoff_base=60)

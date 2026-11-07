@@ -261,6 +261,18 @@ class DeezerClient(CachedJsonClient):
             )
         return found
 
+    async def artist_picture(self, artist_id: str, *, force=False) -> str | None:
+        """The picture address of a known artist (GET /artist/{id}: picture_medium, 250 px)."""
+        if not str(artist_id).isdigit():
+            raise ValueError("invalid Deezer artist id")
+        data = await self.get_json(
+            f"{self.settings.deezer_url.rstrip('/')}/artist/{artist_id}",
+            {},
+            ttl=SEARCH_TTL,
+            force=force,
+        )
+        return picture_url((data or {}).get("picture_medium"))
+
     async def artist_albums(self, artist_id: str, *, force=False) -> list[ReleaseGroupData]:
         """The artist's discography as release groups with ids "deezer:<album id>".
 

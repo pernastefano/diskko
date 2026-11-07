@@ -88,7 +88,7 @@ def _save(artist_id: int, source: str, tracks):
 
 
 async def _deezer(ctx: JobContext, artist_id: int) -> list[tuple[TopTrackData, str | None]]:
-    deezer_id = await ensure_deezer_artist(ctx, artist_id)
+    deezer_id = await ensure_deezer_artist(ctx, artist_id, picture=False)
     if deezer_id is None:
         return []
     async with DeezerClient(ctx.settings, ctx.session_factory) as deezer:

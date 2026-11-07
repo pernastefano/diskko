@@ -760,3 +760,106 @@ def test_migration_0014_adds_the_tables_and_columns(settings):
         conn.execute(text("DELETE FROM artists WHERE id = 1"))  # the bio goes with the artist
         assert conn.execute(text("SELECT COUNT(*) FROM artist_bios")).scalar_one() == 0
     engine.dispose()
+
+
+# ------------------------------------------------ pictures when metadata is updated
+
+
+async def test_deezer_gives_the_picture_of_a_known_artist(settings, session_factory):
+    with respx.mock() as mock:
+        route = mock.get(f"{DEEZER}/artist/399").respond(
+            json={"id": 399, "name": "Radiohead", "picture_medium": IMG}
+        )
+        async with DeezerClient(settings, session_factory) as client:
+            assert await client.artist_picture("399") == IMG
+            with pytest.raises(ValueError):
+                await client.artist_picture("../x")
+        mock.get(f"{DEEZER}/artist/5").respond(json={"picture_medium": "http://evil.example/p.jpg"})
+        async with DeezerClient(settings, session_factory) as client:
+            assert await client.artist_picture("5") is None  # only Deezer's own image servers
+    assert route.call_count == 1
+
+
+async def test_the_profile_job_finds_the_picture_of_an_artist_whose_deezer_id_is_known(
+    psettings, session_factory
+):
+    artist_id = make(session_factory, deezer_artist_id="399")
+    with respx.mock(assert_all_called=False) as mock:
+        picture = mock.get(f"{DEEZER}/artist/399").respond(json={"picture_medium": IMG})
+        mock.get(f"{DEEZER}/search/artist").respond(json={"data": []})
+        mock_wikipedia_chain(mock)
+        worker, job_id = await run(psettings, session_factory, "fetch_artist_profile", artist_id)
+        await wait_for_status(session_factory, job_id, "succeeded")
+        await worker.stop()
+    with session_factory() as db:
+        artist = db.get(Artist, artist_id)
+        assert artist.image_url == IMG and artist.image_checked_at is not None
+    assert picture.call_count == 1
+    assert any("picture found" in m for m in logs(session_factory, job_id))
+
+
+async def test_the_profile_job_does_not_ask_again_for_a_picture_it_has(psettings, session_factory):
+    artist_id = make(
+        session_factory, deezer_artist_id="399", image_url="https://cdn-images.dzcdn.net/m.jpg"
+    )
+    with respx.mock(assert_all_called=False) as mock:
+        picture = mock.get(f"{DEEZER}/artist/399").respond(json={"picture_medium": IMG})
+        mock_wikipedia_chain(mock)
+        worker, job_id = await run(psettings, session_factory, "fetch_artist_profile", artist_id)
+        await wait_for_status(session_factory, job_id, "succeeded")
+        await worker.stop()
+    assert picture.call_count == 0
+    with session_factory() as db:
+        assert db.get(Artist, artist_id).image_url.endswith("m.jpg")
+
+
+async def _sync_artist(settings, factory, artist_id):
+    from tests.mbdata import ARETHA, aretha_discography, load
+    from tests.test_mb_sync import mount, run_job
+
+    with respx.mock(base_url=MB_BASE, assert_all_called=False) as mock:
+        mount(mock, load("artist_search_aretha.json"), {ARETHA: aretha_discography()})
+        worker, job_id = await run_job(settings, factory, artist_id)
+        await wait_for_status(factory, job_id, "succeeded")
+        with factory() as db:
+            children = [j for j in db.scalars(select(Job)) if j.parent_job_id == job_id]
+        await worker.stop()
+    return job_id, children
+
+
+async def test_updating_an_artist_without_a_picture_looks_for_it(mbsettings, session_factory):
+    from tests.test_mb_sync import seed
+
+    artist_id = seed(session_factory)
+    job_id, children = await _sync_artist(mbsettings, session_factory, artist_id)
+    profile = [j for j in children if j.type == "fetch_artist_profile"]
+    assert len(profile) == 1 and profile[0].dedupe_key == f"artist_profile:{artist_id}"
+    assert any("no picture yet" in m for m in logs(session_factory, job_id))
+
+
+async def test_updating_an_artist_that_has_a_picture_does_not(mbsettings, session_factory):
+    from tests.test_mb_sync import seed
+
+    artist_id = seed(session_factory)
+    with session_factory() as db:
+        db.get(Artist, artist_id).image_url = "https://cdn-images.dzcdn.net/m.jpg"
+        db.commit()
+    job_id, children = await _sync_artist(mbsettings, session_factory, artist_id)
+    assert not [j for j in children if j.type == "fetch_artist_profile"]
+    assert not any("no picture yet" in m for m in logs(session_factory, job_id))
+
+
+async def test_the_picture_is_looked_for_even_when_musicbrainz_does_not_have_the_artist(
+    mbsettings, session_factory
+):
+    from tests.test_mb_sync import mount, run_job, seed
+
+    artist_id = seed(session_factory, "Obscure Band")
+    with respx.mock(base_url=MB_BASE, assert_all_called=False) as mock:
+        mount(mock, {"created": "2026-01-01T00:00:00Z", "count": 0, "offset": 0, "artists": []})
+        worker, job_id = await run_job(mbsettings, session_factory, artist_id)
+        await wait_for_status(session_factory, job_id, "succeeded")
+        with session_factory() as db:
+            kinds = {j.type for j in db.scalars(select(Job)) if j.parent_job_id == job_id}
+        await worker.stop()
+    assert "fetch_artist_profile" in kinds

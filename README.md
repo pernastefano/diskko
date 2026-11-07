@@ -107,7 +107,8 @@ lista di Last.fm con le anteprime che iTunes ha con certezza), poi gli album pos
 riga, anno e tracce, etichetta di qualità) e quelli mancanti, raggruppati per tipo secondo le
 preferenze dell'utente. Descrizione e top 10 si caricano in background alla prima visita e si
 aggiornano (descrizione ogni 30 giorni, lista ogni 7; i link di anteprima di Deezer scadono dopo
-pochi minuti e vengono rinnovati). Le sorgenti si scelgono in Impostazioni → Servizi. Il pulsante
+pochi minuti e vengono rinnovati). Le sorgenti si scelgono in Impostazioni → Servizi. Quando si aggiornano i metadati di un artista (anche con la sincronizzazione
+periodica), se non ha ancora un'immagine viene cercata su Deezer insieme alla descrizione. Il pulsante
 "Richiedi download" è per ora solo un segnaposto: i download arrivano con le fasi successive.
 Le copertine mancanti si scaricano in background quando si apre la pagina.
 
@@ -128,7 +129,7 @@ Le copertine mancanti si scaricano in background quando si apre la pagina.
   (l'artista è un link alla sua pagina se lo conosciamo: serve alle compilation con più artisti;
   per gli album non posseduti gli artisti vengono da MusicBrainz). Si vede il profilo di qualità,
   non il formato del file. Gli amministratori hanno **Aggiorna metadati** (rilegge l'album su
-  MusicBrainz e rinnova lista tracce, anteprime e copertina) e **Gestisci abbinamento** (apre la
+  MusicBrainz e rinnova lista tracce, anteprime e copertina, cercandola se manca) e **Gestisci abbinamento** (apre la
   riga dell'album in Gestione artisti).
 - Nella pagina di un album posseduto si può chiedere un **upgrade di qualità** (per esempio da MP3 a
   FLAC): parte una richiesta di download che cerca almeno quella qualità.

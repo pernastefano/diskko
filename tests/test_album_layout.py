@@ -417,3 +417,27 @@ def test_the_top_tracks_use_the_same_title_artist_style(app, admin_client):
     row = re.search(r"<li [^>]*data-top-track.*?</li>", html, re.S).group(0)
     assert "flex w-64 shrink-0 justify-end" in row and "w-12 shrink-0 text-right" in row
     assert "whitespace-nowrap" in html and "flex-wrap" not in row
+
+
+async def test_the_refresh_does_not_look_for_a_cover_the_album_already_has(
+    settings, session_factory, db
+):
+    artist = make_artist(db, "Aretha Franklin", mbid=ARETHA)
+    group = make_rg(db, artist, "Lady Soul", 1968)
+    group.cover_status, group.cover_path = "ok", f"{group.mbid}.jpg"
+    db.commit()
+    s = settings.model_copy(update={"job_poll_interval": 0.02})
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{MB}/release-group/{group.mbid}").respond(
+            json={"id": group.mbid, "title": "Lady Soul", "primary-type": "Album"}
+        )
+        worker = JobWorker(s, session_factory)
+        await worker.start()
+        job_id = enqueue(session_factory, "refresh_album", {"release_group_id": group.id})
+        worker.notify()
+        await wait_for_status(session_factory, job_id, "succeeded")
+        await worker.stop()
+    with session_factory() as fresh:
+        kinds = {j.type for j in fresh.scalars(select(Job)) if j.parent_job_id == job_id}
+        assert fresh.get(ReleaseGroup, group.id).cover_status == "ok"
+    assert kinds == {"fetch_tracklist", "resolve_previews"}  # no fetch_covers
