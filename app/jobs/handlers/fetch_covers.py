@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 from app.integrations.coverart import CoverArtClient, CoverArtError
 from app.jobs.context import JobContext
 from app.jobs.registry import job_handler
-from app.models import ReleaseGroup
+from app.models import Artist, ReleaseGroup
 from app.services.musicbrainz.missing import get_missing_types, owned_release_group_ids
 
 MAX_CONSECUTIVE_ERRORS = 3
@@ -37,7 +37,7 @@ async def fetch_covers(ctx: JobContext) -> None:
     artist_id = int(ctx.payload["artist_id"])
     force = bool(ctx.payload.get("force", False))
 
-    def wanted(db) -> list[tuple[int, str]]:
+    def wanted(db) -> list[tuple[int, str, str]]:
         if force:  # retry covers that were missing
             db.execute(
                 update(ReleaseGroup)
@@ -48,24 +48,33 @@ async def fetch_covers(ctx: JobContext) -> None:
         types = set(get_missing_types(db))
         owned = owned_release_group_ids(db, artist_id)
         rows = db.execute(
-            select(ReleaseGroup.id, ReleaseGroup.mbid, ReleaseGroup.category).where(
-                ReleaseGroup.artist_id == artist_id, ReleaseGroup.cover_status == "unknown"
-            )
+            select(
+                ReleaseGroup.id, ReleaseGroup.mbid, ReleaseGroup.category, ReleaseGroup.title
+            ).where(ReleaseGroup.artist_id == artist_id, ReleaseGroup.cover_status == "unknown")
         )
-        return [(rid, mbid) for rid, mbid, category in rows if category in types or rid in owned]
+        return [
+            (rid, mbid, title)
+            for rid, mbid, category, title in rows
+            if category in types or rid in owned
+        ]
 
+    artist_name = await ctx.run_db(lambda db: db.get(Artist, artist_id).name)
     todo = await ctx.run_db(wanted)
     if not todo:
-        await ctx.log("No covers to fetch")
+        await ctx.log(f"{artist_name}: no covers to fetch")
         await ctx.progress(100, "Done")
         return
 
+    await ctx.log(
+        f"{artist_name}: looking for the cover of {len(todo)} album(s)"
+        + (" (again)" if force else "")
+    )
     directory = covers_dir(ctx.settings.data_dir)
     saved = missing = errors = consecutive = 0
     async with CoverArtClient(ctx.settings) as client:
-        for i, (rg_id, mbid) in enumerate(todo, start=1):
+        for i, (rg_id, mbid, title) in enumerate(todo, start=1):
             await ctx.checkpoint()
-            await ctx.progress(100 * (i - 1) / len(todo), f"Cover {i}/{len(todo)}")
+            await ctx.progress(100 * (i - 1) / len(todo), f"{title} ({i}/{len(todo)})")
             try:
                 result = await client.fetch_front(mbid)
             except ValueError:  # not a valid MBID: nothing to look up
@@ -73,7 +82,7 @@ async def fetch_covers(ctx: JobContext) -> None:
             except CoverArtError as exc:
                 errors += 1
                 consecutive += 1
-                await ctx.log(f"Cover {mbid}: {exc}", "warning")
+                await ctx.log(f"{artist_name} – {title}: cover failed ({exc})", "warning")
                 if consecutive >= MAX_CONSECUTIVE_ERRORS:
                     raise  # let the job engine retry later
                 continue
@@ -81,13 +90,17 @@ async def fetch_covers(ctx: JobContext) -> None:
             if result is None:
                 missing += 1
                 await ctx.run_db(_set_cover(rg_id, None, "missing"))
+                await ctx.log(f"{artist_name} – {title}: no cover at the Cover Art Archive")
                 continue
             data, extension = result
             name = f"{mbid}{extension}"
             write_atomic(directory, name, data)
             saved += 1
             await ctx.run_db(_set_cover(rg_id, name, "ok"))
-    await ctx.log(f"Covers: {saved} saved, {missing} without cover, {errors} error(s)")
+            await ctx.log(f"{artist_name} – {title}: cover saved ({len(data) // 1024} KB)")
+    await ctx.log(
+        f"{artist_name}: {saved} cover(s) saved, {missing} without cover, {errors} error(s)"
+    )
     await ctx.progress(100, "Done")
 
 

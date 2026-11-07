@@ -82,7 +82,10 @@ def test_requesting_an_upgrade_makes_a_download_request_aimed_at_the_target(
         group.id,
     )
     [job] = db.scalars(select(Job).where(Job.type == "slskd_search")).all()
-    assert json.loads(job.payload_json) == {"request_id": req.id}
+    assert (
+        json.loads(job.payload_json) == {"request_id": req.id}
+        and job.label == "Aretha Franklin – Lady Soul (upgrade)"
+    )
 
 
 def test_without_javascript_the_form_redirects_to_the_album(admin_client, db, owned):

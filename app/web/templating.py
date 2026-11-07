@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from functools import partial
 from pathlib import Path
@@ -5,6 +6,7 @@ from typing import Any
 
 from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 
 from app.auth.csrf import CSRF_COOKIE, get_csrf_token
 from app.i18n import LANG_COOKIE, LANG_NAMES, has_key, resolve_lang, translate
@@ -34,6 +36,29 @@ from app.services.library_views import describe_format  # noqa: E402
 
 templates.env.filters["fmt_dt"] = fmt_dt
 templates.env.filters["album_format"] = describe_format
+
+
+def mark(text: Any, needle: str) -> Markup:
+    """The text, escaped, with every occurrence of the searched words highlighted."""
+    value = str(text)
+    needle = (needle or "").strip()
+    if len(needle) < 3:
+        return escape(value)
+    parts: list[Markup] = []
+    last = 0
+    for m in re.finditer(re.escape(needle), value, re.IGNORECASE):
+        parts += [
+            escape(value[last : m.start()]),
+            Markup("<mark>"),
+            escape(m.group()),
+            Markup("</mark>"),
+        ]
+        last = m.end()
+    parts.append(escape(value[last:]))
+    return Markup("").join(parts)
+
+
+templates.env.filters["mark"] = mark
 templates.env.globals["duration"] = duration
 
 

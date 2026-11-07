@@ -303,3 +303,6 @@ html.dark { color-scheme: dark; }
 .dark .hover\:border-fuchsia-300:hover { border-color:rgba(217,70,239,.45); }
 .dark .border-fuchsia-400, .dark.border-fuchsia-400 { border-color:rgba(217,70,239,.45); }
 .dark .hover\:border-fuchsia-400:hover { border-color:rgba(217,70,239,.45); }
+
+/* highlighted search matches */
+.dark mark { background-color:rgba(245,158,11,.35); color:#fef3c7; }

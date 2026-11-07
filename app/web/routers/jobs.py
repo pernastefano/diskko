@@ -23,14 +23,32 @@ def notify_worker(request: Request) -> None:
         worker.notify()
 
 
-def _list_context(db: DB, type_: str, status: str, page: int) -> dict:
+def _list_context(db: DB, type_: str, status: str, q: str, routine: str, page: int) -> dict:
     type_ = type_ if type_ in registry.job_types() else ""
     status = status if status in JOB_STATUSES else ""
+    q = " ".join(q.split())[:100]
+    show_routine = routine == "1"
     jobs, total = engine.list_jobs(
-        db, type=type_ or None, status=status or None, page=page, per_page=PER_PAGE
+        db,
+        type=type_ or None,
+        status=status or None,
+        search=q,
+        routine=show_routine,
+        page=page,
+        per_page=PER_PAGE,
     )
     pages = max(math.ceil(total / PER_PAGE), 1)
-    query = {k: v for k, v in {"type": type_, "status": status, "page": page}.items() if v}
+    query = {
+        k: v
+        for k, v in {
+            "type": type_,
+            "status": status,
+            "q": q,
+            "routine": "1" if show_routine else "",
+            "page": page,
+        }.items()
+        if v
+    }
     return {
         "jobs": jobs,
         "total": total,
@@ -38,6 +56,10 @@ def _list_context(db: DB, type_: str, status: str, page: int) -> dict:
         "pages": pages,
         "type": type_,
         "status": status,
+        "q": q,
+        "q_valid": len(q) >= engine.SEARCH_MIN,
+        "show_routine": show_routine,
+        "snippets": engine.matching_lines(db, [j.id for j in jobs], q),
         "job_types": registry.job_types(),
         "job_statuses": JOB_STATUSES,
         "qs": urlencode(query),
@@ -51,9 +73,11 @@ def jobs_page(
     db: DB,
     type: str = "",
     status: str = "",
+    q: str = "",
+    routine: str = "",
     page: Annotated[int, Query(ge=1)] = 1,
 ):
-    return render(request, "admin/jobs.html", _list_context(db, type, status, page))
+    return render(request, "admin/jobs.html", _list_context(db, type, status, q, routine, page))
 
 
 @router.get("/rows")
@@ -62,9 +86,13 @@ def jobs_rows(
     db: DB,
     type: str = "",
     status: str = "",
+    q: str = "",
+    routine: str = "",
     page: Annotated[int, Query(ge=1)] = 1,
 ):
-    return render(request, "admin/_jobs_rows.html", _list_context(db, type, status, page))
+    return render(
+        request, "admin/_jobs_rows.html", _list_context(db, type, status, q, routine, page)
+    )
 
 
 def _get_job(db: DB, job_id: int) -> Job:

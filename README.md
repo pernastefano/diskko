@@ -133,6 +133,11 @@ L'icona **Job** è **gialla** se ci sono job in corso (in coda o in esecuzione) 
 sono di falliti nelle ultime 24 ore, a meno che un job dello stesso tipo sia poi riuscito. Entrambe
 le icone si aggiornano da sole ogni 15 secondi.
 
+## Job e log
+
+Ogni job ha un'etichetta che dice su cosa lavora (artista, album...) e i log riportano i dettagli
+(per esempio la copertina di quale album). Da **Job** si può cercare un testo in tutti i log; i job di
+routine (controlli dei servizi, pulizia) sono nascosti finché non li si vuole vedere. 
 ## Scoprire musica
 
 - **Cerca** (voce nel menu): cerca qualsiasi artista su MusicBrainz, anche se non è nella libreria.

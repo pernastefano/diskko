@@ -4,6 +4,11 @@
 <h1 class="mb-4 text-2xl font-semibold">{{ t('nav.jobs') }}</h1>
 
 <form method="get" action="/admin/jobs" class="mb-4 flex flex-wrap items-end gap-3 text-sm">
+  <div class="min-w-[14rem] flex-1">
+    <label for="f-q" class="block text-xs text-slate-500">{{ t('jobs.search') }}</label>
+    <input id="f-q" name="q" type="search" value="{{ q }}" maxlength="100" placeholder="{{ t('jobs.search_placeholder') }}" autocomplete="off"
+           class="w-full rounded border border-slate-300 px-2 py-1">
+  </div>
   <div>
     <label for="f-type" class="block text-xs text-slate-500">{{ t('jobs.col.type') }}</label>
     <select id="f-type" name="type" class="rounded border border-slate-300 bg-white px-2 py-1">
@@ -18,8 +23,11 @@
       {% for s in job_statuses %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ t('job.status.' ~ s) }}</option>{% endfor %}
     </select>
   </div>
+  <label class="flex items-center gap-2 py-1"><input type="checkbox" name="routine" value="1" {% if show_routine %}checked{% endif %}> {{ t('jobs.show_routine') }}</label>
   <button type="submit" class="rounded border border-slate-300 px-3 py-1 hover:bg-slate-100">{{ t('action.filter') }}</button>
 </form>
+{% if q and not q_valid %}<p class="-mt-2 mb-3 text-xs text-amber-700" data-search-short>{{ t('jobs.search_short') }}</p>{% endif %}
+{% if q_valid %}<p class="-mt-2 mb-3 text-xs text-slate-500" data-search-info>{{ t('jobs.search_found', n=total, q=q) }}</p>{% endif %}
 
 <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
   <table class="min-w-full divide-y divide-slate-200 text-sm">

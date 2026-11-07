@@ -4,6 +4,7 @@ from app.jobs import engine
 from app.jobs.context import JobContext
 from app.jobs.handlers.sync_artist import sync_dedupe_key
 from app.jobs.registry import job_handler
+from app.models import Artist
 from app.services.musicbrainz import sync
 
 
@@ -15,8 +16,8 @@ async def sync_pending_artists(ctx: JobContext) -> None:
         )
         return
 
-    def queue(db) -> int:
-        count = 0
+    def queue(db) -> list[str]:
+        names: list[str] = []
         for artist_id in sync.artists_needing_sync(db, ctx.settings.mb_refresh_days):
             engine.enqueue(
                 db,
@@ -25,9 +26,13 @@ async def sync_pending_artists(ctx: JobContext) -> None:
                 dedupe_key=sync_dedupe_key(artist_id),
                 parent_job_id=ctx.job_id,
             )
-            count += 1
-        return count
+            artist = db.get(Artist, artist_id)
+            names.append(artist.name if artist else f"#{artist_id}")
+        return names
 
-    queued = await ctx.run_db(queue)
-    await ctx.log(f"Queued {queued} artist(s) for a MusicBrainz sync")
+    names = await ctx.run_db(queue)
+    shown = ", ".join(names[:15]) + (f" and {len(names) - 15} more" if len(names) > 15 else "")
+    await ctx.log(
+        f"Queued {len(names)} artist(s) for a MusicBrainz sync" + (f": {shown}" if names else "")
+    )
     await ctx.progress(100, "Done")

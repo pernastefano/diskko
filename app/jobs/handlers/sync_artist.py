@@ -24,6 +24,10 @@ async def sync_artist_metadata(ctx: JobContext) -> None:
     data = await ctx.run_db(lambda db: sync.load_artist_input(db, artist_id))
     if data is None:
         raise PermanentJobError(f"artist {artist_id} not found")
+    await ctx.log(
+        f"Syncing {data.name}: MusicBrainz status {data.mb_status}, "
+        f"MBID {data.mbid or 'not known yet'}" + (" (forced)" if force else "")
+    )
     if data.mb_status in (MB_UNMATCHED, MB_IGNORED) and not force:
         await ctx.log(f"{data.name}: skipped ({data.mb_status})")
         return

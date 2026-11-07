@@ -566,5 +566,10 @@
   "requests.upgrade_from": "Upgrade da {quality}",
   "requests.upgrade_to": "ad almeno {quality}",
   "requests.upgrade_tag": "Upgrade",
-  "error.request_bad_target": "Scegli una qualità migliore di quella attuale."
+  "error.request_bad_target": "Scegli una qualità migliore di quella attuale.",
+  "jobs.search": "Cerca nei log",
+  "jobs.search_placeholder": "Testo in una riga di log, etichetta o tipo…",
+  "jobs.show_routine": "Mostra i job di routine (controlli dei servizi, pulizia)",
+  "jobs.search_short": "Scrivi almeno 3 caratteri per cercare.",
+  "jobs.search_found": "{n} job con “{q}” in una riga di log, etichetta o tipo."
 }

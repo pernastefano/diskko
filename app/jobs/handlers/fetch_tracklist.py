@@ -8,7 +8,7 @@ from app.integrations.musicbrainz_client import (
 from app.jobs.context import JobContext
 from app.jobs.errors import PermanentJobError
 from app.jobs.registry import job_handler
-from app.models import ReleaseGroup
+from app.models import Artist, ReleaseGroup
 from app.services.tracklists import choose_release, store_tracklist
 
 
@@ -21,16 +21,20 @@ async def fetch_tracklist(ctx: JobContext) -> None:
     group_id = int(ctx.payload["release_group_id"])
     force = bool(ctx.payload.get("force", False))
     found = await ctx.run_db(
-        lambda db: (g.mbid, g.title) if (g := db.get(ReleaseGroup, group_id)) else None
+        lambda db: (
+            (g.mbid, g.title, db.get(Artist, g.artist_id).name)
+            if (g := db.get(ReleaseGroup, group_id))
+            else None
+        )
     )
     if found is None:
         raise PermanentJobError(f"release group {group_id} not found")
-    mbid, title = found
+    mbid, title, artist = found
     try:
         client = MusicBrainzClient(ctx.settings, ctx.session_factory)
     except MusicBrainzNotConfigured as exc:
         raise PermanentJobError(str(exc)) from exc
-    await ctx.log(f"Fetching the tracks of {title!r}")
+    await ctx.log(f"Fetching the tracks of {artist} – {title} (release group {mbid})")
     async with client:
         try:
             releases = await client.browse_releases(mbid, force=force)

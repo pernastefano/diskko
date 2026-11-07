@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, aliased
 
 from app.jobs import registry
 from app.jobs.errors import JobError
+from app.jobs.labels import job_label
 from app.models import (
     ACTIVE_STATUSES,
     STATUS_CANCELLED,
@@ -60,6 +61,7 @@ def enqueue(
     created_by: int | None = None,
     parent_job_id: int | None = None,
     delay: float | None = None,
+    label: str | None = None,
 ) -> Job:
     """Queue a job. With a dedupe_key, an already active job with that key is returned."""
     spec = registry.get_spec(type)
@@ -79,6 +81,7 @@ def enqueue(
         created_at=now,
         parent_job_id=parent_job_id,
         dedupe_key=dedupe_key,
+        label=(label or job_label(db, type, payload or {}) or None),
         max_attempts=spec.max_attempts,
         next_run_at=now + timedelta(seconds=delay) if delay else None,
     )
@@ -103,28 +106,79 @@ def get_job(db: Session, job_id: int) -> Job | None:
     return db.get(Job, job_id)
 
 
+# Jobs that run by themselves all day (service checks, the nightly cleanup): hidden from the list
+# unless asked for, and kept for a short time.
+ROUTINE_TYPES = ("check_integrations", "integration_check", "housekeeping")
+SEARCH_MIN = 3  # characters needed to search the logs
+
+
+def _like(text: str) -> str:
+    escaped = text.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 def list_jobs(
     db: Session,
     *,
     type: str | None = None,
     status: str | None = None,
+    search: str | None = None,
+    routine: bool = True,
     page: int = 1,
     per_page: int = 25,
 ) -> tuple[list[Job], int]:
-    stmt = select(Job)
-    count_stmt = select(func.count(Job.id))
+    """A page of jobs, newest first. `search` looks in the type, the label and every log line;
+    `routine=False` hides the jobs that run all day (unless a type is asked for)."""
+    conditions = []
     if type:
-        stmt = stmt.where(Job.type == type)
-        count_stmt = count_stmt.where(Job.type == type)
+        conditions.append(Job.type == type)
+    elif not routine:
+        conditions.append(Job.type.not_in(ROUTINE_TYPES))
     if status:
-        stmt = stmt.where(Job.status == status)
-        count_stmt = count_stmt.where(Job.status == status)
-    total = db.scalar(count_stmt) or 0
+        conditions.append(Job.status == status)
+    text = (search or "").strip()
+    if len(text) >= SEARCH_MIN:
+        like = _like(text)
+        in_logs = select(JobLog.job_id).where(func.lower(JobLog.message).like(like, escape="\\"))
+        conditions.append(
+            or_(
+                func.lower(Job.type).like(like, escape="\\"),
+                func.lower(func.coalesce(Job.label, "")).like(like, escape="\\"),
+                Job.id.in_(in_logs),
+            )
+        )
+    total = db.scalar(select(func.count(Job.id)).where(*conditions)) or 0
     page = max(page, 1)
     rows = db.scalars(
-        stmt.order_by(Job.id.desc()).limit(per_page).offset((page - 1) * per_page)
+        select(Job)
+        .where(*conditions)
+        .order_by(Job.id.desc())
+        .limit(per_page)
+        .offset((page - 1) * per_page)
     ).all()
     return list(rows), total
+
+
+def matching_lines(
+    db: Session, job_ids: list[int], search: str, *, per_job: int = 3
+) -> dict[int, list[str]]:
+    """For each job, the first log lines that contain the searched text."""
+    text = (search or "").strip()
+    if len(text) < SEARCH_MIN or not job_ids:
+        return {}
+    rows = db.execute(
+        select(JobLog.job_id, JobLog.message)
+        .where(
+            JobLog.job_id.in_(job_ids), func.lower(JobLog.message).like(_like(text), escape="\\")
+        )
+        .order_by(JobLog.id)
+    )
+    found: dict[int, list[str]] = {}
+    for job_id, message in rows:
+        lines = found.setdefault(job_id, [])
+        if len(lines) < per_job:
+            lines.append(message)
+    return found
 
 
 # ------------------------------------------------------------------- claiming

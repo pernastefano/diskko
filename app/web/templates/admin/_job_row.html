@@ -1,6 +1,10 @@
 <tr id="job-{{ job.id }}">
   <td class="px-3 py-2 align-top"><a class="text-indigo-600 hover:underline" href="/admin/jobs/{{ job.id }}">#{{ job.id }}</a></td>
-  <td class="px-3 py-2 align-top font-mono text-xs">{{ job.type }}</td>
+  <td class="px-3 py-2 align-top">
+    <div class="font-mono text-xs">{{ job.type|mark(q) }}</div>
+    {% if job.label %}<div class="text-xs text-slate-600" data-job-label>{{ job.label|mark(q) }}</div>{% endif %}
+    {% for line in (snippets or {}).get(job.id, []) %}<div class="mt-0.5 max-w-md truncate text-xs text-slate-500" title="{{ line }}" data-job-match>{{ line|mark(q) }}</div>{% endfor %}
+  </td>
   <td class="px-3 py-2 align-top">{% include "admin/_job_status_badge.html" %}</td>
   <td class="px-3 py-2 align-top">{% include "admin/_job_progress.html" %}</td>
   <td class="px-3 py-2 align-top text-xs tabular-nums">{{ job.attempts }}/{{ job.max_attempts }}</td>

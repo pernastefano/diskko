@@ -58,7 +58,7 @@ def test_invalid_filters_are_ignored(admin_client, make_job):
 
 def test_pagination(admin_client, make_job):
     for _ in range(26):
-        make_job("housekeeping")
+        make_job()
     first = admin_client.get("/admin/jobs").text
     assert "Page 1 of 2" in first and "Next" in first and "Previous" not in first
     second = admin_client.get("/admin/jobs?page=2").text

@@ -147,7 +147,7 @@ async def test_covers_already_saved_are_not_downloaded_again(mbsettings, session
         await wait_for_status(session_factory, second, "succeeded")
         await worker.stop()
     assert total_calls() == calls
-    assert "No covers to fetch" in logs(session_factory, second)
+    assert any("no covers to fetch" in m for m in logs(session_factory, second))
 
 
 async def test_a_failing_cover_does_not_stop_the_others(mbsettings, session_factory):
@@ -191,3 +191,26 @@ def test_write_atomic_replaces_and_cleans_up(tmp_path):
     write_atomic(directory, "x.jpg", b"two")
     assert (directory / "x.jpg").read_bytes() == b"two"
     assert [p.name for p in directory.iterdir()] == ["x.jpg"]
+
+
+async def test_the_log_says_which_artist_and_album_each_cover_is_for(mbsettings, session_factory):
+    settings = cover_settings(mbsettings)
+    artist_id, mbids = seed_discography(session_factory)
+    with respx.mock(assert_all_called=False) as mock:
+        front(
+            mock,
+            mbids["wanted"],
+            httpx.Response(200, content=JPEG, headers={"content-type": "image/jpeg"}),
+        )
+        front(mock, mbids["ep"], httpx.Response(404, text="Not found"))
+        front(mock, mbids["owned_comp"], httpx.Response(404, text="Not found"))
+        worker, job_id = await run_covers(settings, session_factory, artist_id)
+        await wait_for_status(session_factory, job_id, "succeeded")
+        await worker.stop()
+    messages = logs(session_factory, job_id)
+    assert any(
+        m.startswith("The Band: looking for the cover of 3 album(s)") for m in messages
+    ) or any("looking for the cover of" in m for m in messages)
+    assert any(" – " in m and ": cover saved (" in m for m in messages)
+    assert any(" – " in m and "no cover at the Cover Art Archive" in m for m in messages)
+    assert any("cover(s) saved" in m and "without cover" in m for m in messages)
