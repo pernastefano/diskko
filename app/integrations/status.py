@@ -5,14 +5,23 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.integrations.base import Integration
+from app.integrations.discovery_checks import Deezer, Itunes, LastFm, ListenBrainz
 from app.integrations.musicbrainz import MusicBrainz
 from app.integrations.plex import Plex
 from app.integrations.slskd import Slskd
 from app.models import ACTIVE_STATUSES, Job
 from app.services.app_settings import get_setting
 
-INTEGRATION_NAMES = ("plex", "slskd", "musicbrainz")
-_CLASSES: dict[str, type[Integration]] = {"plex": Plex, "slskd": Slskd, "musicbrainz": MusicBrainz}
+INTEGRATION_NAMES = ("plex", "slskd", "musicbrainz", "lastfm", "listenbrainz", "itunes", "deezer")
+_CLASSES: dict[str, type[Integration]] = {
+    "plex": Plex,
+    "slskd": Slskd,
+    "musicbrainz": MusicBrainz,
+    "lastfm": LastFm,
+    "listenbrainz": ListenBrainz,
+    "itunes": Itunes,
+    "deezer": Deezer,
+}
 
 
 def build_integration(name: str, settings: Settings) -> Integration | None:

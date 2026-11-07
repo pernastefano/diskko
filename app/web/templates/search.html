@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ t('search.title') }}{% endblock %}
+{% block content %}
+<h1 class="mb-4 text-2xl font-semibold">{{ t('search.title') }}</h1>
+<form method="get" action="/search" class="mb-5 flex gap-2" role="search">
+  <label for="search-q" class="sr-only">{{ t('search.label') }}</label>
+  <input id="search-q" name="q" value="{{ q }}" placeholder="{{ t('search.placeholder') }}" autocomplete="off" maxlength="100" autofocus
+         class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+  <button class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('search.button') }}</button>
+</form>
+{% include "_search_results.html" %}
+{% endblock %}

@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # Job engine
     jobs_enabled: bool = True
-    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2,library:1,coverart:2"
+    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:2,library:1,coverart:2,discovery:2"
     job_poll_interval: float = 1.0
     job_retention_days: int = 30
     job_log_max_lines: int = 5000
@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     mb_user_agent: str = ""
     musicbrainz_url: str = "https://musicbrainz.org/ws/2"
     coverart_url: str = "https://coverartarchive.org"
+    # Discovery (similar artists, previews). Every one of them is public and read only.
+    lastfm_url: str = "https://ws.audioscrobbler.com/2.0/"
+    listenbrainz_url: str = "https://labs.api.listenbrainz.org"
+    itunes_url: str = "https://itunes.apple.com"
+    deezer_url: str = "https://api.deezer.com"
+    preview_country: str = "US"  # iTunes catalogue to search (two-letter country code)
     coverart_min_interval: float = 0.5  # seconds between Cover Art Archive requests
     mb_cache_ttl_days: int = 7
     mb_min_interval: float = 1.1  # seconds between requests (MusicBrainz allows 1 per second)

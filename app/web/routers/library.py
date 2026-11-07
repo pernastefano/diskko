@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.auth.deps import DB, UserAuth
 from app.jobs import engine
+from app.jobs.handlers.sync_artist import sync_dedupe_key
 from app.models import ACTIVE_STATUSES, Artist, Job, ReleaseGroup, utcnow
 from app.services.library_views import (
     PAGE_SIZE,
@@ -116,7 +117,7 @@ COVER_RETRY_MINUTES = 10
 
 def _artist_or_404(db: DB, artist_id: int) -> Artist:
     artist = db.get(Artist, artist_id)
-    if artist is None or not artist.in_library:
+    if artist is None:  # artists opened from a search (not in the library) have a page too
         raise HTTPException(status_code=404, detail="not_found")
     return artist
 
@@ -160,6 +161,17 @@ def _ensure_covers(
     notify_worker(request)
 
 
+def _sync_active(db: DB, artist_id: int) -> bool:
+    return (
+        db.scalar(
+            select(Job.id).where(
+                Job.dedupe_key == sync_dedupe_key(artist_id), Job.status.in_(ACTIVE_STATUSES)
+            )
+        )
+        is not None
+    )
+
+
 def _artist_context(db: DB, auth: UserAuth, artist: Artist, show_all: bool) -> dict:
     types = get_missing_types(db)
     sections = build_artist_sections(db, artist.id, types, show_all=show_all)
@@ -172,6 +184,7 @@ def _artist_context(db: DB, auth: UserAuth, artist: Artist, show_all: bool) -> d
         "show_all": show_all,
         "statuses": request_statuses(db, auth.user.id, group_ids),
         "covers_active": _cover_job_active(db, artist.id),
+        "syncing": _sync_active(db, artist.id),
         "unavailable": set(),
     }
 
@@ -182,6 +195,7 @@ def artist_page(request: Request, db: DB, auth: UserAuth, artist_id: int, all: s
     ctx = _artist_context(db, auth, artist, show_all=all == "1")
     _ensure_covers(request, db, auth, artist, ctx["sections"], ctx["types"])
     ctx["covers_active"] = _cover_job_active(db, artist_id)
+    ctx["syncing"] = _sync_active(db, artist_id)
     ctx["mb_configured"] = bool(request.app.state.settings.mb_user_agent.strip())
     return render(request, "artist.html", ctx)
 

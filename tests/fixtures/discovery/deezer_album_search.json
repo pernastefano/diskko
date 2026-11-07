@@ -1,0 +1,92 @@
+{
+ "data": [
+  {
+   "id": 14879699,
+   "title": "OK Computer",
+   "link": "https://www.deezer.com/album/14879699",
+   "cover": "https://api.deezer.com/album/14879699/image",
+   "cover_small": "https://cdn-images.dzcdn.net/images/cover/05a186e0a859a36f9cd51cdae2158fe1/56x56-000000-80-0-0.jpg",
+   "cover_medium": "https://cdn-images.dzcdn.net/images/cover/05a186e0a859a36f9cd51cdae2158fe1/250x250-000000-80-0-0.jpg",
+   "cover_big": "https://cdn-images.dzcdn.net/images/cover/05a186e0a859a36f9cd51cdae2158fe1/500x500-000000-80-0-0.jpg",
+   "cover_xl": "https://cdn-images.dzcdn.net/images/cover/05a186e0a859a36f9cd51cdae2158fe1/1000x1000-000000-80-0-0.jpg",
+   "md5_image": "05a186e0a859a36f9cd51cdae2158fe1",
+   "genre_id": 85,
+   "nb_tracks": 12,
+   "record_type": "album",
+   "tracklist": "https://api.deezer.com/album/14879699/tracks",
+   "explicit_lyrics": false,
+   "artist": {
+    "id": 399,
+    "name": "Radiohead",
+    "link": "https://www.deezer.com/artist/399",
+    "picture": "https://api.deezer.com/artist/399/image",
+    "picture_small": "https://cdn-images.dzcdn.net/images/artist/0d58cfbc90f2e776608bcdc0c45a4711/56x56-000000-80-0-0.jpg",
+    "picture_medium": "https://cdn-images.dzcdn.net/images/artist/0d58cfbc90f2e776608bcdc0c45a4711/250x250-000000-80-0-0.jpg",
+    "picture_big": "https://cdn-images.dzcdn.net/images/artist/0d58cfbc90f2e776608bcdc0c45a4711/500x500-000000-80-0-0.jpg",
+    "picture_xl": "https://cdn-images.dzcdn.net/images/artist/0d58cfbc90f2e776608bcdc0c45a4711/1000x1000-000000-80-0-0.jpg",
+    "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+    "type": "artist"
+   },
+   "type": "album"
+  },
+  {
+   "id": 363292487,
+   "title": "OK Computer (8-bit)",
+   "link": "https://www.deezer.com/album/363292487",
+   "cover": "https://api.deezer.com/album/363292487/image",
+   "cover_small": "https://cdn-images.dzcdn.net/images/cover/f9b796bbf8e714199b7ad9f1254af72f/56x56-000000-80-0-0.jpg",
+   "cover_medium": "https://cdn-images.dzcdn.net/images/cover/f9b796bbf8e714199b7ad9f1254af72f/250x250-000000-80-0-0.jpg",
+   "cover_big": "https://cdn-images.dzcdn.net/images/cover/f9b796bbf8e714199b7ad9f1254af72f/500x500-000000-80-0-0.jpg",
+   "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f9b796bbf8e714199b7ad9f1254af72f/1000x1000-000000-80-0-0.jpg",
+   "md5_image": "f9b796bbf8e714199b7ad9f1254af72f",
+   "genre_id": 85,
+   "nb_tracks": 11,
+   "record_type": "album",
+   "tracklist": "https://api.deezer.com/album/363292487/tracks",
+   "explicit_lyrics": false,
+   "artist": {
+    "id": 14780505,
+    "name": "Quinton Sung",
+    "link": "https://www.deezer.com/artist/14780505",
+    "picture": "https://api.deezer.com/artist/14780505/image",
+    "picture_small": "https://cdn-images.dzcdn.net/images/artist/f9b796bbf8e714199b7ad9f1254af72f/56x56-000000-80-0-0.jpg",
+    "picture_medium": "https://cdn-images.dzcdn.net/images/artist/f9b796bbf8e714199b7ad9f1254af72f/250x250-000000-80-0-0.jpg",
+    "picture_big": "https://cdn-images.dzcdn.net/images/artist/f9b796bbf8e714199b7ad9f1254af72f/500x500-000000-80-0-0.jpg",
+    "picture_xl": "https://cdn-images.dzcdn.net/images/artist/f9b796bbf8e714199b7ad9f1254af72f/1000x1000-000000-80-0-0.jpg",
+    "tracklist": "https://api.deezer.com/artist/14780505/top?limit=50",
+    "type": "artist"
+   },
+   "type": "album"
+  },
+  {
+   "id": 43197211,
+   "title": "OK Computer OKNOTOK 1997 2017",
+   "link": "https://www.deezer.com/album/43197211",
+   "cover": "https://api.deezer.com/album/43197211/image",
+   "cover_small": "https://cdn-images.dzcdn.net/images/cover/4dfeb095cb3c0acaf538b21a90d89710/56x56-000000-80-0-0.jpg",
+   "cover_medium": "https://cdn-images.dzcdn.net/images/cover/4dfeb095cb3c0acaf538b21a90d89710/250x250-000000-80-0-0.jpg",
+   "cover_big": "https://cdn-images.dzcdn.net/images/cover/4dfeb095cb3c0acaf538b21a90d89710/500x500-000000-80-0-0.jpg",
+   "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4dfeb095cb3c0acaf538b21a90d89710/1000x1000-000000-80-0-0.jpg",
+   "md5_image": "4dfeb095cb3c0acaf538b21a90d89710",
+   "genre_id": 85,
+   "nb_tracks": 23,
+   "record_type": "album",
+   "tracklist": "https://api.deezer.com/album/43197211/tracks",
+   "explicit_lyrics": true,
+   "artist": {
+    "id": 399,
+    "name": "Radiohead",
+    "link": "https://www.deezer.com/artist/399",
+    "picture": "https://api.deezer.com/artist/399/image",
+    "picture_small": "https://cdn-images.dzcdn.net/images/artist/0d58cfbc90f2e776608bcdc0c45a4711/56x56-000000-80-0-0.jpg",
+    "picture_medium": "https://cdn-images.dzcdn.net/images/artist/0d58cfbc90f2e776608bcdc0c45a4711/250x250-000000-80-0-0.jpg",
+    "picture_big": "https://cdn-images.dzcdn.net/images/artist/0d58cfbc90f2e776608bcdc0c45a4711/500x500-000000-80-0-0.jpg",
+    "picture_xl": "https://cdn-images.dzcdn.net/images/artist/0d58cfbc90f2e776608bcdc0c45a4711/1000x1000-000000-80-0-0.jpg",
+    "tracklist": "https://api.deezer.com/artist/399/top?limit=50",
+    "type": "artist"
+   },
+   "type": "album"
+  }
+ ],
+ "total": 3
+}

@@ -30,6 +30,7 @@
         <a href="/" class="text-lg font-bold tracking-tight text-indigo-600">DISKKO</a>
         {% if user %}
           <a href="/library" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.browse') }}</a>
+          <a href="/search" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.search') }}</a>
         {% endif %}
         {% if user and user.is_admin %}
           <a href="/admin/artists" class="text-sm font-medium text-slate-600 hover:text-slate-900">{{ t('nav.artists') }}</a>
@@ -89,5 +90,11 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  {# One preview at a time: starting an audio element pauses every other one #}
+  <script>
+    document.addEventListener('play', function (e) {
+      document.querySelectorAll('audio').forEach(function (a) { if (a !== e.target) a.pause(); });
+    }, true);
+  </script>
 </body>
 </html>

@@ -21,7 +21,8 @@ def test_status_page_lists_integrations_and_queues(admin_client):
     page = admin_client.get("/admin/status").text
     for label in ("Plex", "SLSKD", "MusicBrainz"):
         assert label in page
-    assert page.count("Not configured") == 3  # nothing configured in the test settings
+    # Plex, SLSKD, MusicBrainz, Last.fm and ListenBrainz need settings; iTunes and Deezer do not
+    assert page.count("Not configured") == 5
     assert "Never tested." in page
     assert "default" in page and "musicbrainz" in page  # queue table
     assert "Job workers are disabled" in page  # jobs_enabled=False in tests

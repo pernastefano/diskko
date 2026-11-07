@@ -7,4 +7,5 @@
   </div>
   {% set status = statuses.get(g.id) %}
   {% include "_request_control.html" %}
+  {% set preview_group = g %}{% include "_preview_control.html" %}
 </li>

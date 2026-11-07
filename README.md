@@ -82,6 +82,22 @@ copertina) e quelli mancanti, raggruppati per tipo secondo le preferenze dell'ut
 "Richiedi download" è per ora solo un segnaposto: i download arrivano con le fasi successive.
 Le copertine mancanti si scaricano in background quando si apre la pagina.
 
+## Scoprire musica
+
+- **Cerca** (voce nel menu): cerca qualsiasi artista su MusicBrainz, anche se non è nella libreria.
+  "Apri" crea una pagina artista con la discografia da scaricare (secondo i tipi di album scelti
+  nelle Impostazioni); gli artisti aperti ma mai aggiunti vengono dimenticati dopo 90 giorni.
+- **Artisti simili**: da Last.fm (serve una chiave API gratuita, in Impostazioni > Integrazioni) e,
+  se manca o non risponde, da ListenBrainz (serve il contatto in `MB_USER_AGENT`; usa un endpoint
+  "labs" non documentato ufficialmente). Chi è già in libreria ha il badge "In libreria".
+- **Anteprime da 30 secondi** su ogni album: iTunes Search API, poi Deezer. L'audio viene sempre
+  riprodotto direttamente dal provider e mai scaricato né salvato; si memorizzano solo gli indirizzi
+  (quelli di Deezer scadono dopo circa 15 minuti e vengono richiesti di nuovo).
+- Tutte le chiamate esterne sono job (coda *Scoperta*, visibili in Job) con cache nel database.
+  Last.fm, ListenBrainz, iTunes e Deezer hanno il test di connessione in Stato.
+- Termini d'uso: Last.fm e Deezer ammettono solo uso non commerciale; iTunes richiede che le
+  anteprime siano solo in streaming con attribuzione (mostrata sotto il player).
+
 ## Impostazioni
 
 Gli amministratori configurano l'app da **Impostazioni** (l'ingranaggio in alto a destra), senza

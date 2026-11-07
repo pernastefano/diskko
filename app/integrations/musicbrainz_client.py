@@ -81,6 +81,29 @@ def cache_key(path: str, params: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
+def search_cache_key(name: str, limit: int) -> str:
+    """Cache key of an artist search (the same one `search_artists` writes)."""
+    return cache_key(
+        "artist", {"query": f"artist:{lucene_phrase(name)}", "limit": limit, "fmt": "json"}
+    )
+
+
+def peek_artist_search(
+    db: Session, name: str, limit: int, *, now: Callable[[], Any] = utcnow
+) -> list[ArtistHit] | None:
+    """The cached answer of an artist search, or None when it is missing or has expired.
+
+    Reading the cache is a local query, so pages can use it; asking MusicBrainz is a job.
+    """
+    row = db.get(ApiCache, search_cache_key(name, limit))
+    if row is None or row.fetched_at + timedelta(seconds=row.ttl_seconds) <= now():
+        return None
+    if row.status == 404 or not row.response:
+        return []
+    data = json.loads(row.response)
+    return [hit for raw in data.get("artists", []) if (hit := _parse_artist(raw))]
+
+
 class MusicBrainzClient:
     def __init__(
         self,

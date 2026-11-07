@@ -1,7 +1,7 @@
 {% from "_covers.html" import cover %}
 {# The two lists. While covers are downloading the element polls itself and then stops. #}
 <div id="artist-sections"
-     {% if covers_active %}hx-get="/artist/{{ artist.id }}/sections{{ '?all=1' if show_all else '' }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+     {% if covers_active or syncing %}hx-get="/artist/{{ artist.id }}/sections{{ '?all=1' if show_all else '' }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
 
   <h2 class="mb-3 mt-8 text-xl font-semibold">{{ t('artist.owned') }} <span class="text-sm font-normal text-slate-500">({{ sections.owned_total }})</span></h2>
   {% for category, items in sections.owned %}

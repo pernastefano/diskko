@@ -41,7 +41,7 @@ router = APIRouter(prefix="/settings", dependencies=[Depends(require_admin)])
 SECTIONS = ("library", "integrations", "jobs", "albums", "quality", "users")
 RECLASSIFY_KEY = "reclassify_quality"
 GROUPS = ("plex", "slskd", "musicbrainz", "coverart", "lastfm")
-TESTABLE = ("plex", "slskd", "musicbrainz")  # integrations with a connection test
+TESTABLE = ("plex", "slskd", "musicbrainz", "lastfm")  # integrations with a connection test
 CHOICE_LABELS = {"library_source": "library.source."}
 FOLDER_LISTING_CAP = 100_000
 

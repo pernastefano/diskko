@@ -1,0 +1,35 @@
+{# needs: artist, state (ready|loading|unavailable|failed), items #}
+<div id="similar" {% if state == 'loading' %}hx-get="/artist/{{ artist.id }}/similar" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'loading' %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500" data-similar-state="loading">{{ t('similar.loading') }}</p>
+  {% elif state == 'unavailable' %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500" data-similar-state="unavailable">{{ t('similar.unavailable') }}</p>
+  {% elif state == 'failed' %}
+    <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-similar-state="failed">{{ t('similar.failed') }}
+      <button type="button" hx-post="/artist/{{ artist.id }}/similar?retry=1" hx-target="#similar" hx-swap="outerHTML" class="underline">{{ t('action.retry') }}</button></p>
+  {% elif not items %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500" data-similar-state="empty">{{ t('similar.none') }}</p>
+  {% else %}
+    <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3" data-similar-state="ready">
+      {% for s in items %}
+        <li class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm" data-similar="{{ s.name }}">
+          <div class="min-w-0">
+            {% if s.artist_id %}
+              <a href="/artist/{{ s.artist_id }}" class="block truncate text-sm font-medium text-indigo-700 hover:underline">{{ s.name }}</a>
+            {% elif s.mbid %}
+              <form method="post" action="/artist/{{ artist.id }}/similar/open">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="mbid" value="{{ s.mbid }}">
+                <button class="block max-w-full truncate text-left text-sm font-medium text-indigo-700 hover:underline">{{ s.name }}</button>
+              </form>
+            {% else %}
+              <a href="/search?q={{ s.name|urlencode }}" class="block truncate text-sm font-medium text-indigo-700 hover:underline">{{ s.name }}</a>
+            {% endif %}
+            <span class="text-xs text-slate-500">{{ (s.score * 100)|round|int }}% · {{ 'Last.fm' if s.source == 'lastfm' else 'ListenBrainz' }}</span>
+          </div>
+          {% if s.in_library %}<span class="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800" data-in-library>{{ t('badge.in_library') }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-2 text-xs text-slate-500">{{ t('similar.credit') }}</p>
+  {% endif %}
+</div>

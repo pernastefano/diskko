@@ -1,0 +1,35 @@
+{# needs: q, state (empty|not_configured|searching|failed|results), rows #}
+<div id="search-results" {% if state == 'searching' %}hx-get="/search/results?q={{ q|urlencode }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'empty' %}
+    <p class="text-sm text-slate-500">{{ t('search.hint') }}</p>
+  {% elif state == 'not_configured' %}
+    <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" data-search-state="not_configured">{{ t('error.mb_not_configured') }}</p>
+  {% elif state == 'searching' %}
+    <p class="text-sm text-slate-500" data-search-state="searching">{{ t('search.searching') }}</p>
+  {% elif state == 'failed' %}
+    <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-search-state="failed">{{ t('search.failed') }} <a class="underline" href="/search?q={{ q|urlencode }}&retry=1">{{ t('action.retry') }}</a></p>
+  {% elif not rows %}
+    <p class="text-sm text-slate-500" data-search-state="none">{{ t('search.none', q=q) }}</p>
+  {% else %}
+    <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm" data-search-state="results">
+      {% for r in rows %}{% set h = r.hit %}
+        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3" data-artist-mbid="{{ h.mbid }}">
+          <div class="min-w-0">
+            <div class="font-medium">{{ h.name }}
+              {% if r.in_library %}<span class="ml-1 rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800" data-in-library>{{ t('badge.in_library') }}</span>{% endif %}
+            </div>
+            <div class="text-xs text-slate-500">{{ [h.type, h.country, h.disambiguation]|select|join(' · ') }}</div>
+          </div>
+          {% if r.artist %}
+            <a href="/artist/{{ r.artist.id }}" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100">{{ t('search.open') }}</a>
+          {% else %}
+            <form method="post" action="/search/open">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="mbid" value="{{ h.mbid }}">
+              <button class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">{{ t('search.open') }}</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>

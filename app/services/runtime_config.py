@@ -25,7 +25,7 @@ from app.services.quality_profiles import load_profiles
 
 STORAGE_PREFIX = "config."
 MAX_WORKERS = 8
-QUEUES = ("default", "library", "musicbrainz", "coverart", "slskd")
+QUEUES = ("default", "library", "musicbrainz", "coverart", "slskd", "discovery")
 SOURCES = ("filesystem", "plex")
 
 _PATH_MAP_RULE = re.compile(r"^[^=;]+=[^=;]+$")

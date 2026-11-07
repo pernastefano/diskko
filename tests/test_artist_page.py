@@ -75,13 +75,14 @@ def test_open_to_every_user(admin_client, user_client, band):
         assert "The Band" in page(client, f"/artist/{band['id']}")
 
 
-def test_unknown_or_outside_artists_are_404(app, admin_client):
+def test_unknown_artists_are_404_and_outside_ones_have_a_page(app, admin_client):
     assert admin_client.get("/artist/9999").status_code == 404
     with app.state.session_factory() as db:
         gone = make_artist(db, "Gone", in_library=False)
         gone_id = gone.id
-    assert admin_client.get(f"/artist/{gone_id}").status_code == 404
-    assert admin_client.get(f"/artist/{gone_id}/sections").status_code == 404
+    external = admin_client.get(f"/artist/{gone_id}")
+    assert external.status_code == 200 and "data-external" in external.text
+    assert admin_client.get(f"/artist/{gone_id}/sections").status_code == 200
 
 
 # ---------------------------------------------------------------------- content
@@ -185,9 +186,10 @@ def test_titles_are_escaped(app, admin_client, band):
     assert "<img src=x" not in text and "&lt;img src=x" in text and "<b>bold</b>" not in text
 
 
-def test_similar_artists_placeholder(admin_client, band):
+def test_similar_artists_load_themselves(admin_client, band):
     text = page(admin_client, f"/artist/{band['id']}")
-    assert "Similar artists" in text and "Coming soon." in text
+    assert "Similar artists" in text and "Looking for similar artists" in text
+    assert f'hx-post="/artist/{band["id"]}/similar"' in text
 
 
 def test_empty_artist(app, admin_client):
@@ -459,7 +461,7 @@ def test_italian(admin_client, band):
         "Mancanti",
         "Richiedi download",
         "Artisti simili",
-        "In arrivo.",
+        "Cerco artisti simili…",
         "FLAC Hi-Res",
         "Non abbinati",
         "Aggiorna metadati",

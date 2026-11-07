@@ -232,9 +232,9 @@ def test_integrations_page_has_a_form_per_integration(admin_client):
 
 def test_connection_tests_exist_where_they_make_sense(admin_client):
     text = page(admin_client, "/settings/integrations")
-    for name in ("plex", "slskd", "musicbrainz"):
+    for name in ("plex", "slskd", "musicbrainz", "lastfm"):
         assert f'id="check-{name}"' in text and f'hx-post="/admin/status/{name}/test"' in text
-    assert 'id="check-lastfm"' not in text and 'id="check-coverart"' not in text
+    assert 'id="check-coverart"' not in text
     assert "save the form above first" in text
 
 

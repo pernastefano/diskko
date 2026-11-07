@@ -18,6 +18,7 @@ from app.web.routers import (
     artists,
     auth,
     covers,
+    discovery,
     jobs,
     library,
     library_admin,
@@ -103,6 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         preferences.router,
         settings_pages.router,
         covers.router,
+        discovery.router,
         status.router,
         pages.router,
     ):

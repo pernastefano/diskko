@@ -1,4 +1,16 @@
 from app.models.base import Base, utcnow
+from app.models.discovery import (
+    PREVIEW_DEEZER,
+    PREVIEW_FOUND,
+    PREVIEW_ITUNES,
+    PREVIEW_NONE,
+    SIMILAR_LASTFM,
+    SIMILAR_LISTENBRAINZ,
+    PreviewLookup,
+    PreviewTrack,
+    SimilarArtist,
+    SimilarFetch,
+)
 from app.models.job import (
     ACTIVE_STATUSES,
     JOB_STATUSES,
@@ -43,6 +55,16 @@ from app.models.quality import QualityProfile
 from app.models.user import ROLE_ADMIN, ROLE_USER, ROLES, THEMES, Setting, User, UserSession
 
 __all__ = [
+    "PREVIEW_DEEZER",
+    "PREVIEW_FOUND",
+    "PREVIEW_ITUNES",
+    "PREVIEW_NONE",
+    "SIMILAR_LASTFM",
+    "SIMILAR_LISTENBRAINZ",
+    "PreviewLookup",
+    "PreviewTrack",
+    "SimilarArtist",
+    "SimilarFetch",
     "MATCH_MANUAL",
     "MATCH_MATCHED",
     "MATCH_NONE",

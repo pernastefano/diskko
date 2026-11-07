@@ -10,4 +10,5 @@
     {% set tier = album.quality_tier %}{% include "_quality_badge.html" %}
     {% set fmt = album|album_format %}{% if fmt %}<span class="text-xs text-slate-500">{{ fmt }}</span>{% endif %}
   </div>
+  {% if group %}{% set preview_group = group %}{% include "_preview_control.html" %}{% endif %}
 </li>

@@ -522,5 +522,5 @@ def test_default_quality_is_flac_standard(settings):
 
 
 def test_rc_module_exports_what_the_pages_need():
-    assert rc.QUEUES == ("default", "library", "musicbrainz", "coverart", "slskd")
+    assert rc.QUEUES == ("default", "library", "musicbrainz", "coverart", "slskd", "discovery")
     assert rc.SOURCES == ("filesystem", "plex")
