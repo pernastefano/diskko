@@ -28,8 +28,10 @@ from app.integrations.slskd_client import (
     is_running,
     is_succeeded,
 )
+from app.jobs import engine
 from app.jobs.context import JobContext
 from app.jobs.errors import JobCancelled, PermanentJobError
+from app.jobs.handlers.postprocess import postprocess_dedupe_key
 from app.jobs.registry import job_handler
 from app.models import (
     REQ_CANDIDATE_FOUND,
@@ -125,6 +127,17 @@ async def _run(ctx: JobContext, client: SlskdClient, request_id: int) -> None:
             status, _ = await _status(ctx, request_id)
             if status != REQ_DOWNLOADED:  # cancelled meanwhile: take the transfers out of SLSKD
                 await _remove_transfers(ctx, client, request_id)
+            else:  # the files are here: check, tag and import them
+                await ctx.run_db(
+                    lambda db: engine.enqueue(
+                        db,
+                        "postprocess",
+                        {"request_id": request_id},
+                        dedupe_key=postprocess_dedupe_key(request_id),
+                        parent_job_id=ctx.job_id,
+                    )
+                )
+                await ctx.log("Download complete: the import was queued")
             return
 
 

@@ -91,6 +91,9 @@ class ReleaseData:
     country: str | None
     status: str | None
     tracks: list[TrackData]
+    title: str = ""
+    # (credited name, artist MBID, join phrase) of the release's artist
+    credits: list[tuple[str, str | None, str]] = field(default_factory=list)
 
 
 def lucene_phrase(text: str) -> str:
@@ -388,6 +391,8 @@ def _parse_release(raw: dict[str, Any]) -> ReleaseData | None:
         country=raw.get("country") or None,
         status=raw.get("status") or None,
         tracks=tracks,
+        title=str(raw.get("title") or ""),
+        credits=_parse_credits(raw.get("artist-credit")),
     )
 
 

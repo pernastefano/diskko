@@ -12,6 +12,17 @@ PASSWORD = "correct-horse-battery"
 
 
 @pytest.fixture(autouse=True)
+def _fresh_rate_limiters():
+    """Limiters are shared by name; their lock binds to the event loop of the test that first
+    waits on it, so every test gets new ones."""
+    from app.integrations import ratelimit
+
+    ratelimit._LIMITERS.clear()
+    yield
+    ratelimit._LIMITERS.clear()
+
+
+@pytest.fixture(autouse=True)
 def _fresh_circuit_breakers():
     from app.integrations.breaker import BREAKERS
 

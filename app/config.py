@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     data_dir: Path = Path("./data")
     music_dir: Path = Path("./music-test")
     downloads_dir: Path = Path("./downloads-test")
+    # Where an imported album goes (folders under music_dir) and how its files are named:
+    # {artist} {album} {year} {track} {disc} {title}, numbers like {track:02d}
+    import_folder_template: str = "{artist}/{album} ({year})"
+    import_file_template: str = "{track:02d} - {title}"
+    # Downloads that cannot be imported wait here; empty: <downloads_dir>/diskko/quarantine
+    quarantine_dir: str = ""
 
     # Sessions / auth
     session_cookie_name: str = "diskko_session"

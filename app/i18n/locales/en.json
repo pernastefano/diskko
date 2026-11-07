@@ -657,5 +657,16 @@
   "album.refresh": "Update metadata",
   "album.manage_match": "Manage match",
   "flash.album_refresh_queued": "Updating the album: its details, track list, previews and cover are being refreshed.",
-  "settings.jobtype.refresh_album": "Album metadata update"
+  "settings.jobtype.refresh_album": "Album metadata update",
+  "settings.jobtype.postprocess": "Import of a download",
+  "settings.library.import.title": "Importing downloads",
+  "settings.library.import.hint": "Where a downloaded album goes in the music folder and how its files are named. Placeholders: {artist} {album} {year} {track} {disc} {title}; numbers can have a width, like {track:02d}.",
+  "settings.field.import_folder_template": "Album folder",
+  "settings.hint.import_folder_template": "Folders under the music folder, separated by “/”. It must contain {album}. Example: {artist}/{album} ({year}).",
+  "settings.field.import_file_template": "File name",
+  "settings.hint.import_file_template": "Without the extension. It must contain {title}. On several discs the disc number is put in front when the template has none.",
+  "settings.field.quarantine_dir": "Quarantine folder",
+  "settings.hint.quarantine_dir": "Where a download that cannot be imported is kept, with the reason. Empty: the “quarantine” folder in the downloads folder.",
+  "settings.error.template_invalid": "Use only the placeholders {artist} {album} {year} {track} {disc} {title}, without “..”.",
+  "settings.error.template_missing": "The template must contain the required placeholder."
 }

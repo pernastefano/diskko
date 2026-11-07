@@ -194,6 +194,17 @@ def _remove_stale(db: Session, source: str, stale_paths: list[str]) -> tuple[int
     return len(stale_paths), empty_albums, deactivated
 
 
+def save_artists(db: Session, source: str, artists: list[ScannedArtist]) -> list[int]:
+    """Save scanned artists with their albums and tracks (the caller commits). Returns the ids of
+    the artists. Used to record one imported album without scanning the whole library."""
+    claimed: set[int] = set()
+    ids = []
+    for scanned in artists:
+        _persist_artist(db, source, scanned, {}, claimed)
+        ids.append(_find_artist(db, scanned).id)
+    return ids
+
+
 def run_scan(
     factory: sessionmaker[Session],
     provider: LibraryProvider,

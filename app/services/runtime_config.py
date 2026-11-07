@@ -53,6 +53,7 @@ class Field:
     required: bool = False
     max_length: int = 255
     first: str = ""  # providers: the one that must come first
+    placeholder: str = ""  # templates: the placeholder that must be in it
 
 
 FIELDS: dict[str, Field] = {
@@ -62,6 +63,25 @@ FIELDS: dict[str, Field] = {
         Field("music_dir", "path", "library", "library", required=True, max_length=1024),
         Field("library_source", "choice", "library", "library", choices=SOURCES, required=True),
         Field("library_scan_cron", "cron", "library", "library"),
+        Field(
+            "import_folder_template",
+            "template",
+            "library",
+            "import",
+            required=True,
+            placeholder="album",
+            max_length=200,
+        ),
+        Field(
+            "import_file_template",
+            "template",
+            "library",
+            "import",
+            required=True,
+            placeholder="title",
+            max_length=200,
+        ),
+        Field("quarantine_dir", "opt_path", "library", "import", max_length=1024),
         # integrations
         Field("plex_url", "url", "integrations", "plex"),
         Field("plex_token", "secret", "integrations", "plex"),
@@ -184,6 +204,21 @@ def _path(field: Field, raw: str) -> str:
     if not os.path.isabs(value):
         raise FieldError("path_not_absolute")
     return os.path.normpath(value)
+
+
+def _template(field: Field, raw: str) -> str:
+    from app.services.importer.naming import TemplateError, validate_template
+
+    try:
+        return validate_template(_text(field, raw), required=field.placeholder)
+    except TemplateError as exc:
+        raise FieldError(exc.code) from exc
+
+
+def _opt_path(field: Field, raw: str) -> str:
+    """A folder given by absolute path, or nothing (the default place)."""
+    value = _text(field, raw)
+    return _path(field, value) if value else ""
 
 
 def _int(field: Field, raw: str) -> int:
@@ -315,6 +350,8 @@ def parse_value(field: Field, raw: Any) -> Any:
         "cron": _cron,
         "retention": _retention,
         "path_map": _path_map,
+        "template": _template,
+        "opt_path": _opt_path,
     }[field.kind](field, text)
 
 

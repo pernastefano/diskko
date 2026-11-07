@@ -35,6 +35,25 @@ SETTLED = (REQ_DOWNLOADED, REQ_FAILED, REQ_NO_RESULTS, REQ_CANCELLED, REQ_AWAITI
 
 
 @pytest.fixture(autouse=True)
+def import_is_not_under_test(monkeypatch):
+    """A finished download queues its import; these tests stop at "downloaded" (the import has
+    its own tests), so the import job does nothing here."""
+    from dataclasses import replace
+
+    from app.jobs import registry
+
+    async def nothing(ctx):
+        return None
+
+    registry.load_handlers()
+    monkeypatch.setitem(
+        registry._REGISTRY,
+        "postprocess",
+        replace(registry._REGISTRY["postprocess"], handler=nothing),
+    )
+
+
+@pytest.fixture(autouse=True)
 def fast(monkeypatch):
     monkeypatch.setattr(sc, "BUSY_WAIT_SECONDS", 0)
     monkeypatch.setattr(sc, "SEARCH_POLL_SECONDS", 0.01)
@@ -177,6 +196,15 @@ async def test_an_album_is_searched_chosen_downloaded_and_left_in_the_downloads_
     assert posts(fake, "/searches") and fake.searches == {}  # the search was cleaned up
     messages = logs(session_factory, "download_monitor", request_id)
     assert any("Downloaded 10 file(s)" in m for m in messages)
+    # a finished download queues its import, once, as a child of the monitor job
+    with session_factory() as db:
+        monitor = db.scalar(select(Job).where(Job.type == "download_monitor"))
+        imports = db.scalars(select(Job).where(Job.type == "postprocess")).all()
+        assert len(imports) == 1 and imports[0].parent_job_id == monitor.id
+        assert (
+            imports[0].dedupe_key == f"postprocess:{request_id}" and imports[0].queue == "library"
+        )
+    assert any("the import was queued" in m for m in messages)
 
 
 async def test_the_files_are_checked_in_the_downloads_folder_when_it_is_mounted(

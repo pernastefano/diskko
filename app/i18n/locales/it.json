@@ -657,5 +657,16 @@
   "album.refresh": "Aggiorna metadati",
   "album.manage_match": "Gestisci abbinamento",
   "flash.album_refresh_queued": "Aggiornamento dell'album: dettagli, lista tracce, anteprime e copertina sono in aggiornamento.",
-  "settings.jobtype.refresh_album": "Aggiornamento metadati album"
+  "settings.jobtype.refresh_album": "Aggiornamento metadati album",
+  "settings.jobtype.postprocess": "Importazione di un download",
+  "settings.library.import.title": "Importazione dei download",
+  "settings.library.import.hint": "Dove finisce un album scaricato nella cartella della musica e come si chiamano i suoi file. Segnaposto: {artist} {album} {year} {track} {disc} {title}; i numeri possono avere una larghezza, come {track:02d}.",
+  "settings.field.import_folder_template": "Cartella dell'album",
+  "settings.hint.import_folder_template": "Cartelle dentro la cartella della musica, separate da “/”. Deve contenere {album}. Esempio: {artist}/{album} ({year}).",
+  "settings.field.import_file_template": "Nome del file",
+  "settings.hint.import_file_template": "Senza estensione. Deve contenere {title}. Con più dischi, se il modello non ha il disco, il numero del disco viene messo davanti.",
+  "settings.field.quarantine_dir": "Cartella di quarantena",
+  "settings.hint.quarantine_dir": "Dove si tiene un download che non si può importare, con il motivo. Vuoto: la cartella “quarantine” dentro la cartella dei download.",
+  "settings.error.template_invalid": "Usa solo i segnaposto {artist} {album} {year} {track} {disc} {title}, senza “..”.",
+  "settings.error.template_missing": "Il modello deve contenere il segnaposto richiesto."
 }

@@ -150,12 +150,47 @@ trovi in **Richieste**: ognuno vede le proprie, gli amministratori tutte):
 4. **Download**: un job segue i trasferimenti. Se un utente è offline, un file continua a fallire,
    non arriva nulla per 10 minuti o si resta in coda remota per ore, passa al candidato successivo.
 5. I file finiscono nella cartella download di SLSKD, in `diskko/<id richiesta>/` (una
-   sottocartella per disco); la richiesta diventa **Scaricato**, in attesa dell'elaborazione.
+   sottocartella per disco); la richiesta diventa **Scaricato** e parte l'importazione (sotto).
 
 Se non c'è nessun risultato la richiesta si può rilanciare con un altro testo di ricerca o
-scegliendo a mano. `DOWNLOADS_DIR` è la cartella download come la vede Diskko (facoltativa: serve a
-verificare che i file siano arrivati). Soglie in `.env`: `SLSKD_STALL_MINUTES`,
+scegliendo a mano. `DOWNLOADS_DIR` è la cartella download come la vede Diskko: serve a verificare che i file
+siano arrivati e a importarli (deve stare sullo stesso NAS, con `MUSIC_DIR` accessibile in scrittura). Soglie in `.env`: `SLSKD_STALL_MINUTES`,
 `SLSKD_QUEUE_MINUTES`, `SLSKD_MAX_HOURS`, `SLSKD_FILE_RETRIES`.
+
+## Importare un download in libreria
+
+Quando un download è completo parte il job `postprocess` (uno alla volta, nella coda `library`):
+
+1. **Controllo dei file**: mutagen deve aprirli tutti con durata maggiore di zero; i file rovinati
+   vengono elencati per nome. Si accettano solo file dentro la cartella di quella richiesta
+   (`<downloads>/diskko/<id>`): link verso l'esterno e percorsi strani sono rifiutati.
+2. **Qualità effettiva**, dai parametri reali dei file (codec, bit depth, frequenza, bitrate) e dai
+   profili di qualità: conta il file peggiore. Sotto il minimo della richiesta si rifiuta; per un
+   upgrade deve essere anche migliore di quella che hai. Non c'è analisi spettrale: un FLAC ottenuto
+   da un MP3 non viene riconosciuto.
+3. **Release MusicBrainz**: quella con tanti brani quanti sono i file e i titoli più simili (a parità,
+   la più vecchia). Ogni file deve abbinarsi con certezza a un brano, altrimenti si rifiuta.
+4. **Tagging** su una copia (gli originali restano intatti fino alla fine): titolo, artista (anche
+   ospiti), artista dell'album, album, data, brano e disco con i totali, compilation, `releasetype` e
+   gli MBID di release, release-group, artista e registrazione. I vecchi tag vengono tolti, tranne
+   ReplayGain. Formati: FLAC, MP3 (ID3v2.4), M4A, OGG e Opus; gli altri (WAV, AIFF, APE...) si copiano
+   senza modifiche. Senza release MusicBrainz (per esempio un album preso da Deezer) si scrive solo
+   ciò che si sa dell'album.
+5. **Copertina** incorporata in ogni file e salvata come `cover.jpg`: da Cover Art Archive (500 px),
+   altrimenti un'immagine della cartella scaricata, altrimenti Deezer.
+6. **Nomi** dai modelli in Impostazioni → Libreria → *Importazione dei download* (predefiniti
+   `{artist}/{album} ({year})` e `{track:02d} - {title}`; con più dischi si aggiunge il disco davanti).
+7. **Spostamento atomico**: la copia lavora in una cartella nascosta dentro la libreria (`.diskko-import`)
+   e un solo `rename` la mette al suo posto. Poi si registrano album e tracce, si ricalcola
+   l'abbinamento (l'album sparisce dai mancanti) e si cancella la cartella scaricata. Con una
+   libreria Plex le righe le scrive la scansione, che viene accodata.
+
+Mai sovrascritto nulla: se la cartella di destinazione esiste, il download va in **quarantena**
+(`<downloads>/diskko/quarantine/<id>/`, o la cartella scelta nelle impostazioni) con un file
+`REASON.txt`; la richiesta risulta *fallita* con il motivo e il percorso. Lo stesso vale per file
+rovinati, qualità insufficiente e brani che non si abbinano. Per un **upgrade** la vecchia copia non
+viene cancellata: va in `<musica>/.diskko-replaced/<id>-<data>/` finché non la elimini tu.
+Se l'import si interrompe a metà, rilanciando il job (Riprova) riprende senza copiare due volte.
 
 ## Stato dei servizi
 
