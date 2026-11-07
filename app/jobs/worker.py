@@ -21,6 +21,8 @@ class JobWorker:
         self.settings = settings
         self._factory = session_factory
         self._tasks: list[asyncio.Task[None]] = []
+        self._target: dict[str, int] = {}  # wanted loops per queue
+        self._active: dict[str, int] = {}  # loops currently running per queue
         self._loop: asyncio.AbstractEventLoop | None = None
         self._wake = asyncio.Event()
         self._stopping = False
@@ -34,13 +36,39 @@ class JobWorker:
         self._loop = asyncio.get_running_loop()
         self._stopping = False
         recovered = await asyncio.to_thread(self._recover)
-        concurrency = self.settings.queue_concurrency
-        for queue in registry.queue_names():
-            for slot in range(concurrency.get(queue, 1)):
-                self._tasks.append(
-                    asyncio.create_task(self._queue_loop(queue), name=f"jobs-{queue}-{slot}")
-                )
+        self._active = dict.fromkeys(registry.queue_names(), 0)
+        self._target = self._targets()
+        for queue in self._active:
+            self._spawn_missing(queue)
         return recovered
+
+    def _targets(self) -> dict[str, int]:
+        concurrency = self.settings.queue_concurrency
+        return {queue: concurrency.get(queue, 1) for queue in registry.queue_names()}
+
+    def _spawn_missing(self, queue: str) -> None:
+        while self._active[queue] < self._target[queue]:
+            self._active[queue] += 1
+            self._tasks.append(
+                asyncio.create_task(
+                    self._queue_loop(queue), name=f"jobs-{queue}-{self._active[queue]}"
+                )
+            )
+
+    def update_settings(self, settings: Settings) -> None:
+        """Use new settings (thread-safe). More workers start at once; fewer workers retire
+        after finishing the job they are running, so nothing is interrupted."""
+        self.settings = settings
+        if self._loop is not None and not self._loop.is_closed():
+            self._loop.call_soon_threadsafe(self._reconfigure)
+
+    def _reconfigure(self) -> None:
+        if self._stopping:
+            return
+        self._target = self._targets()
+        for queue in self._active:
+            self._spawn_missing(queue)
+        self._wake.set()
 
     def _recover(self) -> int:
         with self._factory() as db:
@@ -64,6 +92,9 @@ class JobWorker:
     async def _queue_loop(self, queue: str) -> None:
         interval = self.settings.job_poll_interval
         while not self._stopping:
+            if self._active[queue] > self._target[queue]:  # fewer workers wanted: retire
+                self._active[queue] -= 1
+                return
             job = await asyncio.to_thread(self._claim, queue)
             if job is None:
                 with contextlib.suppress(TimeoutError):

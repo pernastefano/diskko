@@ -69,26 +69,42 @@ class JobScheduler:
     ) -> None:
         self._factory = factory
         self._notify = notify
+        self._follows_settings = schedules is None
         self.schedules = schedules_for(settings) if schedules is None else schedules
         self._scheduler = AsyncIOScheduler(timezone=_timezone(settings.tz))
 
+    def _add(self, schedule: Schedule) -> None:
+        try:
+            trigger = CronTrigger.from_crontab(schedule.cron, timezone=self._scheduler.timezone)
+        except ValueError:
+            log.error("invalid cron %r for %s: not scheduled", schedule.cron, schedule.job_type)
+            return
+        self._scheduler.add_job(
+            self._fire,
+            trigger,
+            args=[schedule],
+            id=schedule.dedupe_key,
+            replace_existing=True,
+            coalesce=True,
+            max_instances=1,
+        )
+
     def start(self) -> None:
         for schedule in self.schedules:
-            try:
-                trigger = CronTrigger.from_crontab(schedule.cron, timezone=self._scheduler.timezone)
-            except ValueError:
-                log.error("invalid cron %r for %s: not scheduled", schedule.cron, schedule.job_type)
-                continue
-            self._scheduler.add_job(
-                self._fire,
-                trigger,
-                args=[schedule],
-                id=schedule.dedupe_key,
-                replace_existing=True,
-                coalesce=True,
-                max_instances=1,
-            )
+            self._add(schedule)
         self._scheduler.start()
+
+    def reschedule(self, settings: Settings) -> None:
+        """Follow changed settings (e.g. a new scan time) without a restart."""
+        if not self._follows_settings:
+            return
+        self.schedules = schedules_for(settings)
+        wanted = {s.dedupe_key for s in self.schedules}
+        for job in self._scheduler.get_jobs():
+            if job.id not in wanted:
+                self._scheduler.remove_job(job.id)
+        for schedule in self.schedules:
+            self._add(schedule)
 
     async def _fire(self, schedule: Schedule) -> None:
         await asyncio.to_thread(enqueue_scheduled, self._factory, schedule)

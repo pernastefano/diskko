@@ -12,6 +12,7 @@ from app.config import DEFAULT_SECRET_KEY, Settings, get_settings
 from app.db import make_engine, make_session_factory, run_migrations
 from app.jobs.scheduler import JobScheduler
 from app.jobs.worker import JobWorker
+from app.services.runtime_config import apply_runtime_config
 from app.web.errors import register_error_handlers
 from app.web.routers import (
     artists,
@@ -43,10 +44,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.session_factory = make_session_factory(engine)
         app.state.worker = None
         app.state.scheduler = None
+        # what an admin saved in the UI wins over the environment
+        effective = apply_runtime_config(app)
         if settings.jobs_enabled:
-            worker = JobWorker(settings, app.state.session_factory)
+            worker = JobWorker(effective, app.state.session_factory)
             await worker.start()
-            scheduler = JobScheduler(settings, app.state.session_factory, notify=worker.notify)
+            scheduler = JobScheduler(effective, app.state.session_factory, notify=worker.notify)
             scheduler.start()
             app.state.worker, app.state.scheduler = worker, scheduler
         yield
@@ -66,7 +69,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url=None,
         dependencies=[Depends(csrf_protect)],
     )
-    app.state.settings = settings
+    app.state.base_settings = settings  # environment: defaults and bootstrap values
+    app.state.settings = settings  # effective (environment + saved); rebuilt after changes
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):

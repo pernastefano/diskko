@@ -1,7 +1,10 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.quality import DEFAULT_QUALITY, QUALITY_TIERS
 
 DEFAULT_SECRET_KEY = "change-me"
 
@@ -52,8 +55,19 @@ class Settings(BaseSettings):
     mb_cache_ttl_days: int = 7
     mb_min_interval: float = 1.1  # seconds between requests (MusicBrainz allows 1 per second)
     mb_max_retries: int = 3
-    mb_refresh_days: int = 30
-    coverart_enabled: bool = True  # re-sync artists whose metadata is older than this
+    mb_refresh_days: int = 30  # re-sync artists whose metadata is older than this
+    coverart_enabled: bool = True
+    lastfm_api_key: str = ""
+
+    # Downloads: the quality a request must reach unless it says otherwise
+    default_quality: str = DEFAULT_QUALITY
+
+    @field_validator("default_quality")
+    @classmethod
+    def _known_quality(cls, value: str) -> str:
+        if value not in QUALITY_TIERS:
+            raise ValueError(f"default_quality must be one of: {', '.join(QUALITY_TIERS)}")
+        return value
 
     @property
     def queue_concurrency(self) -> dict[str, int]:
@@ -69,7 +83,7 @@ class Settings(BaseSettings):
     @property
     def secret_values(self) -> list[str]:
         """Values that must never appear in logs or error messages."""
-        values = [self.secret_key, self.plex_token, self.slskd_api_key]
+        values = [self.secret_key, self.plex_token, self.slskd_api_key, self.lastfm_api_key]
         return [v for v in values if v and len(v) >= 4]
 
     @property
