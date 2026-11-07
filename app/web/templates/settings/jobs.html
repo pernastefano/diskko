@@ -1,5 +1,21 @@
 {% extends "settings/_layout.html" %}
-{% from "settings/_fields.html" import field, save_button, status_line with context %}
+{% from "settings/_fields.html" import save_button, status_line with context %}
+{# A number box that sits at the left, followed by what it sets. #}
+{% macro number(name, id, value, label, hint, fixed=False, placeholder='', min=1, max=8, width='w-20') %}
+  <div class="flex items-start gap-3 py-2">
+    <input id="{{ id }}" name="{{ name }}" type="number" inputmode="numeric" min="{{ min }}" max="{{ max }}" value="{{ value }}" placeholder="{{ placeholder }}"
+           {% if fixed %}readonly aria-readonly="true" title="{{ t('settings.queue.fixed') }}"{% endif %}
+           class="{{ width }} shrink-0 rounded-md border border-slate-300 px-2 py-1 text-left text-sm {{ 'bg-slate-100 text-slate-500' if fixed }}">
+    <div class="min-w-0">
+      <label for="{{ id }}" class="text-sm font-medium">{{ label }}</label>
+      {% if hint %}<p class="text-xs text-slate-500">{{ hint }}</p>{% endif %}
+    </div>
+  </div>
+{% endmacro %}
+{% macro days(f) %}
+  {{ number(f.key, 'f-' ~ f.key, f.value, t('settings.field.' ~ f.key), t('settings.hint.' ~ f.key), min=1, max=3650, width='w-24') }}
+  {% if f.error %}<p role="alert" class="-mt-1 mb-1 pl-28 text-xs font-medium text-red-700" data-error="{{ f.key }}">{{ t(f.error) }}</p>{% endif %}
+{% endmacro %}
 {% block settings_body %}
 <form method="post" action="/settings/jobs" class="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -7,30 +23,32 @@
     <h2 class="text-lg font-semibold">{{ t('settings.section.jobs') }}</h2>
     <p class="text-sm text-slate-500">{{ t('settings.jobs.intro') }}</p>
   </div>
-  {% if errors %}<p role="alert" class="text-sm font-medium text-red-700" data-error="job_queue_concurrency">{{ t('settings.error.' ~ errors.job_queue_concurrency) }}</p>{% endif %}
+  {% if errors.job_queue_concurrency %}<p role="alert" class="text-sm font-medium text-red-700" data-error="job_queue_concurrency">{{ t('settings.error.' ~ errors.job_queue_concurrency) }}</p>{% endif %}
   <div class="divide-y divide-slate-100">
     {% for name, value, fixed in queues %}
-      <div class="flex flex-wrap items-center justify-between gap-3 py-3">
-        <div>
-          <label for="queue-{{ name }}" class="text-sm font-medium">{{ t('settings.queue.' ~ name) }}</label>
-          <p class="text-xs text-slate-500">{{ t('settings.queue.' ~ name ~ '.hint') }}</p>
-        </div>
-        <input id="queue-{{ name }}" name="queue_{{ name }}" type="number" min="1" max="8" value="{{ value }}" {% if fixed %}readonly aria-readonly="true" title="{{ t('settings.queue.fixed') }}"{% endif %}
-               class="w-20 rounded-md border border-slate-300 px-2 py-1 text-right text-sm {{ 'bg-slate-100 text-slate-500' if fixed }}">
-      </div>
+      {{ number('queue_' ~ name, 'queue-' ~ name, value, t('settings.queue.' ~ name), t('settings.queue.' ~ name ~ '.hint'), fixed=fixed) }}
     {% endfor %}
   </div>
   {% set f = fields.job_queue_concurrency %}{{ status_line(f) }}
 
   <div class="border-t border-slate-200 pt-4">
     <h3 class="font-semibold">{{ t('settings.retention.title') }}</h3>
-    <p class="mb-3 text-sm text-slate-500">{{ t('settings.retention.intro') }}</p>
-    <div class="grid gap-4 md:grid-cols-3">
-      {{ field(fields.job_retention_routine_days, 'number', status=False) }}
-      {{ field(fields.job_retention_success_days, 'number', status=False) }}
-      {{ field(fields.job_retention_failed_days, 'number', status=False) }}
+    <p class="mb-2 text-sm text-slate-500">{{ t('settings.retention.intro') }}</p>
+    {{ days(fields.job_retention_routine_days) }}
+    {{ days(fields.job_retention_success_days) }}
+    {{ days(fields.job_retention_failed_days) }}
+  </div>
+
+  <div class="border-t border-slate-200 pt-4" id="retention-by-type">
+    <h3 class="font-semibold">{{ t('settings.retention.by_type') }}</h3>
+    <p class="mb-2 text-sm text-slate-500">{{ t('settings.retention.by_type.intro') }}</p>
+    {% if errors.job_retention_overrides %}<p role="alert" class="mb-2 text-sm font-medium text-red-700" data-error="job_retention_overrides">{{ t('settings.error.' ~ errors.job_retention_overrides) }}</p>{% endif %}
+    <div class="divide-y divide-slate-100">
+      {% for job_type, value, general in retention %}
+        {{ number('retention_' ~ job_type, 'retention-' ~ job_type, value, t('settings.jobtype.' ~ job_type), job_type ~ ' · ' ~ (t('settings.retention.general_split', days=general) if ' / ' in general else t('settings.retention.general', days=general)), min=1, max=3650, width='w-24') }}
+      {% endfor %}
     </div>
-    <div class="mt-4">{{ field(fields.job_retention_overrides, status=False) }}</div>
+    {% set f = fields.job_retention_overrides %}{{ status_line(f) }}
   </div>
   {{ save_button() }}
 </form>

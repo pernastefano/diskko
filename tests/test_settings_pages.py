@@ -230,12 +230,32 @@ def test_integrations_page_has_a_form_per_integration(admin_client):
         )
 
 
-def test_connection_tests_exist_where_they_make_sense(admin_client):
+def test_the_connection_tests_are_on_the_status_page_not_in_the_settings(admin_client):
     text = page(admin_client, "/settings/integrations")
+    assert "/admin/status/" not in text and 'id="check-' not in text
+    assert "save the form above first" not in text
+    status = page(admin_client, "/admin/status")
     for name in ("plex", "slskd", "musicbrainz", "lastfm"):
-        assert f'id="check-{name}"' in text and f'hx-post="/admin/status/{name}/test"' in text
-    assert 'id="check-coverart"' not in text
-    assert "save the form above first" in text
+        assert f"/admin/status/{name}/test" in status
+
+
+def test_the_integrations_are_grouped_in_two_blocks(admin_client):
+    text = page(admin_client, "/settings/integrations")
+    download, metadata = (text.index(f'id="block-{b}"') for b in ("download", "metadata"))
+    assert download < text.index('id="integration-plex"') < text.index('id="integration-slskd"')
+    assert text.index('id="integration-slskd"') < metadata
+    for group in ("musicbrainz", "coverart", "lastfm"):
+        assert text.index(f'id="integration-{group}"') > metadata
+    assert "services-providers" not in text  # the fallbacks moved to their own section
+
+
+def test_the_services_section_holds_the_fallbacks(admin_client):
+    text = page(admin_client, "/settings/services")
+    assert 'id="services-providers"' in text and 'action="/settings/services"' in text
+    assert 'href="/settings/services"' in text
+    menu = [m for m in re.findall(r'href="/settings/(\w+)"', text)]
+    assert menu.index("integrations") + 1 == menu.index("services")
+    assert admin_client.get("/settings/integrations/providers").status_code in (404, 405)
 
 
 def test_saving_plex_applies_it_and_never_shows_the_token(app, admin_client):
@@ -410,36 +430,6 @@ def test_the_lastfm_key_is_stored_and_hidden(app, admin_client):
     )
     assert app.state.settings.lastfm_api_key == "lastfm-key-999"
     assert "lastfm-key-999" not in page(admin_client, "/settings/integrations")
-
-
-def test_the_status_card_shows_the_last_test_inside_the_settings(app, admin_client):
-    from app.services.app_settings import set_setting
-
-    with app.state.session_factory() as db:
-        set_setting(
-            db,
-            "integration_status.plex",
-            {
-                "ok": True,
-                "code": "ok",
-                "detail": "1.40",
-                "latency_ms": 9,
-                "checked_at": "2026-11-06T10:00:00",
-            },
-        )
-        db.commit()
-    save(
-        admin_client,
-        "/settings/integrations/plex",
-        {
-            "plex_url": "http://plex:32400",
-            "plex_token": TOKEN,
-            "plex_music_section": "Music",
-            "library_path_map": "",
-        },
-        page_url="/settings/integrations",
-    )
-    assert "Connected" in page(admin_client, "/settings/integrations")
 
 
 # ------------------------------------------------------------------------- jobs

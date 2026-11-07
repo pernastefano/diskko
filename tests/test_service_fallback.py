@@ -338,12 +338,12 @@ def test_requeue_later_gives_the_attempt_back(session_factory):
 
 
 def test_the_provider_order_is_saved_from_the_settings_page(app, admin_client):
-    page = "/settings/integrations"
+    page = "/settings/services"
     text = admin_client.get(page).text
     assert 'data-slot="providers_covers-1"' in text and 'data-slot="providers_covers-2"' in text
     r = post(
         admin_client,
-        "/settings/integrations/providers",
+        "/settings/services",
         {
             "providers_covers_1": "deezer",
             "providers_covers_2": "coverartarchive",
@@ -370,7 +370,7 @@ def test_the_provider_order_is_saved_from_the_settings_page(app, admin_client):
 
 
 def test_the_provider_settings_are_validated(app, admin_client):
-    page = "/settings/integrations"
+    page = "/settings/services"
     base = {
         "providers_covers_1": "deezer",
         "providers_previews_1": "itunes",
@@ -383,14 +383,14 @@ def test_the_provider_settings_are_validated(app, admin_client):
     ):
         r = post(
             admin_client,
-            "/settings/integrations/providers",
+            "/settings/services",
             {**base, **bad},
             page=page,
         )
         assert r.status_code == 400 and 'data-error="providers_covers"' in r.text, bad
     r = post(
         admin_client,
-        "/settings/integrations/providers",
+        "/settings/services",
         {**base, "provider_breaker_threshold": "0"},
         page=page,
     )
@@ -401,8 +401,8 @@ def test_the_provider_settings_are_validated(app, admin_client):
 def test_defaults_and_italian(app, admin_client):
     assert app.state.settings.provider_breaker_threshold == 5
     assert app.state.settings.provider_breaker_cooldown_minutes == 10
-    post(admin_client, "/lang", {"lang": "it", "next": "/settings/integrations"})
-    text = admin_client.get("/settings/integrations").text
+    post(admin_client, "/lang", {"lang": "it", "next": "/settings/services"})
+    text = admin_client.get("/settings/services").text
     assert "Servizi di riserva" in text and "Riserva 1" in text and "Predefinito" in text
 
 

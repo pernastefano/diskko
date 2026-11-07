@@ -14,6 +14,7 @@ from app.config import Settings
 from app.i18n import has_key
 from app.integrations.providers import CAPABILITIES
 from app.jobs import engine
+from app.jobs.engine import ROUTINE_TYPES
 from app.models import ACTIVE_STATUSES, ROLE_USER, ROLES, Job, QualityProfile, User
 from app.quality import BIT_DEPTHS, BITRATES_KBPS, COLORS, KINDS, SAMPLE_RATES_HZ
 from app.services import quality_profiles as profiles_service
@@ -23,6 +24,7 @@ from app.services.quality_profiles import ProfileError, default_key
 from app.services.runtime_config import (
     FIELDS,
     QUEUES,
+    RETENTION_PREFIX,
     SCHEDULE_PRESETS,
     Field,
     FieldError,
@@ -30,19 +32,21 @@ from app.services.runtime_config import (
     fields_of,
     overridden_keys,
     parse_value,
+    retention_job_types,
     save_values,
     schedule_id,
 )
 from app.web.routers.jobs import notify_worker
-from app.web.routers.status import integration_card
 from app.web.templating import render
 
 router = APIRouter(prefix="/settings", dependencies=[Depends(require_admin)])
 
-SECTIONS = ("library", "integrations", "jobs", "albums", "quality", "users")
+SECTIONS = ("library", "integrations", "services", "jobs", "albums", "quality", "users")
 RECLASSIFY_KEY = "reclassify_quality"
-GROUPS = ("plex", "slskd", "musicbrainz", "coverart", "lastfm", "providers")
-TESTABLE = ("plex", "slskd", "musicbrainz", "lastfm")  # integrations with a connection test
+GROUPS = ("plex", "slskd", "musicbrainz", "coverart", "lastfm")
+# How the integrations page is laid out: (block, its integrations). The connection tests live
+# on the Status page, not here.
+BLOCKS = (("download", ("plex", "slskd")), ("metadata", ("musicbrainz", "coverart", "lastfm")))
 CHOICE_LABELS = {
     "library_source": "library.source.",
     "slskd_mode": "slskd.mode.",
@@ -128,6 +132,27 @@ def _fields(
     return {f.key: field_view(request, overridden, f, submitted, errors) for f in fields}
 
 
+def _retention_rows(
+    settings: Settings, submitted: dict[str, Any] | None
+) -> list[tuple[str, str, str]]:
+    """(job type, days typed or saved, what applies when it is left empty) for every job type."""
+    overrides = settings.retention_overrides
+    rows = []
+    for job_type in retention_job_types():
+        if submitted is not None and RETENTION_PREFIX + job_type in submitted:
+            value = str(submitted[RETENTION_PREFIX + job_type])
+        else:
+            value = str(overrides.get(job_type, ""))
+        if job_type in ROUTINE_TYPES:
+            general = str(settings.job_retention_routine_days)
+        else:
+            general = (
+                f"{settings.job_retention_success_days} / {settings.job_retention_failed_days}"
+            )
+        rows.append((job_type, value, general))
+    return rows
+
+
 def inspect_folder(path: str) -> tuple[str, int | None]:
     """('ok', top-level entries) or the reason the folder cannot be used. Never lists names."""
     folder = Path(path)
@@ -168,15 +193,18 @@ def _page(
     elif section == "integrations":
         fields = _fields(request, db, fields_of("integrations"), submitted, errors)
         ctx["fields"] = fields
-        ctx["groups"] = GROUPS
+        ctx["blocks"] = BLOCKS
         ctx["group_fields"] = {g: [f.key for f in fields_of("integrations", g)] for g in GROUPS}
-        ctx["cards"] = {n: integration_card(request, db, n) for n in TESTABLE}
+    elif section == "services":
+        ctx["fields"] = _fields(request, db, fields_of("services"), submitted, errors)
+        ctx["provider_keys"] = [k for k, _ in CAPABILITIES.values()]
     elif section == "jobs":
         concurrency = settings.queue_concurrency
         shown = {q: str(concurrency.get(q, 1)) for q in QUEUES}
         if submitted:
             shown.update({q: str(submitted.get(f"queue_{q}", shown[q])) for q in QUEUES})
         ctx["queues"] = [(q, shown[q], q == "musicbrainz") for q in QUEUES]
+        ctx["retention"] = _retention_rows(settings, submitted)
         ctx["fields"] = _fields(request, db, fields_of("jobs"), submitted, errors)
     elif section == "albums":
         ctx["categories"] = CATEGORIES
@@ -357,6 +385,11 @@ async def save_integration(request: Request, db: DB, auth: AdminAuth, group: str
     return await _save(
         request, db, "integrations", fields_of("integrations", group), error_group=group
     )
+
+
+@router.post("/services")
+async def save_services(request: Request, db: DB, auth: AdminAuth):
+    return await _save(request, db, "services", fields_of("services"))
 
 
 @router.post("/jobs")

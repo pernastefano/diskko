@@ -505,7 +505,7 @@ def test_the_cover_route_serves_deezer_names_only_in_the_expected_shape(app, adm
 
 
 def test_metadata_always_keeps_musicbrainz_first(app, admin_client):
-    page = "/settings/integrations"
+    page = "/settings/services"
     text = admin_client.get(page).text
     slot1 = text[text.index('data-slot="providers_metadata-1"') :].split("</select>")[0]
     assert 'value="musicbrainz"' in slot1 and 'value="deezer"' not in slot1
@@ -516,14 +516,14 @@ def test_metadata_always_keeps_musicbrainz_first(app, admin_client):
     }
     bad = post(
         admin_client,
-        "/settings/integrations/providers",
+        "/settings/services",
         {**base, "providers_metadata_1": "deezer", "providers_metadata_2": "musicbrainz"},
         page=page,
     )
     assert bad.status_code == 400 and 'data-error="providers_metadata"' in bad.text
     off = post(
         admin_client,
-        "/settings/integrations/providers",
+        "/settings/services",
         {**base, "providers_metadata_1": "musicbrainz", "providers_metadata_2": ""},
         page=page,
     )
@@ -531,7 +531,7 @@ def test_metadata_always_keeps_musicbrainz_first(app, admin_client):
     assert app.state.settings.providers_metadata == "musicbrainz"
     on = post(
         admin_client,
-        "/settings/integrations/providers",
+        "/settings/services",
         {**base, "providers_metadata_1": "musicbrainz", "providers_metadata_2": "deezer"},
         page=page,
     )

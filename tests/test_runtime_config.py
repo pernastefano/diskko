@@ -157,7 +157,13 @@ def test_concurrency():
 def test_every_field_has_a_section_and_exists_on_settings():
     names = set(Settings.model_fields)
     assert set(FIELDS) <= names
-    assert {f.section for f in FIELDS.values()} == {"library", "integrations", "jobs", "quality"}
+    assert {f.section for f in FIELDS.values()} == {
+        "library",
+        "integrations",
+        "services",
+        "jobs",
+        "quality",
+    }
     for secret in (f for f in FIELDS.values() if f.kind == "secret"):
         assert secret.key in ("plex_token", "slskd_api_key", "lastfm_api_key")
 

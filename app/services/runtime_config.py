@@ -83,7 +83,7 @@ FIELDS: dict[str, Field] = {
             Field(
                 key,
                 "providers",
-                "integrations",
+                "services",
                 "providers",
                 choices=known,
                 required=True,
@@ -91,13 +91,11 @@ FIELDS: dict[str, Field] = {
             )
             for key, known in CAPABILITIES.values()
         ),
-        Field(
-            "provider_breaker_threshold", "int", "integrations", "providers", minimum=1, maximum=100
-        ),
+        Field("provider_breaker_threshold", "int", "services", "providers", minimum=1, maximum=100),
         Field(
             "provider_breaker_cooldown_minutes",
             "int",
-            "integrations",
+            "services",
             "providers",
             minimum=1,
             maximum=1440,
@@ -131,6 +129,16 @@ def schedule_id(cron: str) -> str | None:
     """The preset a crontab expression stands for, if any."""
     normal = " ".join(cron.split())
     return next((i for i, c in SCHEDULE_PRESETS if c == normal), None)
+
+
+RETENTION_PREFIX = "retention_"  # form fields of the per-type list: retention_<job type>
+
+
+def retention_job_types() -> list[str]:
+    """Job types that get their own retention number (the test-only ones are left out)."""
+    from app.jobs import registry
+
+    return [t for t in registry.job_types() if not t.startswith("test.")]
 
 
 def fields_of(section: str, group: str | None = None) -> list[Field]:
@@ -259,6 +267,27 @@ def parse_providers(field: Field, items: list[str]) -> str:
     return ",".join(names)
 
 
+def parse_retention_list(form: Mapping[str, Any]) -> str:
+    """The per-type list (one number of days per job type, blank = the general value) ->
+    'type:days,...'. Only known job types are accepted."""
+    known = retention_job_types()
+    entries: list[str] = []
+    for name in known:
+        raw = str(form.get(RETENTION_PREFIX + name, "")).strip()
+        if not raw:
+            continue
+        if not raw.isdigit():
+            raise FieldError("number_invalid")
+        if not 1 <= int(raw) <= 3650:
+            raise FieldError("number_range")
+        entries.append(f"{name}:{int(raw)}")
+    if any(
+        k.startswith(RETENTION_PREFIX) and k[len(RETENTION_PREFIX) :] not in known for k in form
+    ):
+        raise FieldError("retention_invalid")
+    return ",".join(entries)
+
+
 def parse_value(field: Field, raw: Any) -> Any:
     """Validate one submitted value and return what gets stored. Raises FieldError."""
     if field.kind == "bool":
@@ -336,6 +365,12 @@ def save_values(
             raw = {q: str(form.get(f"queue_{q}", "")) for q in QUEUES}
             try:
                 values[field.key] = parse_concurrency(raw)
+            except FieldError as exc:
+                errors[field.key] = exc.code
+            continue
+        if field.kind == "retention" and any(k.startswith(RETENTION_PREFIX) for k in form):
+            try:
+                values[field.key] = parse_retention_list(form)
             except FieldError as exc:
                 errors[field.key] = exc.code
             continue

@@ -73,8 +73,7 @@ secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
   dopo un job annullato; quelle che l'archivio non ha non vengono richieste di nuovo.
 - **Servizi di riserva**: per copertine, anteprime e artisti simili c'è un provider predefinito e
   una lista ordinata di fallback (copertine: Cover Art Archive poi Deezer; anteprime: iTunes poi
-  Deezer; simili: Last.fm poi ListenBrainz), configurabile in Impostazioni → Integrazioni →
-  *Servizi di riserva* (o con `PROVIDERS_COVERS`, `PROVIDERS_PREVIEWS`, `PROVIDERS_SIMILAR`). Le
+  Deezer; simili: Last.fm poi ListenBrainz), configurabile in Impostazioni → *Servizi* (o con `PROVIDERS_COVERS`, `PROVIDERS_PREVIEWS`, `PROVIDERS_SIMILAR`). Le
   copertine di Deezer si accettano solo se artista e titolo corrispondono quasi esattamente. Un
   servizio che fallisce 5 volte di fila (`PROVIDER_BREAKER_THRESHOLD`) viene messo in pausa per 10
   minuti (`PROVIDER_BREAKER_COOLDOWN_MINUTES`): nel frattempo si usano i fallback; se nessuno
@@ -91,7 +90,7 @@ secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
   **mantenere**, **cercare di nuovo su MusicBrainz**, indicare l'MBID giusto o segnarlo come non
   presente (i dati di Deezer vengono tolti). Alle sincronizzazioni periodiche si ricontrolla
   MusicBrainz e, se l'artista compare, i suoi dati sostituiscono quelli di Deezer. Si disattiva in
-  Servizi di riserva → *Dati di artisti e album* (`PROVIDERS_METADATA=musicbrainz`).
+  Impostazioni → Servizi → *Dati di artisti e album* (`PROVIDERS_METADATA=musicbrainz`).
 
 I dati di MusicBrainz sono di pubblico dominio (CC0); le copertine del Cover Art Archive hanno
 licenze proprie e restano solo nella tua cache locale.
@@ -194,10 +193,12 @@ riavviare:
 
 - **Libreria**: cartella della musica (con "Verifica cartella"), sorgente predefinita (Filesystem o
   Plex) e frequenza della scansione (mai, ogni ora, ogni giorno, settimana, mese...).
-- **Integrazioni**: Plex, SLSKD, MusicBrainz, Cover Art Archive, Last.fm e i servizi di riserva, ciascuna con il proprio
-  modulo e, dove esiste, il "Test connessione". I token e le chiavi non vengono mai mostrati dopo il
+- **Integrazioni**: Plex e SLSKD (libreria e download), MusicBrainz, Cover Art Archive e Last.fm
+  (metadati e copertine), ciascuna con il proprio modulo; il test di connessione è nella pagina Stato.
+- **Servizi**: provider predefinito e di riserva per metadati, copertine, anteprime e artisti simili,
+  più la pausa dei servizi che falliscono. I token e le chiavi non vengono mai mostrati dopo il
   salvataggio: lasciando il campo vuoto si mantiene il valore attuale.
-- **Job**: quanti job di ogni tipo girano insieme (MusicBrainz resta sempre a 1).
+- **Job**: quanti job di ogni tipo girano insieme (MusicBrainz resta sempre a 1). Per quanto tempo si conservano i job finiti e i loro log: tre valori generali e, per ogni tipo di job, una casella numerica (vuota = valore generale), senza testo da scrivere.
 - **Album**: i tipi di album considerati "mancanti" (uguali per tutti gli utenti).
 - **Qualità**: i profili di qualità, completamente configurabili. Si parte da *FLAC Master* (24/192),
   *FLAC Hi-Res* (24/96), *FLAC Standard* (16/44,1, il predefinito), *MP3 320 / V0*, *MP3 ≥ 256*,

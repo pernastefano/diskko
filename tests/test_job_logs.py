@@ -1,5 +1,6 @@
 """Job labels, the search in the logs, the routine filter and the retention of old jobs."""
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -13,7 +14,7 @@ from app.jobs.handlers.housekeeping import retention_policy
 from app.jobs.labels import job_label
 from app.jobs.worker import JobWorker
 from app.models import STATUS_FAILED, STATUS_SUCCEEDED, Job, JobLog, utcnow
-from app.services.runtime_config import FIELDS, FieldError, parse_value
+from app.services.runtime_config import FIELDS, FieldError, parse_value, retention_job_types
 from app.web.templating import mark
 from tests.conftest import post
 from tests.dbhelpers import make_artist, make_rg
@@ -329,9 +330,12 @@ def test_the_retention_is_configured_in_the_job_settings(app, admin_client, db):
         "job_retention_routine_days",
         "job_retention_success_days",
         "job_retention_failed_days",
-        "job_retention_overrides",
     ):
         assert f'name="{name}"' in text
+    assert 'name="job_retention_overrides"' not in text  # no free text: a number per job type
+    for job_type in retention_job_types():
+        assert f'name="retention_{job_type}"' in text, job_type
+    assert 'name="retention_test.steps"' not in text
     assert "How long jobs and their logs are kept" in text
     r = post(
         admin_client,
@@ -341,7 +345,8 @@ def test_the_retention_is_configured_in_the_job_settings(app, admin_client, db):
             "job_retention_routine_days": "2",
             "job_retention_success_days": "7",
             "job_retention_failed_days": "30",
-            "job_retention_overrides": "scan_library:90",
+            "retention_scan_library": "90",
+            "retention_fetch_covers": "",
         },
         page="/settings/jobs",
     )
@@ -365,13 +370,15 @@ def test_the_job_settings_refuse_less_than_a_day(admin_client, app):
         )
         assert r.status_code == 400, bad
     assert app.state.settings.job_retention_failed_days == 60
-    bad = post(
-        admin_client,
-        "/settings/jobs",
-        {"job_retention_overrides": "nonsense"},
-        page="/settings/jobs",
-    )
-    assert bad.status_code == 400 and "job_type:days" in bad.text
+    for typed in (
+        {"retention_scan_library": "0"},
+        {"retention_scan_library": "abc"},
+        {"retention_scan_library": "99999"},
+        {"retention_no_such_job": "3"},
+    ):
+        bad = post(admin_client, "/settings/jobs", typed, page="/settings/jobs")
+        assert bad.status_code == 400 and 'data-error="job_retention_overrides"' in bad.text, typed
+    assert app.state.settings.retention_overrides == {}
 
 
 async def test_the_housekeeping_job_applies_the_policy_and_says_what_it_did(
@@ -429,3 +436,41 @@ def test_a_big_cleanup_gives_the_space_back(settings, session_factory, monkeypat
 
     messages = asyncio.run(go())
     assert called == [1] and "The database file was compacted" in messages
+
+
+def test_the_list_shows_what_is_saved_and_what_applies_otherwise(app, admin_client):
+    post(admin_client, "/settings/jobs", {"retention_scan_library": "90"}, page="/settings/jobs")
+    text = admin_client.get("/settings/jobs").text
+    box = re.search(r'<input id="retention-scan_library"[^>]*>', text).group(0)
+    assert 'value="90"' in box and 'type="number"' in box and 'min="1"' in box
+    empty = re.search(r'<input id="retention-fetch_covers"[^>]*>', text).group(0)
+    assert 'value=""' in empty
+    assert "empty = 14 days (succeeded / failed)" not in text  # the numbers are the real ones
+    assert "empty = 14 / 60 days (succeeded / failed)" in text
+    assert "empty = 1 day(s)" in text  # routine jobs have a single value
+    # a refused form keeps what was typed
+    bad = post(
+        admin_client,
+        "/settings/jobs",
+        {"retention_scan_library": "0", "retention_fetch_covers": "7"},
+        page="/settings/jobs",
+    )
+    assert 'id="retention-fetch_covers"' in bad.text and 'value="7"' in bad.text
+
+
+def test_every_job_type_has_a_name_in_both_languages():
+    import json
+    from pathlib import Path
+
+    locales = Path("app/i18n/locales")
+    for lang in ("en", "it"):
+        names = json.loads((locales / f"{lang}.json").read_text())
+        missing = [t for t in retention_job_types() if f"settings.jobtype.{t}" not in names]
+        assert not missing, (lang, missing)
+
+
+def test_numbers_sit_at_the_left(admin_client):
+    text = admin_client.get("/settings/jobs").text
+    boxes = re.findall(r'<input id="(?:queue|retention|f)-[^"]*"[^>]*type="number"[^>]*>', text)
+    assert len(boxes) > 15
+    assert all("text-right" not in b and "text-left" in b for b in boxes)
