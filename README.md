@@ -67,7 +67,10 @@ secondo** e le risposte restano in cache (`MB_CACHE_TTL_DAYS`).
   condiviso (album ed EP) si cambia in `/admin/library`; ogni utente può scegliere i propri tipi in
   `/account/preferences`.
 - **Copertine**: scaricate dal Cover Art Archive in `DATA_DIR/covers` solo per gli album
-  posseduti e per i tipi attivi (`COVERART_ENABLED=false` per disattivarle).
+  posseduti e per i tipi attivi (`COVERART_ENABLED=false` per disattivarle). Si scaricano quando
+  apri la pagina di un artista e, per gli artisti che nessuno apre, con una passata notturna
+  (alle 4:50, 200 artisti a notte) che riprova anche le copertine rimaste da scaricare, per esempio
+  dopo un job annullato; quelle che l'archivio non ha non vengono richieste di nuovo.
 
 I dati di MusicBrainz sono di pubblico dominio (CC0); le copertine del Cover Art Archive hanno
 licenze proprie e restano solo nella tua cache locale.

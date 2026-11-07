@@ -108,7 +108,12 @@ def get_job(db: Session, job_id: int) -> Job | None:
 
 # Jobs that run by themselves all day (service checks, the nightly cleanup): hidden from the list
 # unless asked for, and kept for a short time.
-ROUTINE_TYPES = ("check_integrations", "integration_check", "housekeeping")
+ROUTINE_TYPES = (
+    "check_integrations",
+    "integration_check",
+    "housekeeping",
+    "queue_pending_covers",
+)
 SEARCH_MIN = 3  # characters needed to search the logs
 
 
