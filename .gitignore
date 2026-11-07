@@ -2,15 +2,21 @@ __pycache__/
 *.pyc
 .venv/
 .env
+.env.*
+!.env.example
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
 config/
 music-test/
 downloads-test/
+downloads/
+slskd/
+music/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite*
 .DS_Store
 
 # Claude files (not versioned)
