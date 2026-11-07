@@ -8,8 +8,10 @@ from app.models.discovery import (
     SIMILAR_LISTENBRAINZ,
     PreviewLookup,
     PreviewTrack,
+    ReleaseTrack,
     SimilarArtist,
     SimilarFetch,
+    TracklistFetch,
 )
 from app.models.downloads import (
     MODE_AUTO,
@@ -105,6 +107,8 @@ __all__ = [
     "SIMILAR_LISTENBRAINZ",
     "PreviewLookup",
     "PreviewTrack",
+    "ReleaseTrack",
+    "TracklistFetch",
     "SimilarArtist",
     "SimilarFetch",
     "MATCH_MANUAL",

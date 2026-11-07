@@ -126,9 +126,14 @@ le icone si aggiornano da sole ogni 15 secondi.
 - **Artisti simili**: da Last.fm (serve una chiave API gratuita, in Impostazioni > Integrazioni) e,
   se manca o non risponde, da ListenBrainz (serve il contatto in `MB_USER_AGENT`; usa un endpoint
   "labs" non documentato ufficialmente). Chi è già in libreria ha il badge "In libreria".
-- **Anteprime da 30 secondi** su ogni album: iTunes Search API, poi Deezer. L'audio viene sempre
-  riprodotto direttamente dal provider e mai scaricato né salvato; si memorizzano solo gli indirizzi
-  (quelli di Deezer scadono dopo circa 15 minuti e vengono richiesti di nuovo).
+- **Pagina Album** (clic sulla copertina o sul titolo di un album): copertina, dettagli e tutte le
+  tracce. Se l'album è **posseduto** ogni traccia si ascolta leggendo il file dal disco (FLAC, MP3,
+  AAC/M4A, OGG/Opus, WAV, AIFF; per gli altri formati, come APE o WMA, la riga lo segnala: non c'è
+  conversione). Se **non è posseduto** le tracce vengono da MusicBrainz e ognuna ha, dove esiste,
+  l'**anteprima da 30 secondi** di iTunes o, in mancanza, di Deezer; c'è anche il pulsante
+  "Richiedi download". L'audio delle anteprime viene sempre riprodotto direttamente dal provider e
+  mai scaricato né salvato (gli indirizzi di Deezer scadono dopo circa 15 minuti e vengono richiesti
+  di nuovo). I file locali sono serviti solo se stanno dentro la cartella della libreria.
 - Tutte le chiamate esterne sono job (coda *Scoperta*, visibili in Job) con cache nel database.
   Last.fm, ListenBrainz, iTunes e Deezer hanno il test di connessione in Stato.
 - Termini d'uso: Last.fm e Deezer ammettono solo uso non commerciale; iTunes richiede che le

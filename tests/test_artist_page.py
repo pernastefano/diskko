@@ -26,7 +26,7 @@ def section(html, name):
 
 
 def titles_in(html):
-    return re.findall(r'class="line-clamp-2 text-sm font-medium" title="([^"]*)"', html)
+    return re.findall(r'class="line-clamp-2 text-sm font-medium[^"]*" title="([^"]*)"', html)
 
 
 @pytest.fixture

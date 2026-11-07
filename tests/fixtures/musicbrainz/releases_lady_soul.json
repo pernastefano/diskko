@@ -1,0 +1,2083 @@
+{
+ "release-offset": 0,
+ "releases": [
+  {
+   "id": "0c0ef6fb-fd50-47b8-aadb-de5f510536ef",
+   "title": "Lady Soul",
+   "date": "2013-03-20",
+   "country": "DZ",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "Digital Media",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "3916f312-678c-4d7b-bb46-cc4ee8b7e5a8",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 167842,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "3e8a99b2-2fac-46eb-8df4-92cb05b2c72f",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 129256,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "91354a12-91a5-4c77-8975-9c2a82983786",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 224322,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "2636f21d-c486-4b01-a891-b89a0adda0d6",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 152949,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "721fb386-5f2a-47f3-bbb0-2f523d8ca46e",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 164348,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "21de0954-b1cc-4735-8f0e-594a14773894",
+       "position": 6,
+       "number": "6",
+       "title": "Sweet Sweet Baby (Since You’ve Been Gone)",
+       "length": 147202,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "0ab1d5d9-a896-46c6-a6ac-6d2866c9c44f",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 239402,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "2b1fc731-12e0-4eb8-a90d-28e09bc63dfc",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147616,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "8f117066-2971-4b4e-99ae-ece165fc4e61",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 177602,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "21feec4e-fa1b-4c3a-b27c-ff33481bddb8",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 252727,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "14d8da2b-95e5-338e-bcc8-850a4bd1c537",
+   "title": "Lady Soul",
+   "date": "1988",
+   "country": "FR",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "CD",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "1e583a37-7a87-38de-9797-f85e7b32e906",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 169826,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "6b94554c-c66c-3d60-9cc1-2143d15e2abe",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 130000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "05a451f0-eac0-3ba4-9251-b457373f6c36",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 226000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "1208842f-70b0-39f6-a9c5-89da9454e4a1",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 151506,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "760cc198-2597-35b0-9598-2906e729e38c",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165493,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "55ad86d8-5029-3d8d-bdaa-084836ff21c9",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 145506,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "6bfb9f3f-88d1-3b2a-89ca-3f9642c86d68",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238160,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "a3d51b41-c912-36d3-8fe2-04106e785a96",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147333,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "2d6fb01e-05dc-3196-96bd-b36a95722daa",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 175333,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "e4768d9a-1d86-358e-ae23-252fa10e5f0b",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 251840,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "1708e1ce-4254-4224-aa9b-bcbf54066013",
+   "title": "Lady Soul",
+   "date": "2012-10-15",
+   "country": "XE",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "12\" Vinyl",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "75ff4394-1977-4c8f-a542-403af8ad7b06",
+       "position": 1,
+       "number": "A1",
+       "title": "Chain of Fools",
+       "length": 165000,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "37d886c8-7077-4dd2-b5b6-ea81b00cb0cf",
+       "position": 2,
+       "number": "A2",
+       "title": "Money Won’t Change You",
+       "length": 122000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "daf1652d-b626-45fe-b23d-b6e6a4dc45a3",
+       "position": 3,
+       "number": "A3",
+       "title": "People Get Ready",
+       "length": 215000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "834da8e5-3546-4e73-8b59-115969be5ba1",
+       "position": 4,
+       "number": "A4",
+       "title": "Niki Hoeky",
+       "length": 153000,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "d8aa080f-e1f0-4079-87e7-03862fa614c0",
+       "position": 5,
+       "number": "A5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 157000,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "c819a08b-f5ec-43ad-8c19-8ebed1672c85",
+       "position": 6,
+       "number": "B1",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 138000,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "e3139132-6b21-414b-9e01-39198f9cd514",
+       "position": 7,
+       "number": "B2",
+       "title": "Good to Me as I Am to You",
+       "length": 205000,
+       "recording": {
+        "id": "b576004c-f058-4f6f-8b36-0f363d127e8c",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "83410c99-a4f4-4428-bcfe-03ba40676219",
+       "position": 8,
+       "number": "B3",
+       "title": "Come Back Baby",
+       "length": 149000,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "7de426ea-a8bc-429b-b6eb-526fcdd8afaa",
+       "position": 9,
+       "number": "B4",
+       "title": "Groovin’",
+       "length": 165000,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "5d471bc8-2822-4140-8f71-d93d8d153575",
+       "position": 10,
+       "number": "B5",
+       "title": "Ain’t No Way",
+       "length": 252000,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "1bb1a0b8-f9a2-46df-a4a5-b4442f9e3cd7",
+   "title": "Lady Soul",
+   "date": "2018-01-16",
+   "country": "US",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "12\" Vinyl",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "530bb67b-6e16-4a7c-80ae-4d99722a8d9a",
+       "position": 1,
+       "number": "A1",
+       "title": "Chain of Fools",
+       "length": 165000,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "e77f1082-1486-46a9-9a26-244c2a11de38",
+       "position": 2,
+       "number": "A2",
+       "title": "Money Won’t Change You",
+       "length": 122000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "7d1b9bfa-0a64-4817-ad57-bff4ddff2949",
+       "position": 3,
+       "number": "A3",
+       "title": "People Get Ready",
+       "length": 215000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "708f53a5-233b-4351-8324-19ca53523d65",
+       "position": 4,
+       "number": "A4",
+       "title": "Niki Hoeky",
+       "length": 153000,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "1776d544-64ce-4e0a-b991-ccdc7af976b9",
+       "position": 5,
+       "number": "A5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 157000,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "d6a919a3-a299-4641-a2f8-2810a6989902",
+       "position": 6,
+       "number": "B1",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 138000,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "ac749eb5-c2e8-470b-8fc0-dc35dd208aa3",
+       "position": 7,
+       "number": "B2",
+       "title": "Good to Me as I Am to You",
+       "length": 205000,
+       "recording": {
+        "id": "b576004c-f058-4f6f-8b36-0f363d127e8c",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "6d068fac-aa08-4b41-9e6e-4d2a11ab799e",
+       "position": 8,
+       "number": "B3",
+       "title": "Come Back Baby",
+       "length": 149000,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "2815fd61-6fc5-4aa6-922b-45e1af07969d",
+       "position": 9,
+       "number": "B4",
+       "title": "Groovin’",
+       "length": 165000,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "08a54832-8897-4626-affc-2c8df7e75df7",
+       "position": 10,
+       "number": "B5",
+       "title": "Ain’t No Way",
+       "length": 252000,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "3f2bfabb-7a90-4413-9a97-fd880acd936a",
+   "title": "Lady Soul",
+   "date": "1968",
+   "country": "FR",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "12\" Vinyl",
+     "track-count": 11,
+     "tracks": [
+      {
+       "id": "62475cd9-8bed-4cb5-909e-fd4697fc6785",
+       "position": 1,
+       "number": "A1",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 138000,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "3d23a364-5171-44ef-9c11-1b5be7fe0c46",
+       "position": 2,
+       "number": "A2",
+       "title": "Chain of Fools",
+       "length": 165000,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "9303e83a-e403-4958-8638-9e0efa42e41e",
+       "position": 3,
+       "number": "A3",
+       "title": "Niki Hoeky",
+       "length": 153000,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "1bb4b97c-0aa1-4db5-af8b-2d9969a42f83",
+       "position": 4,
+       "number": "A4",
+       "title": "Money Won’t Change You",
+       "length": 120000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "7322786d-9710-49f0-aab9-3ceb09d264f6",
+       "position": 5,
+       "number": "A5",
+       "title": "96 Tears",
+       "length": 132000,
+       "recording": {
+        "id": "112156bd-c27c-4e75-a7d0-4ac3f532652a",
+        "title": "96 Tears"
+       }
+      },
+      {
+       "id": "f16c400f-c205-43f2-b95e-98b617859364",
+       "position": 6,
+       "number": "A6",
+       "title": "Come Back Baby",
+       "length": 149000,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "f9580caf-0151-4c3b-9cf5-d53c551def30",
+       "position": 7,
+       "number": "B1",
+       "title": "Good to Me as I Am to You",
+       "length": 205000,
+       "recording": {
+        "id": "b576004c-f058-4f6f-8b36-0f363d127e8c",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "5dc78c39-6279-44ba-bf3c-343491312474",
+       "position": 8,
+       "number": "B2",
+       "title": "Ain’t No Way",
+       "length": 252000,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      },
+      {
+       "id": "94cfb52b-3fc8-4715-9f8c-0b4e9f7970f2",
+       "position": 9,
+       "number": "B3",
+       "title": "People Get Ready",
+       "length": 215000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "5ec69cec-8c67-403f-a409-a5ee21841bc3",
+       "position": 10,
+       "number": "B4",
+       "title": "Night Life",
+       "length": 190000,
+       "recording": {
+        "id": "07083466-5bf1-4492-a93a-f26b15ec2f88",
+        "title": "Night Life"
+       }
+      },
+      {
+       "id": "3d045aea-2df3-4ad5-a350-041fb3c9507b",
+       "position": 11,
+       "number": "B5",
+       "title": "Going Down Slow",
+       "length": 267000,
+       "recording": {
+        "id": "d40e6d9f-3cb2-48fe-9114-1f62f649625e",
+        "title": "Going Down Slow"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "498b2828-9f7f-4f6a-ab56-eae1d6caf21f",
+   "title": "Lady Soul",
+   "date": "1995-06-20",
+   "country": "US",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "CD",
+     "track-count": 14,
+     "tracks": [
+      {
+       "id": "f02b6b0f-8c7b-3fe3-bd47-475d58088993",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 167066,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "7be143e8-c672-30c7-80dd-ecbab332301c",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 128973,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "660dfebb-5af5-34a5-917d-923cc0b84324",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 224360,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "c707eef4-dd10-3090-bad4-070b33b94223",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 151200,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "78b5d880-501b-3134-b5b8-b934b438b27e",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165333,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "b99b2d82-6e2f-3105-89fd-2952c6675283",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 145506,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "8fea96b1-9ab4-342c-aab7-8e0997313add",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238400,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "57071b7a-804c-3f25-9045-71df6b419959",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147160,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "f7cd04a9-a9da-3126-8e48-4876620d0277",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 177706,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "53ad85da-d93f-345a-8041-5c63bc012e99",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 257133,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      },
+      {
+       "id": "7f91c972-a173-32d4-9322-5117d32dbb64",
+       "position": 11,
+       "number": "11",
+       "title": "Chain of Fools (unedited version)",
+       "length": 262333,
+       "recording": {
+        "id": "ae3828b2-c296-4fce-ae15-4e15bbef0758",
+        "title": "Chain of Fools (unedited version)"
+       }
+      },
+      {
+       "id": "9f72d5cc-1901-3aa7-a576-6a4c499b8aca",
+       "position": 12,
+       "number": "12",
+       "title": "(You Make Me Feel Like) A Natural Woman (mono single version)",
+       "length": 169066,
+       "recording": {
+        "id": "3175d3ef-f8a9-4be6-be02-a9a7721b9d19",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "1ded1199-a7ad-3b38-9c06-d435922e0a79",
+       "position": 13,
+       "number": "13",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby) (mono single version)",
+       "length": 148226,
+       "recording": {
+        "id": "a6392cde-531d-44fd-bc54-977d119d99fe",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "e25780a4-056e-3c6e-8b12-fe2600ca23bb",
+       "position": 14,
+       "number": "14",
+       "title": "Ain’t No Way (mono single version)",
+       "length": 252933,
+       "recording": {
+        "id": "c5861085-bc2d-4d6c-894f-4e4ef181a884",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "580557d8-d133-4278-8f63-dccaa1db6cc0",
+   "title": "Lady Soul",
+   "date": "2012-04-24",
+   "country": "GB",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "Digital Media",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "24759988-40a2-48b7-9e26-52bf13635122",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 167000,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "c53c6e43-258f-40a4-b93a-be4aaeb23684",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 128000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "2109c04e-18c1-416d-b748-4d0258a7ebf3",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 224000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "69e20cfe-3719-4661-8fc3-e5d6babf26e8",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 151000,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "8927a129-8831-4732-b525-5552f054bc02",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165000,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "efe90ed9-883b-4856-b1a5-8e3307a60602",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 145000,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "09e73b8f-a556-4a83-b4b5-2c4958d779df",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238000,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "c5bc216f-826e-4aab-8a3c-031a552223c5",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147000,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "776db8b4-4833-4172-abbe-f1bcec5aae33",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 177000,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "f9f4abae-f9b7-4d92-b5d8-eb0468e61c15",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 257000,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "5c9b9213-c85c-43fd-8522-de03df8e0b1d",
+   "title": "Lady Soul",
+   "date": "1968-01-22",
+   "country": "US",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "12\" Vinyl",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "c289c17c-3223-3fa2-a81b-7c41d6af7668",
+       "position": 1,
+       "number": "A1",
+       "title": "Chain of Fools",
+       "length": 169826,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "50d7224b-db12-36f9-8ed6-abdb663e351c",
+       "position": 2,
+       "number": "A2",
+       "title": "Money Won’t Change You",
+       "length": 130000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "919fb484-ad83-3d85-b96d-48b94a471c44",
+       "position": 3,
+       "number": "A3",
+       "title": "People Get Ready",
+       "length": 226000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "52e6f9d5-b7e9-3dea-a19c-a1ed62ef0392",
+       "position": 4,
+       "number": "A4",
+       "title": "Niki Hoeky",
+       "length": 151506,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "904c16d6-8818-3a5b-b314-7a9384eea4ff",
+       "position": 5,
+       "number": "A5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165493,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "078dfe69-7659-3028-b837-d3f95b5ee4ce",
+       "position": 6,
+       "number": "B1",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 145506,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "7ca86dca-3e58-3615-99b1-d441c173178f",
+       "position": 7,
+       "number": "B2",
+       "title": "Good to Me as I Am to You",
+       "length": 238160,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "eaf01eaf-235e-3439-89db-27fa8c8d9f91",
+       "position": 8,
+       "number": "B3",
+       "title": "Come Back Baby",
+       "length": 147333,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "a8343b95-d6d4-3c9f-b7fa-591ae259fd53",
+       "position": 9,
+       "number": "B4",
+       "title": "Groovin’",
+       "length": 175333,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "fc098843-4775-3310-b379-336ddd23463c",
+       "position": 10,
+       "number": "B5",
+       "title": "Ain’t No Way",
+       "length": 251840,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "6b1a0751-7e7f-4528-b7c5-7dc719ac5711",
+   "title": "Lady Soul",
+   "date": "1998-05-29",
+   "country": "JP",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "HDCD",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "5a7672bc-a355-351f-bc01-6bd3229ec6d8",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 168000,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "9418f718-8c13-35d9-b7a5-2cfba3985621",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 128000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "6ecb585c-3e86-3d25-962d-558726ecbd5f",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 225000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "aac81e6f-3bb6-342f-b211-3edc243bab56",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 152000,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "8d08dc98-afa3-3bff-98d5-9e2e4670b7a9",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165000,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "c62d6177-e0c5-3c69-b775-4caa97fc472b",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 146000,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "23035331-f204-3d22-893e-b535f19d8a2a",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238000,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "93961b80-ac06-3e2f-b322-3bbc103926f0",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147000,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "5447955d-f35d-3ccc-9163-62e70d0bbfaf",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 178000,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "7bc9d29c-26e0-3bc5-875c-16d0f42ec47e",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 252000,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "8ba0eeda-282c-4cef-9498-b7f9f9c82f48",
+   "title": "Lady Soul",
+   "date": "2004",
+   "country": "ES",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "CD",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "84f97992-2edc-3ee8-8bd1-0ecc68e48ab5",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 165000,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "2be88603-bc7d-3a7c-bd8a-fe5d40986f27",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 122000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "a6147d8e-0ae8-3f3f-a5aa-76d079ec20a4",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 215000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "04737f3f-66ac-3ba7-9170-824ec6fb4b72",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 153000,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "b8e709dc-33c9-3446-8f22-8d5de50acb02",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 157000,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "f6229035-a27c-32a4-86b1-808c0f781051",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 138000,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "91204bbd-870c-3cbd-b61c-da083846ac60",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 205000,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "bc7d15c3-413b-3ba9-b90f-214089a88f6d",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 149000,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "e0533af3-66c3-3af1-9b2e-f49cc8e93437",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 165000,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "91fc92f0-ecb3-385c-924c-e0d0509a79ac",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 251840,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "988607a3-7e2b-454e-a552-384c1d14c3e3",
+   "title": "Lady Soul",
+   "date": "1988",
+   "country": "XE",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "CD",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "59830b89-615c-46ef-b832-c1b43bb3d772",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 169826,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "9478ffde-3ade-4f10-a984-d1914d641a10",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 130000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "b71e8a5a-a5a7-40cc-aae0-b669581111bd",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 226000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "b7a63799-3695-4d93-88bb-cd179e3407f1",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 151506,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "0717998d-97d5-4b0a-b54c-95991f696e93",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165493,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "f5981e26-2996-443c-af0b-aab3bcefa664",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 145506,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "b73da837-a017-4c5d-91a2-6831a8ab4dc8",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238160,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "ca841bd6-922d-4005-babb-f1b73e7727b1",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147333,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "8a371545-4cf5-4fe7-8547-91b28e1f39ea",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 175333,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "c1392106-574e-4a11-b836-16f42d0ba2f5",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 251840,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "b454a0f0-4948-4da1-a2af-53a11817b9b2",
+   "title": "Lady Soul",
+   "date": "1995",
+   "country": "XE",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "CD",
+     "track-count": 14,
+     "tracks": [
+      {
+       "id": "81ad93f7-4564-4670-a9be-9651fe12f81e",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 167066,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "47f70e52-2cb4-4a6b-b8f4-599794fbb284",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 128973,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "666a0c8f-6b23-4d0c-9be5-c0987029035a",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 224360,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "a7434fe9-7038-4bcc-be01-a1bea77e7e99",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 151200,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "208a3c46-d8bf-4eb4-8139-5e411465e9ce",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165333,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "4515458a-31e7-4a26-8a6b-15f57004dfb0",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 145506,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "4a1aad2f-a7bb-4ef7-8a3d-371916b6fe53",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238400,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "3800f568-a467-4273-8e45-37f7c4892d85",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147160,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "dc70e12b-900d-46d0-81bc-b32fbb99b186",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 177706,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "fb33dfa8-4872-4b42-9ca7-363d3a01d8a8",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 257133,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      },
+      {
+       "id": "36e294af-aadd-419c-a42e-f534e47179d9",
+       "position": 11,
+       "number": "11",
+       "title": "Chain of Fools (unedited version)",
+       "length": 262333,
+       "recording": {
+        "id": "ae3828b2-c296-4fce-ae15-4e15bbef0758",
+        "title": "Chain of Fools (unedited version)"
+       }
+      },
+      {
+       "id": "caf5cf82-5bf3-4d2d-87ba-b13de34e4ac7",
+       "position": 12,
+       "number": "12",
+       "title": "(You Make Me Feel Like) A Natural Woman (mono single version)",
+       "length": 169066,
+       "recording": {
+        "id": "3175d3ef-f8a9-4be6-be02-a9a7721b9d19",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "ec3cc06e-3932-450f-a207-7b763adc4799",
+       "position": 13,
+       "number": "13",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby) (mono single version)",
+       "length": 148226,
+       "recording": {
+        "id": "a6392cde-531d-44fd-bc54-977d119d99fe",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "781e9375-fc4e-4fdc-9f80-bb02873e5d31",
+       "position": 14,
+       "number": "14",
+       "title": "Ain’t No Way (mono single version)",
+       "length": 252933,
+       "recording": {
+        "id": "c5861085-bc2d-4d6c-894f-4e4ef181a884",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c4680a30-cf71-44b5-8d0a-9c4020b8bcc5",
+   "title": "Lady Soul",
+   "date": "2008",
+   "country": null,
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "Digital Media",
+     "track-count": 14,
+     "tracks": [
+      {
+       "id": "a5d553e7-4aad-4cdb-bec9-3eab070e1507",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 168669,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "95f72fc5-c691-404f-8cb2-ee7f4ae1026b",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 128499,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "e9b2a80c-d79f-43bd-a5a3-0593ef154739",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 223793,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "76c8ac7e-d35e-4d33-90af-9707048be0d3",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 150604,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "381a75f9-3185-483c-b4bc-f9793c9bbd99",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 166812,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "04a520e2-8c86-4356-b67c-c075b224fc5c",
+       "position": 6,
+       "number": "6",
+       "title": "(Sweet Sweet Baby) Since You’ve Been Gone",
+       "length": 145264,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "d908f4ea-31be-4e78-8e36-ccf0f8c86ea2",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238050,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "b36ebd5f-010a-4273-a9a5-5e6c106faebd",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 146935,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "aa84ed6f-55fe-4c21-a4c8-f9758655d6ee",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 177446,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "7db6d228-97d7-407b-a7ba-8c077f2da210",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 253933,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      },
+      {
+       "id": "15fe1ff1-a1cf-40a0-b606-3cb13b707f0d",
+       "position": 11,
+       "number": "11",
+       "title": "Chain of Fools (unedited)",
+       "length": 262153,
+       "recording": {
+        "id": "ae3828b2-c296-4fce-ae15-4e15bbef0758",
+        "title": "Chain of Fools (unedited version)"
+       }
+      },
+      {
+       "id": "7e6d8d22-89b8-4858-8e9a-16d3a143f153",
+       "position": 12,
+       "number": "12",
+       "title": "(You Make Me Feel Like) A Natural Woman (mono single version)",
+       "length": 168855,
+       "recording": {
+        "id": "3175d3ef-f8a9-4be6-be02-a9a7721b9d19",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "8d97e297-06dc-4c69-9b5e-0b35c023d6d2",
+       "position": 13,
+       "number": "13",
+       "title": "(Sweet Sweet Baby) Since You’ve Been Gone (mono single version)",
+       "length": 147678,
+       "recording": {
+        "id": "a6392cde-531d-44fd-bc54-977d119d99fe",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "dcb270c8-47e9-41ff-b912-03b978ee2f17",
+       "position": 14,
+       "number": "14",
+       "title": "Ain’t No Way (mono single version)",
+       "length": 252168,
+       "recording": {
+        "id": "c5861085-bc2d-4d6c-894f-4e4ef181a884",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "dd0b320a-8ac6-4fae-bef9-beb530be6312",
+   "title": "Lady Soul",
+   "date": "1995",
+   "country": "US",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "CD",
+     "track-count": 14,
+     "tracks": [
+      {
+       "id": "450c1b32-fcaf-42ec-9db9-b6b612cb617c",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 168000,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "5f860769-4de3-4540-b07e-69cf74523661",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 128973,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "d9bb049b-aa92-466a-b658-91c0d6b9c7aa",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 224360,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "8afda949-c450-438c-8982-b03ddea01857",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 151200,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "2f3b127b-15c0-4497-9eb5-acd5324eac36",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165333,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "6ea8fe4c-398d-4b2f-99ae-9db4435fe3b1",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 145506,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "3adb5ea0-efcb-42ce-bad5-f7d81878267e",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238400,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "ab512fe1-9fc3-45d3-b0d7-72fc5dc62b10",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147160,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "22486d1f-6f9d-41f2-9cb7-2a2d18e80177",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 177706,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "bd9a83bf-ed42-4f80-833e-40c23fa9d867",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 257133,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      },
+      {
+       "id": "3b9e30b3-547e-4685-b6d8-3d2b5c40aef9",
+       "position": 11,
+       "number": "11",
+       "title": "Chain of Fools (Unedited version)",
+       "length": 262333,
+       "recording": {
+        "id": "ae3828b2-c296-4fce-ae15-4e15bbef0758",
+        "title": "Chain of Fools (unedited version)"
+       }
+      },
+      {
+       "id": "1cb87083-8b7a-4edf-8526-2eeaabc8b7cb",
+       "position": 12,
+       "number": "12",
+       "title": "(You Make Me Feel Like) A Natural Woman (Mono single version)",
+       "length": 169066,
+       "recording": {
+        "id": "3175d3ef-f8a9-4be6-be02-a9a7721b9d19",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "cfbc2c28-7b02-4f73-a889-781bf5b2f327",
+       "position": 13,
+       "number": "13",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby) (Mono single version)",
+       "length": 148226,
+       "recording": {
+        "id": "a6392cde-531d-44fd-bc54-977d119d99fe",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "51d7a1f8-e9f8-44c3-b8dd-43eac54c9809",
+       "position": 14,
+       "number": "14",
+       "title": "Ain’t No Way (Mono single version)",
+       "length": 252933,
+       "recording": {
+        "id": "c5861085-bc2d-4d6c-894f-4e4ef181a884",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "faa9be99-3035-4d4b-9693-92749ad7d2c3",
+   "title": "Lady Soul",
+   "date": "2012",
+   "country": "XW",
+   "status": "Official",
+   "media": [
+    {
+     "position": 1,
+     "format": "Digital Media",
+     "track-count": 10,
+     "tracks": [
+      {
+       "id": "49ccf46c-7965-47a8-8a29-e26aad1af423",
+       "position": 1,
+       "number": "1",
+       "title": "Chain of Fools",
+       "length": 168000,
+       "recording": {
+        "id": "641f1382-ed05-473d-9ad5-24138b9149ba",
+        "title": "Chain of Fools"
+       }
+      },
+      {
+       "id": "29a4d132-ff01-4893-90c9-38060bad87ff",
+       "position": 2,
+       "number": "2",
+       "title": "Money Won’t Change You",
+       "length": 128000,
+       "recording": {
+        "id": "c652db9d-16a9-4f96-8710-e711bcad7ecf",
+        "title": "Money Won’t Change You"
+       }
+      },
+      {
+       "id": "b92f8472-c7c7-404a-88cf-26b667f5bcc5",
+       "position": 3,
+       "number": "3",
+       "title": "People Get Ready",
+       "length": 225000,
+       "recording": {
+        "id": "e1c4a8f9-8d77-4f33-b83e-e07e29accc77",
+        "title": "People Get Ready"
+       }
+      },
+      {
+       "id": "f5bb8253-83ee-4b7a-a995-3b1f3e770f73",
+       "position": 4,
+       "number": "4",
+       "title": "Niki Hoeky",
+       "length": 152000,
+       "recording": {
+        "id": "2103b8ea-5480-49e0-95f3-f68bbadce47a",
+        "title": "Niki Hoeky"
+       }
+      },
+      {
+       "id": "d26a6926-844c-4a9d-a8e7-b768c1494c72",
+       "position": 5,
+       "number": "5",
+       "title": "(You Make Me Feel Like) A Natural Woman",
+       "length": 165000,
+       "recording": {
+        "id": "47f96d6e-227e-44b8-b6f7-62c25e7857a7",
+        "title": "(You Make Me Feel Like) A Natural Woman"
+       }
+      },
+      {
+       "id": "9c2bf449-9717-4aa4-9f91-69eb1b756319",
+       "position": 6,
+       "number": "6",
+       "title": "Since You’ve Been Gone (Sweet Sweet Baby)",
+       "length": 146000,
+       "recording": {
+        "id": "cced9b76-834b-4e42-80d5-9da224d25ce4",
+        "title": "Since You’ve Been Gone (Sweet Sweet Baby)"
+       }
+      },
+      {
+       "id": "e7d069d2-7d24-4575-bc4d-a06fadeb3d04",
+       "position": 7,
+       "number": "7",
+       "title": "Good to Me as I Am to You",
+       "length": 238000,
+       "recording": {
+        "id": "202539a5-8376-4da3-9f4c-3fd5320eb2de",
+        "title": "Good to Me as I Am to You"
+       }
+      },
+      {
+       "id": "87cd6695-2f8d-4fea-b0b3-5d03e6829495",
+       "position": 8,
+       "number": "8",
+       "title": "Come Back Baby",
+       "length": 147000,
+       "recording": {
+        "id": "7d9b85a3-4a78-41ab-9c47-57e2f1f90b1a",
+        "title": "Come Back Baby"
+       }
+      },
+      {
+       "id": "a8695f4e-a70f-49dd-8dc2-552ce2d5ea92",
+       "position": 9,
+       "number": "9",
+       "title": "Groovin’",
+       "length": 178000,
+       "recording": {
+        "id": "2119f813-2321-462a-b23c-d9e5bfed4e03",
+        "title": "Groovin’"
+       }
+      },
+      {
+       "id": "687ac3f9-091a-4213-91a5-2559e0a8470a",
+       "position": 10,
+       "number": "10",
+       "title": "Ain’t No Way",
+       "length": 252000,
+       "recording": {
+        "id": "45639170-6d02-4d76-af94-0d24673dcaff",
+        "title": "Ain’t No Way"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "release-count": 15
+}

@@ -5,6 +5,7 @@ from app.jobs.handlers import (  # noqa: F401
     download_monitor,
     fetch_covers,
     fetch_similar,
+    fetch_tracklist,
     housekeeping,
     integration_check,
     reclassify_quality,

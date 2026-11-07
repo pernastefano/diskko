@@ -15,6 +15,7 @@ from app.jobs.worker import JobWorker
 from app.services.runtime_config import apply_runtime_config
 from app.web.errors import register_error_handlers
 from app.web.routers import (
+    albums,
     artists,
     auth,
     covers,
@@ -100,6 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         users.router,
         jobs.router,
         library_admin.router,
+        albums.router,
         library.router,
         artists.router,
         preferences.router,

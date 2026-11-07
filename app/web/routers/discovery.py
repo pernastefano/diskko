@@ -16,7 +16,6 @@ from app.auth.deps import DB, UserAuth
 from app.integrations.musicbrainz_client import ArtistHit, peek_artist_search
 from app.jobs import engine
 from app.jobs.handlers.fetch_similar import similar_dedupe_key
-from app.jobs.handlers.resolve_previews import previews_dedupe_key
 from app.jobs.handlers.search_artists import SEARCH_LIMIT, search_dedupe_key
 from app.jobs.handlers.sync_artist import sync_dedupe_key
 from app.models import (
@@ -24,8 +23,6 @@ from app.models import (
     STATUS_FAILED,
     Artist,
     Job,
-    PreviewLookup,
-    ReleaseGroup,
     SimilarArtist,
     utcnow,
 )
@@ -36,7 +33,6 @@ from app.services.discovery import (
     similar_is_fresh,
     valid_mbid,
 )
-from app.services.previews import preview_state
 from app.web.routers.jobs import notify_worker
 from app.web.templating import render
 
@@ -46,7 +42,7 @@ FAILURE_MEMORY = timedelta(minutes=10)  # a failed job is reported, not retried 
 MIN_QUERY = 2
 
 
-def _job_state(db: DB, key: str) -> str:
+def job_state(db: DB, key: str) -> str:
     """'active', 'failed' (recently) or 'none' for the job with this dedupe key."""
     if db.scalar(select(Job.id).where(Job.dedupe_key == key, Job.status.in_(ACTIVE_STATUSES))):
         return "active"
@@ -60,7 +56,9 @@ def _job_state(db: DB, key: str) -> str:
     return "none"
 
 
-def _queue(request: Request, db: DB, auth: UserAuth, type_: str, payload: dict, key: str) -> None:
+def queue_job(
+    request: Request, db: DB, auth: UserAuth, type_: str, payload: dict, key: str
+) -> None:
     engine.enqueue(db, type_, payload, dedupe_key=key, created_by=auth.user.id)
     notify_worker(request)
 
@@ -100,12 +98,12 @@ def _search_context(
         ctx.update(state="results", rows=_annotate(db, hits))
         return ctx
     key = search_dedupe_key(query)
-    state = _job_state(db, key)
+    state = job_state(db, key)
     if state == "failed" and not retry:
         ctx["state"] = "failed"
         return ctx
     if state != "active":
-        _queue(request, db, auth, "search_artists", {"query": query}, key)
+        queue_job(request, db, auth, "search_artists", {"query": query}, key)
     ctx["state"] = "searching"
     return ctx
 
@@ -125,7 +123,7 @@ def search_results(request: Request, db: DB, auth: UserAuth, q: str = ""):
 def _open_artist(request: Request, db: DB, auth: UserAuth, artist: Artist, created: bool):
     if created or artist.metadata_synced_at is None:
         db.commit()
-        _queue(
+        queue_job(
             request,
             db,
             auth,
@@ -133,7 +131,7 @@ def _open_artist(request: Request, db: DB, auth: UserAuth, artist: Artist, creat
             {"artist_id": artist.id},
             sync_dedupe_key(artist.id),
         )
-        _queue(
+        queue_job(
             request,
             db,
             auth,
@@ -175,8 +173,8 @@ def _similar_context(request: Request, db: DB, auth: UserAuth, artist: Artist, *
     key = similar_dedupe_key(artist.id)
     if items:
         ctx["items"] = items
-        if not similar_is_fresh(db, artist.id) and _job_state(db, key) == "none":
-            _queue(request, db, auth, "fetch_similar_artists", {"artist_id": artist.id}, key)
+        if not similar_is_fresh(db, artist.id) and job_state(db, key) == "none":
+            queue_job(request, db, auth, "fetch_similar_artists", {"artist_id": artist.id}, key)
         return ctx
     if similar_is_fresh(db, artist.id):
         return ctx  # looked up, nothing found
@@ -185,12 +183,12 @@ def _similar_context(request: Request, db: DB, auth: UserAuth, artist: Artist, *
     if not (can_lastfm or can_lb):
         ctx["state"] = "unavailable"
         return ctx
-    state = _job_state(db, key)
+    state = job_state(db, key)
     if state == "failed" and not retry:
         ctx["state"] = "failed"
         return ctx
     if state != "active":
-        _queue(request, db, auth, "fetch_similar_artists", {"artist_id": artist.id}, key)
+        queue_job(request, db, auth, "fetch_similar_artists", {"artist_id": artist.id}, key)
     ctx["state"] = "loading"
     return ctx
 
@@ -239,62 +237,3 @@ def similar_open(
         raise HTTPException(status_code=404, detail="not_found")
     artist, created = open_external_artist(db, row.mbid, row.name)
     return _open_artist(request, db, auth, artist, created)
-
-
-# -------------------------------------------------------------------- previews
-
-
-def _group_or_404(db: DB, group_id: int) -> ReleaseGroup:
-    group = db.get(ReleaseGroup, group_id)
-    if group is None:
-        raise HTTPException(status_code=404, detail="not_found")
-    return group
-
-
-def _preview_context(
-    request: Request, db: DB, auth: UserAuth, group: ReleaseGroup, *, enqueue: bool, retry=False
-) -> dict:
-    ctx: dict = {"g": group, "state": "loading", "tracks": [], "lookup": None}
-    state = preview_state(db, group.id)
-    if state.state == "ready":
-        ctx.update(
-            state="ready",
-            lookup=db.get(PreviewLookup, group.id),
-            tracks=[
-                {"title": t.title, "url": t.url, "n": t.position, "disc": t.disc}
-                for t in state.tracks or []
-            ],
-        )
-        return ctx
-    if state.state == "missing":
-        ctx["state"] = "missing"
-        return ctx
-    key = previews_dedupe_key(group.id)
-    job = _job_state(db, key)
-    if job == "failed" and not retry:
-        ctx["state"] = "failed"
-    elif job != "active" and enqueue:
-        _queue(
-            request,
-            db,
-            auth,
-            "resolve_previews",
-            {"release_group_id": group.id, "force": state.state == "stale"},
-            key,
-        )
-    return ctx
-
-
-@router.post("/previews/{group_id}")
-def preview_load(request: Request, db: DB, auth: UserAuth, group_id: int, retry: str = ""):
-    group = _group_or_404(db, group_id)
-    ctx = _preview_context(request, db, auth, group, enqueue=True, retry=retry == "1")
-    return render(request, "_preview.html", ctx)
-
-
-@router.get("/previews/{group_id}")
-def preview_poll(request: Request, db: DB, auth: UserAuth, group_id: int):
-    group = _group_or_404(db, group_id)
-    return render(
-        request, "_preview.html", _preview_context(request, db, auth, group, enqueue=False)
-    )

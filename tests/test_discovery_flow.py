@@ -203,13 +203,14 @@ def test_search_an_unowned_artist_then_see_albums_similar_artists_and_a_preview(
             r'data-similar="Atoms for Peace".*?</li>', sim.text, re.S
         ).group(0)
 
-        # 6. a preview of an album
+        # 6. the album page: the tracks from MusicBrainz and a preview where one exists
         rg_id = lady_soul_id(db)
-        first = post(admin_client, f"/previews/{rg_id}", page=f"/artist/{artist.id}")
-        assert 'data-preview-state="loading"' in first.text
+        mock.get(f"{MB}/release").respond(json=mb_load("releases_lady_soul.json"))
+        first = post(admin_client, f"/album/{rg_id}/tracks", page=f"/artist/{artist.id}")
+        assert "data-loading" in first.text
         drain(app)
-        player = admin_client.get(f"/previews/{rg_id}").text
-        assert 'data-preview-state="ready"' in player and "<audio" in player
+        player = admin_client.get(f"/album/{rg_id}/tracks").text
+        assert player.count('data-source="preview"') == 2 and player.count("<audio") == 2
         assert "Chain of Fools" in player and "courtesy of iTunes" in player
         assert "https://music.apple.com/us/album/lady-soul/111" in player
 
@@ -302,13 +303,20 @@ def test_opening_twice_reuses_the_artist(admin_client, db):
 def test_discovery_pages_need_a_login_and_a_csrf_token(client, admin_client, db):
     seed_search(db)
     assert admin_client.post("/search/open", data={"mbid": ARETHA}).status_code == 403
-    assert admin_client.post("/previews/1").status_code == 403
+    assert admin_client.post("/album/1/tracks").status_code == 403
     assert admin_client.post("/artist/1/similar").status_code == 403
 
 
 def test_discovery_pages_redirect_anonymous_visitors(admin_client, new_client):
     anon = new_client()
-    for path in ("/search", "/search/results", "/artist/1/similar", "/previews/1"):
+    for path in (
+        "/search",
+        "/search/results",
+        "/artist/1/similar",
+        "/album/1",
+        "/album/1/tracks",
+        "/stream/1",
+    ):
         r = anon.get(path)
         assert r.status_code == 303 and r.headers["location"].startswith("/login"), path
 
@@ -497,21 +505,35 @@ def album_with_group(db, title="Lady Soul"):
     return artist, make_rg(db, artist, title, 1968)
 
 
-def test_a_preview_is_looked_up_by_a_job_and_then_played(app, admin_client, db):
+def tracks_of(client, group_id, **kw):
+    """What the album page asks when it opens: queue what is missing, return the tracks."""
+    return post(client, f"/album/{group_id}/tracks", page="/library", **kw)
+
+
+def mount_releases(mock, empty=False):
+    mock.get(f"{MB}/release").respond(
+        json={"releases": []} if empty else mb_load("releases_lady_soul.json")
+    )
+
+
+def test_previews_are_looked_up_by_a_job_and_shown_on_the_tracks(app, admin_client, db):
     _, group = album_with_group(db)
     with respx.mock(assert_all_called=False) as mock:
         itunes_for_lady_soul(mock)
+        mount_releases(mock)
         deezer = mock.get(url__startswith=DEEZER)
-        post(admin_client, f"/previews/{group.id}", page="/library")
-        post(admin_client, f"/previews/{group.id}", page="/library")
+        tracks_of(admin_client, group.id)
+        tracks_of(admin_client, group.id)
         drain(app)
         assert deezer.call_count == 0  # iTunes had it: Deezer is only a fallback
-    assert len(jobs(db, "resolve_previews")) == 1
+    assert len(jobs(db, "resolve_previews")) == 1 and len(jobs(db, "fetch_tracklist")) == 1
     state = preview_state(db, group.id)
     assert state.state == "ready" and state.provider == "itunes" and len(state.tracks) == 2
-    text = admin_client.get(f"/previews/{group.id}").text
-    assert text.count("<audio") == 1 and "Money Won" in text
+    text = admin_client.get(f"/album/{group.id}/tracks").text
+    assert text.count('data-track="') == 10  # every track of the album, not just the previewed
+    assert text.count('data-source="preview"') == 2 and text.count("<audio") == 2
     assert "https://audio-ssl.itunes.apple.com/p/1.m4a" in text
+    assert "Chain of Fools" in text and "People Get Ready" in text and "Niki Hoeky" in text
 
 
 def test_deezer_is_the_fallback_when_itunes_has_no_such_album(app, admin_client, db):
@@ -519,27 +541,30 @@ def test_deezer_is_the_fallback_when_itunes_has_no_such_album(app, admin_client,
     db.get(Artist, group.artist_id).name = "Radiohead"
     db.commit()
     with respx.mock(assert_all_called=False) as mock:
+        mount_releases(mock, empty=True)  # MusicBrainz lists no tracks: the previews are shown
         mock.get(f"{ITUNES}/search").respond(json={"resultCount": 0, "results": []})
         mock.get(f"{DEEZER}/search/album").respond(json=load("deezer_album_search"))
         mock.get(f"{DEEZER}/album/14879699/tracks").respond(json=load("deezer_album_tracks"))
-        post(admin_client, f"/previews/{group.id}", page="/library")
+        tracks_of(admin_client, group.id)
         drain(app)
     state = preview_state(db, group.id)
     assert state.state == "ready" and state.provider == "deezer" and len(state.tracks) == 12
-    text = admin_client.get(f"/previews/{group.id}").text
+    text = admin_client.get(f"/album/{group.id}/tracks").text
+    assert text.count('data-source="preview"') == 12
     assert "courtesy of Deezer" in text and "https://www.deezer.com/" in text
 
 
-def test_an_album_nobody_has_is_marked_missing_and_not_asked_again(app, admin_client, db):
+def test_an_album_nobody_has_is_marked_and_not_asked_again(app, admin_client, db):
     _, group = album_with_group(db, "Obscure Demo Tape")
     with respx.mock(assert_all_called=False) as mock:
+        mount_releases(mock)
         mock.get(f"{ITUNES}/search").respond(json={"resultCount": 0, "results": []})
         mock.get(f"{DEEZER}/search/album").respond(json={"data": [], "total": 0})
-        post(admin_client, f"/previews/{group.id}", page="/library")
+        tracks_of(admin_client, group.id)
         drain(app)
     assert preview_state(db, group.id).state == "missing"
-    text = post(admin_client, f"/previews/{group.id}", page="/library").text
-    assert 'data-preview-state="missing"' in text
+    text = tracks_of(admin_client, group.id).text
+    assert "data-no-previews" in text and 'data-source="preview"' not in text
     assert len(jobs(db, "resolve_previews")) == 1
 
 
@@ -553,9 +578,10 @@ def test_a_wrong_album_is_never_used_as_a_preview(app, admin_client, db):
         "trackCount": 10,
     }
     with respx.mock(assert_all_called=False) as mock:
+        mount_releases(mock)
         mock.get(f"{ITUNES}/search").respond(json={"resultCount": 1, "results": [wrong]})
         mock.get(f"{DEEZER}/search/album").respond(json={"data": []})
-        post(admin_client, f"/previews/{group.id}", page="/library")
+        tracks_of(admin_client, group.id)
         drain(app)
     assert preview_state(db, group.id).state == "missing"
     assert db.scalar(select(func.count(PreviewTrack.id))) == 0
@@ -564,9 +590,10 @@ def test_a_wrong_album_is_never_used_as_a_preview(app, admin_client, db):
 def test_providers_that_only_fail_do_not_mark_the_album_missing(app, admin_client, db):
     _, group = album_with_group(db)
     with respx.mock(assert_all_called=False) as mock:
+        mount_releases(mock)
         mock.get(f"{ITUNES}/search").respond(503)
         mock.get(f"{DEEZER}/search/album").respond(503)
-        post(admin_client, f"/previews/{group.id}", page="/library")
+        tracks_of(admin_client, group.id)
         drain(app)
     assert db.get(PreviewLookup, group.id) is None  # nothing stored: a retry is scheduled
     assert jobs(db, "resolve_previews")[0].next_run_at is not None
@@ -577,10 +604,11 @@ def test_one_provider_failing_still_lets_the_other_answer(app, admin_client, db)
     db.get(Artist, group.artist_id).name = "Radiohead"
     db.commit()
     with respx.mock(assert_all_called=False) as mock:
+        mount_releases(mock, empty=True)
         mock.get(f"{ITUNES}/search").mock(side_effect=httpx.ConnectError("down"))
         mock.get(f"{DEEZER}/search/album").respond(json=load("deezer_album_search"))
         mock.get(f"{DEEZER}/album/14879699/tracks").respond(json=load("deezer_album_tracks"))
-        post(admin_client, f"/previews/{group.id}", page="/library")
+        tracks_of(admin_client, group.id)
         drain(app)
     assert preview_state(db, group.id).provider == "deezer"
 
@@ -609,44 +637,41 @@ def test_a_stale_lookup_is_resolved_again_with_force(db, admin_client):
     lookup = db.get(PreviewLookup, group.id)
     lookup.checked_at = utcnow() - timedelta(minutes=30)
     db.commit()
-    text = post(admin_client, f"/previews/{group.id}", page="/library").text
-    assert 'data-preview-state="loading"' in text
+    text = tracks_of(admin_client, group.id).text
+    assert "data-loading" in text
     assert '"force": true' in jobs(db, "resolve_previews")[0].payload_json
 
 
-def test_a_failed_preview_job_is_reported(admin_client, db):
+def test_reloading_an_expired_preview_asks_again(db, admin_client):
+    from app.integrations.discovery_types import PreviewData
+
     _, group = album_with_group(db)
-    post(admin_client, f"/previews/{group.id}", page="/library")
+    store_previews(db, group.id, "deezer", "9", [PreviewData(1, 1, "Song", "1", "https://x/1.mp3")])
+    db.commit()
+    assert jobs(db, "resolve_previews") == []  # the lookup is still fresh
+    post(admin_client, f"/album/{group.id}/tracks?refresh=1", page="/library")
+    assert '"force": true' in jobs(db, "resolve_previews")[0].payload_json
+
+
+def test_a_failed_preview_job_is_reported_and_not_retried_in_a_loop(admin_client, db):
+    _, group = album_with_group(db)
+    from app.services.tracklists import store_tracklist
+
+    tracks_of(admin_client, group.id)
     job = jobs(db, "resolve_previews")[0]
     job.status, job.finished_at = STATUS_FAILED, utcnow()
+    store_tracklist(db, group.id, None)  # the track list is settled: only the previews failed
     db.commit()
-    assert (
-        'data-preview-state="failed"'
-        in post(admin_client, f"/previews/{group.id}", page="/library").text
-    )
-    assert (
-        'data-preview-state="loading"'
-        in post(admin_client, f"/previews/{group.id}?retry=1", page="/library").text
-    )
+    assert "data-failed" in tracks_of(admin_client, group.id).text
+    assert len(jobs(db, "resolve_previews")) == 1
+    post(admin_client, f"/album/{group.id}/tracks?refresh=1", page="/library")
+    assert len(jobs(db, "resolve_previews")) == 2  # "reload" tries again
 
 
-def test_unknown_groups_are_404(admin_client):
-    assert post(admin_client, "/previews/9999", page="/library").status_code == 404
-    assert admin_client.get("/previews/9999").status_code == 404
+def test_unknown_albums_are_404(admin_client):
+    assert tracks_of(admin_client, 9999).status_code == 404
+    assert admin_client.get("/album/9999/tracks").status_code == 404
     assert post(admin_client, "/artist/9999/similar", page="/library").status_code == 404
-
-
-def test_preview_buttons_are_on_missing_and_owned_cards(app, admin_client, db):
-    artist, group = album_with_group(db)
-    other = make_rg(db, artist, "I Never Loved a Man", 1967)
-    from tests.dbhelpers import make_album
-
-    owned = make_album(db, artist, "Lady Soul", 1968, mbid_rg=group.mbid)
-    owned.release_group_id, owned.match_status = group.id, "matched"
-    db.commit()
-    text = admin_client.get(f"/artist/{artist.id}").text
-    assert text.count("data-preview-button") == 2
-    assert f'hx-post="/previews/{group.id}"' in text and f'hx-post="/previews/{other.id}"' in text
 
 
 # -------------------------------------------------------------------- housekeeping

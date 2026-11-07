@@ -71,6 +71,25 @@ class ReleaseGroupData:
         return category_for(self.primary_type, self.secondary_types)
 
 
+@dataclass
+class TrackData:
+    disc: int
+    position: int
+    number: str | None
+    title: str
+    length_ms: int | None
+    recording_mbid: str | None
+
+
+@dataclass
+class ReleaseData:
+    mbid: str
+    date: str | None
+    country: str | None
+    status: str | None
+    tracks: list[TrackData]
+
+
 def lucene_phrase(text: str) -> str:
     """Quote a value for a Lucene phrase query (only `\\` and `"` are special inside)."""
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
@@ -226,6 +245,31 @@ class MusicBrainzClient:
         data = await self._get(f"artist/{mbid}", {}, force=force)
         return _parse_artist(data) if data else None
 
+    async def browse_releases(
+        self, release_group_mbid: str, *, force: bool = False
+    ) -> list[ReleaseData] | None:
+        """The releases of a release group with their tracks (official ones when there are any).
+
+        GET /release?release-group=<mbid>&inc=recordings: each release has media[], each medium
+        tracks[] {position, number, title, length (ms), recording {id}}. None if MusicBrainz does
+        not know the group. One page of 25 is plenty: only a representative release is needed.
+        """
+        for status in ("official", None):
+            params: dict[str, Any] = {
+                "release-group": release_group_mbid,
+                "inc": "recordings",
+                "limit": 25,
+            }
+            if status:
+                params["status"] = status
+            data = await self._get("release", params, force=force)
+            if data is None:
+                return None
+            releases = [r for raw in data.get("releases", []) if (r := _parse_release(raw))]
+            if releases:
+                return releases
+        return []
+
     async def browse_release_groups(
         self,
         artist_mbid: str,
@@ -278,6 +322,37 @@ def _parse_artist(raw: dict[str, Any]) -> ArtistHit | None:
         disambiguation=raw.get("disambiguation") or "",
         type=raw.get("type"),
         aliases=aliases,
+    )
+
+
+def _parse_release(raw: dict[str, Any]) -> ReleaseData | None:
+    mbid = raw.get("id")
+    if not mbid:
+        return None
+    tracks: list[TrackData] = []
+    for medium in raw.get("media") or []:
+        disc = int(medium.get("position") or 1)
+        for t in medium.get("tracks") or []:
+            title = t.get("title") or (t.get("recording") or {}).get("title")
+            if not title:
+                continue
+            length = t.get("length")
+            tracks.append(
+                TrackData(
+                    disc=disc,
+                    position=int(t.get("position") or len(tracks) + 1),
+                    number=str(t["number"])[:16] if t.get("number") else None,
+                    title=title,
+                    length_ms=int(length) if isinstance(length, int | float) else None,
+                    recording_mbid=(t.get("recording") or {}).get("id"),
+                )
+            )
+    return ReleaseData(
+        mbid=mbid,
+        date=raw.get("date") or None,
+        country=raw.get("country") or None,
+        status=raw.get("status") or None,
+        tracks=tracks,
     )
 
 

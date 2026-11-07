@@ -76,3 +76,35 @@ class PreviewTrack(Base):
     provider_track_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     url: Mapped[str] = mapped_column(Text)
     fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class ReleaseTrack(Base):
+    """A track of an album as MusicBrainz lists it (from one chosen release of the group)."""
+
+    __tablename__ = "release_tracks"
+    __table_args__ = (UniqueConstraint("release_group_id", "disc", "position"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    release_group_id: Mapped[int] = mapped_column(
+        ForeignKey("release_groups.id", ondelete="CASCADE"), index=True
+    )
+    disc: Mapped[int] = mapped_column(Integer, default=1)
+    position: Mapped[int] = mapped_column(Integer)
+    number: Mapped[str | None] = mapped_column(String(16), nullable=True)  # "A1" on vinyl
+    title: Mapped[str] = mapped_column(String(512))
+    length_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recording_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    release_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+
+class TracklistFetch(Base):
+    """When the tracks of a release group were last looked up (even if none were found)."""
+
+    __tablename__ = "tracklist_fetches"
+
+    release_group_id: Mapped[int] = mapped_column(
+        ForeignKey("release_groups.id", ondelete="CASCADE"), primary_key=True
+    )
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    release_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    track_count: Mapped[int] = mapped_column(Integer, default=0)

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_covers.html" import cover %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<a href="/artist/{{ artist.id }}" class="text-sm text-indigo-600 hover:underline">← {{ artist.name }}</a>
+<div class="mt-3 flex flex-col gap-5 sm:flex-row">
+  <div class="shrink-0">{{ cover(group, 'h-48 w-48 sm:h-56 sm:w-56', title) }}</div>
+  <div class="min-w-0 flex-1">
+    <h1 class="text-3xl font-semibold" data-album-title>{{ title }}</h1>
+    <p class="mt-1 text-lg"><a href="/artist/{{ artist.id }}" class="text-indigo-700 hover:underline">{{ artist.name }}</a></p>
+    <p class="mt-2 text-sm text-slate-500">
+      {% if year %}{{ year }} · {% endif %}{% if group %}{{ t('category.' ~ group.category) }} · {% endif %}
+      {% if summary.tracks %}{{ t('album.summary', n=summary.tracks, min=(summary.seconds // 60)) }}{% if summary.discs > 1 %} · {{ t('album.discs', n=summary.discs) }}{% endif %}{% endif %}
+      {% if group %} · <a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ group.mbid }}">MusicBrainz ↗</a>{% endif %}
+    </p>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      {% if mode == 'remote' %}
+        <span class="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" data-ownership="remote">{{ t('album.not_owned') }}</span>
+      {% else %}
+        <span class="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800" data-ownership="owned">{{ t('album.owned') }}</span>
+        {% if album %}{% set tier = album.quality_tier %}{% include "_quality_badge.html" %}
+          {% set fmt = album|album_format %}{% if fmt %}<span class="text-xs text-slate-500">{{ fmt }}</span>{% endif %}{% endif %}
+      {% endif %}
+    </div>
+    {% if mode == 'remote' %}
+      <div class="mt-3" data-album-request>{% include "_request_control.html" %}</div>
+    {% elif mode == 'local' %}
+      <p class="mt-3 text-sm text-slate-500">{{ t('album.local_hint') }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<h2 class="mb-2 mt-8 text-xl font-semibold">{{ t('album.tracks') }}</h2>
+{% include "_album_tracks.html" %}
+{% if mode == 'remote' and group %}
+  {# asks for what is missing (the track list, the previews) once the page is open #}
+  <div hx-post="/album/{{ group.id }}/tracks" hx-trigger="load" hx-target="#album-tracks" hx-swap="outerHTML" class="hidden"></div>
+{% endif %}
+{% endblock %}
