@@ -76,9 +76,9 @@ def test_v0_counts_where_the_profile_accepts_it():
         (24, 48000, "flac_standard"),
         (16, 96000, "flac_standard"),  # a high rate alone is not Hi-Res either
         (16, 192000, "flac_standard"),
-        (24, 88200, "flac_hires"),
+        (24, 88200, "flac_standard"),  # Hi-Res starts at 96 kHz
         (24, 96000, "flac_hires"),
-        (24, 176400, "flac_master"),
+        (24, 176400, "flac_hires"),  # Master starts at 192 kHz
         (24, 192000, "flac_master"),
         (32, 352800, "flac_master"),
     ],

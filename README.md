@@ -213,12 +213,14 @@ riavviare:
   salvataggio: lasciando il campo vuoto si mantiene il valore attuale.
 - **Job**: quanti job di ogni tipo girano insieme (MusicBrainz resta sempre a 1). Per quanto tempo si conservano i job finiti e i loro log: tre valori generali e, per ogni tipo di job, una casella numerica (vuota = valore generale), senza testo da scrivere.
 - **Album**: i tipi di album considerati "mancanti" (uguali per tutti gli utenti).
-- **Qualità**: i profili di qualità, completamente configurabili. Si parte da *FLAC Master* (24/192),
-  *FLAC Hi-Res* (24/96), *FLAC Standard* (16/44,1, il predefinito), *MP3 320 / V0*, *MP3 ≥ 256*,
-  *MP3 ≥ 192* e *Qualsiasi / bassa*; si possono aggiungere, modificare (nome, requisiti, colore),
-  riordinare, eliminare o ripristinare. Un file ottiene il miglior profilo che soddisfa e un album
-  vale quanto la sua traccia peggiore. Ogni modifica avvia un job che ricalcola la libreria. Le soglie
-  di frequenza dei profili FLAC iniziali sono 88,2 e 176,4 kHz, così contano anche i multipli di 44,1.
+- **Qualità**: i profili di qualità, completamente configurabili. Quelli standard sono *FLAC Master*
+  (lossless, almeno 24 bit e 192 kHz), *FLAC Hi-Res* (almeno 24 bit e 96 kHz), *FLAC Standard*
+  (almeno 16 bit e 44,1 kHz, il predefinito), *MP3 320 / V0* (almeno 320 kbps, V0 o lossless),
+  *MP3 ≥ 256*, *MP3 ≥ 192* (o lossless) e *Qualsiasi*; si possono aggiungere, modificare (nome,
+  requisiti, colore), riordinare, eliminare o ripristinare ai valori standard. Un file ottiene il
+  miglior profilo che soddisfa e un album vale quanto la sua traccia peggiore. Ogni modifica avvia un
+  job che ricalcola la libreria. Le installazioni esistenti passano ai valori standard con una
+  migrazione, che lascia stare i profili modificati a mano.
 - **Utenti**: creazione e reimpostazione della password in finestre modali, ruoli, attivazione ed
   eliminazione.
 

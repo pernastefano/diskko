@@ -38,7 +38,7 @@ def test_page_shows_counts_quality_and_last_scan(app, admin_client, tmp_path):
     app.state.settings.music_dir = tmp_path / "music"
     populate(app)
     page = admin_client.get("/dashboard").text
-    assert "FLAC Hi-Res (24/96)" in page and "Qualsiasi / bassa" in page
+    assert "FLAC Hi-Res" in page and "Qualsiasi" in page
     assert "Files seen" in page and "The library has not been scanned yet." not in page
     assert str(tmp_path / "music") in page
 

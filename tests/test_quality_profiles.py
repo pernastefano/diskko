@@ -39,7 +39,7 @@ def test_the_migration_seeds_the_profiles(db):
     assert [p.key for p in svc.load_profiles(db).profiles] == [p.key for p in SEED_PROFILES]
     assert svc.default_key(db) == "flac_standard"
     row = db.scalar(select(QualityProfile).where(QualityProfile.key == "flac_hires"))
-    assert (row.min_bit_depth, row.min_sample_rate, row.color) == (24, 88200, "purple")
+    assert (row.min_bit_depth, row.min_sample_rate, row.color) == (24, 96000, "purple")
 
 
 def test_create_a_lossless_profile(db):
@@ -100,7 +100,7 @@ def test_invalid_input_is_refused(changes, code):
 
 def test_names_must_be_unique_ignoring_case(db):
     with pytest.raises(svc.ProfileError) as exc:
-        svc.create_profile(db, svc.parse_form(form(name="flac standard (16/44.1)")))
+        svc.create_profile(db, svc.parse_form(form(name="flac STANDARD")))
     assert exc.value.code == "quality_name_taken"
     row = db.scalar(select(QualityProfile).where(QualityProfile.key == "mp3_256"))
     svc.update_profile(db, row.id, svc.parse_form(form(name=row.name)))  # its own name is fine
@@ -281,9 +281,9 @@ def test_the_page_lists_the_profiles_best_first(admin_client):
         "mp3_192",
         "any",
     ]
-    assert "FLAC Standard (16/44.1)" in text and "Qualsiasi / bassa" in text
+    assert "FLAC Standard" in text and "Qualsiasi" in text
     assert text.count("data-default") == 1
-    assert "Lossless, at least 24-bit and 176.4 kHz" in text
+    assert "Lossless, at least 24-bit and 192 kHz" in text
     assert "At least 320 kbps, V0 or lossless" in text
 
 

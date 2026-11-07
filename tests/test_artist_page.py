@@ -118,7 +118,7 @@ def test_quality_badges(admin_client, band):
         zip(titles_in(text)[:3], re.findall(r'data-quality="([a-z0-9_]+)"', text), strict=False)
     )
     assert badges == {"Studio One": "flac_hires", "Live Show": "mp3_320", "Home Recording": "any"}
-    assert "FLAC Hi-Res (24/96)" in text and "MP3 320 / V0" in text and "Qualsiasi / bassa" in text
+    assert "FLAC Hi-Res" in text and "MP3 320 / V0" in text and "Qualsiasi" in text
     assert "bg-purple-100" in text and "bg-blue-100" in text and "bg-red-100" in text
 
 
@@ -136,20 +136,20 @@ def test_titles_and_badges_are_cut_instead_of_wrapping(admin_client, band):
     assert titles and all("truncate" in c for c in titles)
     badge = re.search(r'<span class="([^"]*)" data-quality="flac_hires"', text).group(1)
     assert "truncate" in badge and "max-w-full" in badge
-    assert 'title="FLAC Hi-Res (24/96)" data-quality' not in text  # title comes after the name
-    assert re.search(r'data-quality="flac_hires" title="FLAC Hi-Res \(24/96\)"', text)
+    assert 'title="FLAC Hi-Res" data-quality' not in text  # title comes after the name
+    assert re.search(r'data-quality="flac_hires" title="FLAC Hi-Res"', text)
 
 
 @pytest.mark.parametrize(
     ("tier", "label", "cls"),
     [
-        ("flac_master", "FLAC Master (24/192)", "fuchsia"),
-        ("flac_hires", "FLAC Hi-Res (24/96)", "purple"),
-        ("flac_standard", "FLAC Standard (16/44.1)", "green"),
+        ("flac_master", "FLAC Master", "fuchsia"),
+        ("flac_hires", "FLAC Hi-Res", "purple"),
+        ("flac_standard", "FLAC Standard", "green"),
         ("mp3_320", "MP3 320 / V0", "blue"),
         ("mp3_256", "MP3 ≥ 256", "sky"),
         ("mp3_192", "MP3 ≥ 192", "amber"),
-        ("any", "Qualsiasi / bassa", "red"),
+        ("any", "Qualsiasi", "red"),
     ],
 )
 def test_every_quality_tier_has_its_own_badge(app, admin_client, band, tier, label, cls):

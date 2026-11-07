@@ -59,9 +59,7 @@ def test_tiles_show_the_cover_artist_year_quality_and_link_to_the_album(admin_cl
     assert 'src="/covers/cover-one.jpg"' in text
     assert f'href="/album/{albums["g1"].id}"' in text  # matched: the album page
     assert f'href="/album/local/{albums["tape"].id}"' in text  # unmatched: the local page
-    assert (
-        "Alpha · 2000" in text and "FLAC Standard (16/44.1)" in text and "Qualsiasi / bassa" in text
-    )
+    assert "Alpha · 2000" in text and "FLAC Standard" in text and "Qualsiasi" in text
 
 
 def test_filter_by_quality(admin_client, albums):

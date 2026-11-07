@@ -75,7 +75,7 @@ def test_requesting_an_upgrade_makes_a_download_request_aimed_at_the_target(
     _, group, _ = owned
     r = upgrade(admin_client, group, "flac_hires", headers=HX)
     assert r.status_code == 200 and 'data-request-status="queued"' in r.text
-    assert "to at least FLAC Hi-Res (24/96)" in r.text and 'id="album-upgrade"' in r.text
+    assert "to at least FLAC Hi-Res" in r.text and 'id="album-upgrade"' in r.text
     [req] = requests_in(db)
     assert (req.quality_key, req.upgrade_from, req.release_group_id) == (
         "flac_hires",
@@ -130,7 +130,7 @@ def test_the_request_page_shows_that_it_is_an_upgrade(admin_client, db, owned):
     [req] = requests_in(db)
     assert "data-upgrade" in admin_client.get("/requests").text
     detail = admin_client.get(f"/requests/{req.id}").text
-    assert "Upgrade from MP3 320 / V0" in detail and "FLAC Standard (16/44.1)" in detail
+    assert "Upgrade from MP3 320 / V0" in detail and "FLAC Standard" in detail
 
 
 def test_an_album_that_meets_the_minimum_quality_is_not_offered_an_upgrade(admin_client, db, owned):
@@ -156,7 +156,7 @@ def test_the_offer_depends_on_the_minimum_set_in_the_configuration(
     )  # it meets this minimum
     app.state.settings = settings.model_copy(update={"default_quality": "flac_hires"})
     text = admin_client.get(f"/album/{group.id}").text
-    assert "below the minimum quality (FLAC Hi-Res (24/96))" in text
+    assert "below the minimum quality (FLAC Hi-Res)" in text
     options = re.findall(
         r'<option value="([a-z_0-9]+)"\s*(selected)?>', text[text.index("upgrade-target") :]
     )
@@ -171,7 +171,7 @@ def test_the_default_target_is_the_minimum_quality(admin_client, owned):
     _, group, _ = owned
     text = admin_client.get(f"/album/{group.id}").text
     assert re.search(r'<option value="flac_standard" selected>', text)
-    assert "below the minimum quality (FLAC Standard (16/44.1))" in text
+    assert "below the minimum quality (FLAC Standard)" in text
 
 
 def test_an_upgrade_is_refused_for_an_album_that_meets_the_minimum(admin_client, db, owned):

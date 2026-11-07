@@ -83,10 +83,11 @@ class Profile:
         return lossless or (self.accept_v0 and v0) or (bitrate_kbps or 0) >= (self.min_bitrate or 0)
 
 
-# The profiles a new installation starts with. Rates are the lower bounds of the families:
-# 88.2 kHz counts as Hi-Res and 176.4 kHz as Master, like 96 and 192.
+# The profiles a new installation starts with (and "restore the defaults" brings back):
+# FLAC Master 24 bit / 192 kHz, Hi-Res 24 bit / 96 kHz, Standard 16 bit / 44.1 kHz, then the
+# MP3 steps and "any".
 SEED_PROFILES: tuple[Profile, ...] = (
-    Profile("any", "Qualsiasi / bassa", KIND_ANY, 1, color="red"),
+    Profile("any", "Qualsiasi", KIND_ANY, 1, color="red"),
     Profile("mp3_192", "MP3 ≥ 192", KIND_LOSSY, 2, min_bitrate=192, color="amber"),
     Profile("mp3_256", "MP3 ≥ 256", KIND_LOSSY, 3, min_bitrate=256, color="sky"),
     Profile(
@@ -94,7 +95,7 @@ SEED_PROFILES: tuple[Profile, ...] = (
     ),
     Profile(
         "flac_standard",
-        "FLAC Standard (16/44.1)",
+        "FLAC Standard",
         KIND_LOSSLESS,
         5,
         min_bit_depth=16,
@@ -103,20 +104,20 @@ SEED_PROFILES: tuple[Profile, ...] = (
     ),
     Profile(
         "flac_hires",
-        "FLAC Hi-Res (24/96)",
+        "FLAC Hi-Res",
         KIND_LOSSLESS,
         6,
         min_bit_depth=24,
-        min_sample_rate=88_200,
+        min_sample_rate=96_000,
         color="purple",
     ),
     Profile(
         "flac_master",
-        "FLAC Master (24/192)",
+        "FLAC Master",
         KIND_LOSSLESS,
         7,
         min_bit_depth=24,
-        min_sample_rate=176_400,
+        min_sample_rate=192_000,
         color="fuchsia",
     ),
 )

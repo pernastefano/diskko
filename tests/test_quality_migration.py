@@ -70,9 +70,9 @@ def test_the_seven_initial_profiles_are_created(old_db):
         "flac_master",
     ]
     assert column(engine, "SELECT name FROM quality_profiles ORDER BY rank DESC")[:3] == [
-        "FLAC Master (24/192)",
-        "FLAC Hi-Res (24/96)",
-        "FLAC Standard (16/44.1)",
+        "FLAC Master",
+        "FLAC Hi-Res",
+        "FLAC Standard",
     ]
     assert column(engine, "SELECT accept_v0 FROM quality_profiles ORDER BY rank") == [
         0,

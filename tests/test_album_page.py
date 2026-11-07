@@ -490,7 +490,7 @@ def test_an_owned_album_shows_its_tracks_and_plays_them_from_disk(admin_client, 
     assert text.count('data-source="file"') == 3 and text.count("<audio") == 3
     for t in tracks:
         assert f'src="/stream/{t.id}"' in text
-    assert "FLAC Standard (16/44.1)" in text and "3:20" in text
+    assert "FLAC Standard" in text and "3:20" in text
     assert "data-album-request" not in text and "Request download" not in text
     assert jobs_of(db, "fetch_tracklist") == [] and jobs_of(db, "resolve_previews") == []
 

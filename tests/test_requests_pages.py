@@ -219,7 +219,7 @@ def test_the_detail_shows_candidates_files_and_the_job(admin_client, user_client
     )
     for text in (mine, admin):
         assert 'data-candidate="0"' in text and 'data-candidate="2"' in text
-        assert "user0" in text and "FLAC Standard (16/44.1)" in text and "10 · " in text
+        assert "user0" in text and "FLAC Standard" in text and "10 · " in text
         assert text.count("data-file=") == 10 and 'hx-get="/requests/' in text
         assert "downloading" in text and "30%" in text
     assert "Job log" in admin and "Job log" not in mine  # the job is for administrators
