@@ -38,19 +38,7 @@
         {% endif %}
       </div>
       <div class="flex items-center gap-1 text-sm">
-        {% if user and user.is_admin %}
-          {# Jobs, status and settings sit together on the right, next to the user menu #}
-          {% for href, name, label in (('/admin/jobs', 'jobs', t('nav.jobs')), ('/admin/status', 'status', t('nav.status')), ('/settings', 'settings', t('settings.title'))) %}
-            {% set show_health = name == 'status' and health and health.state != 'unknown' %}
-            {% set tip = label ~ ': ' ~ t('status.health.' ~ health.state, ok=health.connected, total=health.configured) if show_health else label %}
-            <a href="{{ href }}" title="{{ tip }}" aria-label="{{ tip }}" data-nav="{{ name }}"
-               {% if current_path.startswith(href) %}aria-current="page"{% endif %}
-               {% if show_health %}data-health="{{ health.state }}"{% endif %}
-               class="rounded-md p-2 {% if name == 'status' and health and health.state == 'ok' %}bg-green-100 text-green-800{% elif name == 'status' and health and health.state == 'partial' %}bg-amber-100 text-amber-800{% elif name == 'status' and health and health.state == 'down' %}bg-red-100 text-red-800{% elif current_path.startswith(href) %}bg-indigo-50 text-indigo-700{% else %}text-slate-500 hover:bg-slate-100 hover:text-slate-900{% endif %} focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              {{ icon(name) }}<span class="sr-only">{{ tip }}</span>
-            </a>
-          {% endfor %}
-        {% endif %}
+        {% if user and user.is_admin %}{% include "_nav_icons.html" %}{% endif %}
         {% if not user %}
           {# before logging in there is no user preference yet #}
           <form method="post" action="/lang" class="flex items-center">

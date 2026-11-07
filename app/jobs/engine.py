@@ -6,12 +6,14 @@ commits its own short transaction.
 
 import json
 import random
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.jobs import registry
 from app.jobs.errors import JobError
@@ -369,6 +371,42 @@ def purge_old(db: Session, days: int) -> int:
     )
     db.commit()
     return result.rowcount
+
+
+FAILURE_WINDOW = timedelta(hours=24)  # how long a failure keeps the Jobs icon red
+
+
+@dataclass(frozen=True)
+class JobsHealth:
+    active: int  # queued or running
+    failed: int  # failed recently and not fixed by a later success of the same job type
+
+
+def jobs_health(
+    db: Session, *, now: Callable[[], datetime] = utcnow, window: timedelta = FAILURE_WINDOW
+) -> JobsHealth:
+    """What the Jobs icon shows. A failure stops counting after `window`, or as soon as a
+    job of the same type succeeded after it (the problem is evidently gone)."""
+    active = db.scalar(select(func.count(Job.id)).where(Job.status.in_(ACTIVE_STATUSES))) or 0
+    later = aliased(Job)
+    fixed = (
+        select(later.id)
+        .where(
+            later.type == Job.type,
+            later.status == STATUS_SUCCEEDED,
+            later.finished_at > Job.finished_at,
+        )
+        .exists()
+    )
+    failed = (
+        db.scalar(
+            select(func.count(Job.id)).where(
+                Job.status == STATUS_FAILED, Job.finished_at >= now() - window, ~fixed
+            )
+        )
+        or 0
+    )
+    return JobsHealth(active, failed)
 
 
 def queue_stats(db: Session) -> dict[str, dict[str, int]]:

@@ -27,13 +27,13 @@ def test_enqueue_scheduled_does_not_duplicate_active_runs(session_factory):
 
 async def test_scheduler_registers_and_fires_jobs(settings, session_factory):
     notified = []
-    schedules = [Schedule("housekeeping", "0 4 * * *"), Schedule("demo", "*/5 * * * *")]
+    schedules = [Schedule("housekeeping", "0 4 * * *"), Schedule("test.steps", "*/5 * * * *")]
     scheduler = JobScheduler(
         settings, session_factory, notify=lambda: notified.append(1), schedules=schedules
     )
     scheduler.start()
     try:
-        assert sorted(scheduler.job_ids()) == ["scheduled:demo", "scheduled:housekeeping"]
+        assert sorted(scheduler.job_ids()) == ["scheduled:housekeeping", "scheduled:test.steps"]
         await scheduler._fire(schedules[0])
         await scheduler._fire(schedules[0])  # second trigger while the first is still queued
     finally:
@@ -52,7 +52,7 @@ async def test_unknown_timezone_falls_back_to_utc(settings, session_factory):
 async def test_housekeeping_job_purges_old_jobs(settings, session_factory):
     wsettings = settings.model_copy(update={"job_poll_interval": 0.02, "job_retention_days": 30})
     with session_factory() as db:
-        old = engine.enqueue(db, "demo", {"steps": 1, "step_seconds": 0})
+        old = engine.enqueue(db, "test.steps", {"steps": 1, "step_seconds": 0})
         engine.claim_next(db, "default")
         engine.finish_success(db, old.id)
         job = db.get(Job, old.id)
@@ -85,7 +85,7 @@ def test_app_restart_resumes_interrupted_job(settings):
     # First run: the app is down, a job was left 'running' with a checkpoint (e.g. a crash).
     app = create_app(settings)  # workers disabled
     with TestClient(app), app.state.session_factory() as db:
-        job = engine.enqueue(db, "demo", {"steps": 6, "step_seconds": 0.01})
+        job = engine.enqueue(db, "test.steps", {"steps": 6, "step_seconds": 0.01})
         engine.claim_next(db, "default")
         engine.save_state(db, job.id, {"done": 3})
         job_id = job.id

@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.config import Settings
 from app.db import make_engine, make_session_factory, run_migrations
 from app.main import create_app
+from tests import stepjob  # noqa: F401  (registers the test-only "test.steps" job)
 
 PASSWORD = "correct-horse-battery"
 

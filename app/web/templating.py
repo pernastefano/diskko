@@ -8,7 +8,8 @@ from fastapi.templating import Jinja2Templates
 
 from app.auth.csrf import CSRF_COOKIE, get_csrf_token
 from app.i18n import LANG_COOKIE, LANG_NAMES, has_key, resolve_lang, translate
-from app.integrations.status import Health, integration_health
+from app.integrations.status import integration_health
+from app.jobs.engine import jobs_health
 from app.models import THEMES, utcnow
 from app.quality import DEFAULT_PROFILES
 
@@ -36,15 +37,16 @@ templates.env.filters["album_format"] = describe_format
 templates.env.globals["duration"] = duration
 
 
-def _health(request: Request, auth) -> Health | None:
-    """The state behind the status icon (administrators only: it is where they look)."""
-    if not (auth and auth.user.is_admin):
-        return None
+def nav_state(request: Request, auth) -> dict[str, Any]:
+    """What the Status and Jobs icons show (administrators only: it is where they look)."""
     factory = getattr(request.app.state, "session_factory", None)
-    if factory is None:
-        return None
+    if not (auth and auth.user.is_admin) or factory is None:
+        return {"health": None, "jobs_health": None}
     with factory() as db:
-        return integration_health(db, request.app.state.settings)
+        return {
+            "health": integration_health(db, request.app.state.settings),
+            "jobs_health": jobs_health(db),
+        }
 
 
 def is_htmx(request: Request) -> bool:
@@ -79,7 +81,7 @@ def render(
         "t": partial(translate, lang),
         "csrf_token": token,
         "current_path": request.url.path,
-        "health": _health(request, auth),
+        **nav_state(request, auth),
         "quality_profiles": getattr(request.app.state, "quality_profiles", DEFAULT_PROFILES),
         "min_password_length": request.app.state.settings.min_password_length,
         "flash": flash_key if has_key(flash_key) else None,

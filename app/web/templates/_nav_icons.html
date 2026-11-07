@@ -1,0 +1,27 @@
+{% from "_icons.html" import icon %}
+{# Jobs, status and settings, on the right next to the user menu. The block refreshes itself so
+   the colours follow the jobs and the services without reloading the page. #}
+{% set tones = {'green': 'bg-green-100 text-green-800', 'amber': 'bg-amber-100 text-amber-800', 'red': 'bg-red-100 text-red-800'} %}
+<div id="nav-icons" class="flex items-center gap-1" hx-get="/nav/icons" hx-trigger="every 15s" hx-swap="outerHTML">
+  {% for href, name, label in (('/admin/jobs', 'jobs', t('nav.jobs')), ('/admin/status', 'status', t('nav.status')), ('/settings', 'settings', t('settings.title'))) %}
+    {% set tone = '' %}
+    {% set tip = label %}
+    {% if name == 'status' and health and health.state != 'unknown' %}
+      {% set tone = {'ok': 'green', 'partial': 'amber', 'down': 'red'}[health.state] %}
+      {% set tip = label ~ ': ' ~ t('status.health.' ~ health.state, ok=health.connected, total=health.configured) %}
+    {% elif name == 'jobs' and jobs_health and (jobs_health.failed or jobs_health.active) %}
+      {% set parts = [] %}
+      {% if jobs_health.failed %}{% set _ = parts.append(t('jobs.health.failed', n=jobs_health.failed)) %}{% endif %}
+      {% if jobs_health.active %}{% set _ = parts.append(t('jobs.health.active', n=jobs_health.active)) %}{% endif %}
+      {% set tone = 'red' if jobs_health.failed else 'amber' %}
+      {% set tip = label ~ ': ' ~ parts|join(' · ') %}
+    {% endif %}
+    <a href="{{ href }}" title="{{ tip }}" aria-label="{{ tip }}" data-nav="{{ name }}"
+       {% if current_path.startswith(href) %}aria-current="page"{% endif %}
+       {% if name == 'status' and tone %}data-health="{{ health.state }}"{% endif %}
+       {% if name == 'jobs' and tone %}data-jobs="{{ 'failed' if jobs_health.failed else 'active' }}"{% endif %}
+       class="rounded-md p-2 {% if tone %}{{ tones[tone] }}{% elif current_path.startswith(href) %}bg-indigo-50 text-indigo-700{% else %}text-slate-500 hover:bg-slate-100 hover:text-slate-900{% endif %} focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      {{ icon(name) }}<span class="sr-only">{{ tip }}</span>
+    </a>
+  {% endfor %}
+</div>

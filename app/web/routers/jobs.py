@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
-from app.auth.deps import DB, AdminAuth, require_admin
+from app.auth.deps import DB, require_admin
 from app.jobs import engine, registry
 from app.jobs.errors import JobError
 from app.models import JOB_STATUSES, Job
@@ -65,13 +65,6 @@ def jobs_rows(
     page: Annotated[int, Query(ge=1)] = 1,
 ):
     return render(request, "admin/_jobs_rows.html", _list_context(db, type, status, page))
-
-
-@router.post("/demo")
-def jobs_demo(request: Request, db: DB, auth: AdminAuth):
-    job = engine.enqueue(db, "demo", {}, created_by=auth.user.id)
-    notify_worker(request)
-    return RedirectResponse(f"/admin/jobs/{job.id}", status_code=303)
 
 
 def _get_job(db: DB, job_id: int) -> Job:

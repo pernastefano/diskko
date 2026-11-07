@@ -119,8 +119,8 @@ def test_queue_concurrency_parsing_and_musicbrainz_cap():
     assert s.queue_concurrency == {"default": 3, "slskd": 2, "musicbrainz": 1}
 
 
-async def test_demo_job_completes_with_progress_and_logs(worker, session_factory):
-    job_id = enqueue(session_factory, "demo", {"steps": 10, "step_seconds": 0.01})
+async def test_a_stepped_job_completes_with_progress_and_logs(worker, session_factory):
+    job_id = enqueue(session_factory, "test.steps", {"steps": 10, "step_seconds": 0.01})
     worker.notify()
     job = await wait_for_status(session_factory, job_id, STATUS_SUCCEEDED)
     assert job.progress_pct == 100.0 and job.step == "Step 10/10"
@@ -186,7 +186,7 @@ async def test_unknown_job_type_fails_with_clear_message(worker, session_factory
 
 
 async def test_running_job_can_be_cancelled_cooperatively(worker, session_factory):
-    job_id = enqueue(session_factory, "demo", {"steps": 500, "step_seconds": 0.01})
+    job_id = enqueue(session_factory, "test.steps", {"steps": 500, "step_seconds": 0.01})
     worker.notify()
     await wait_for_status(session_factory, job_id, STATUS_RUNNING)
     await asyncio.sleep(0.1)
@@ -198,7 +198,7 @@ async def test_running_job_can_be_cancelled_cooperatively(worker, session_factor
 
 
 async def test_queued_job_cancelled_before_start_never_runs(wsettings, session_factory):
-    job_id = enqueue(session_factory, "demo", {"steps": 3, "step_seconds": 0.01})
+    job_id = enqueue(session_factory, "test.steps", {"steps": 3, "step_seconds": 0.01})
     with session_factory() as db:
         engine.request_cancel(db, job_id)
     worker = JobWorker(wsettings, session_factory)
@@ -248,7 +248,7 @@ async def test_logs_are_trimmed_at_the_end(wsettings, session_factory):
     settings = wsettings.model_copy(update={"job_log_max_lines": 5})
     worker = JobWorker(settings, session_factory)
     await worker.start()
-    job_id = enqueue(session_factory, "demo", {"steps": 20, "step_seconds": 0.001})
+    job_id = enqueue(session_factory, "test.steps", {"steps": 20, "step_seconds": 0.001})
     worker.notify()
     await wait_for_status(session_factory, job_id, STATUS_SUCCEEDED)
     await worker.stop()
@@ -261,7 +261,7 @@ async def test_logs_are_trimmed_at_the_end(wsettings, session_factory):
 
 async def test_interrupted_job_resumes_from_checkpoint_after_crash(wsettings, session_factory):
     """Simulate a crash: the DB says 'running' with a saved checkpoint, nobody is running it."""
-    job_id = enqueue(session_factory, "demo", {"steps": 6, "step_seconds": 0.01})
+    job_id = enqueue(session_factory, "test.steps", {"steps": 6, "step_seconds": 0.01})
     with session_factory() as db:
         engine.claim_next(db, "default")
         engine.save_state(db, job_id, {"done": 4})
@@ -277,7 +277,7 @@ async def test_interrupted_job_resumes_from_checkpoint_after_crash(wsettings, se
 
 
 async def test_graceful_shutdown_requeues_and_next_start_finishes(wsettings, session_factory):
-    job_id = enqueue(session_factory, "demo", {"steps": 40, "step_seconds": 0.02})
+    job_id = enqueue(session_factory, "test.steps", {"steps": 40, "step_seconds": 0.02})
     first = JobWorker(wsettings, session_factory)
     await first.start()
     await wait_for_status(session_factory, job_id, STATUS_RUNNING)
@@ -296,7 +296,7 @@ async def test_graceful_shutdown_requeues_and_next_start_finishes(wsettings, ses
 
 
 async def test_pending_cancellation_wins_over_recovery(wsettings, session_factory):
-    job_id = enqueue(session_factory, "demo", {"steps": 5, "step_seconds": 0.01})
+    job_id = enqueue(session_factory, "test.steps", {"steps": 5, "step_seconds": 0.01})
     with session_factory() as db:
         engine.claim_next(db, "default")
         engine.request_cancel(db, job_id)

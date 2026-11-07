@@ -287,7 +287,7 @@ def test_backoff_jitter_stays_within_ten_percent():
 
 def test_the_final_logs_are_written_and_trimmed_before_the_status_changes(jdb):
     """Whoever sees the final status must already see the final, trimmed logs."""
-    job = engine.enqueue(jdb, "demo", {})
+    job = engine.enqueue(jdb, "test.steps", {})
     for i in range(10):
         engine.add_log(jdb, job.id, "info", f"line {i}")
     seen = []

@@ -86,7 +86,7 @@ def test_the_icon_of_the_current_section_is_highlighted(admin_client, app, path,
         from app.jobs import engine
 
         with app.state.session_factory() as db:
-            engine.enqueue(db, "demo", {})
+            engine.enqueue(db, "test.steps", {})
     text = page(admin_client, path)
     current = re.findall(r'<a href="[^"]+"[^>]*data-nav="([a-z]+)"[^>]*aria-current="page"', text)
     assert current == [nav]

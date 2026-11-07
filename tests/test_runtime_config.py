@@ -422,11 +422,13 @@ def test_a_changed_scan_time_reschedules_without_a_restart(settings):
 async def test_scheduler_with_explicit_schedules_is_left_alone(settings, session_factory):
     from app.jobs.scheduler import Schedule
 
-    scheduler = JobScheduler(settings, session_factory, schedules=[Schedule("demo", "0 1 * * *")])
+    scheduler = JobScheduler(
+        settings, session_factory, schedules=[Schedule("test.steps", "0 1 * * *")]
+    )
     scheduler.start()
     try:
         scheduler.reschedule(settings)
-        assert scheduler.job_ids() == ["scheduled:demo"]
+        assert scheduler.job_ids() == ["scheduled:test.steps"]
     finally:
         scheduler.shutdown()
 

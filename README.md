@@ -91,6 +91,10 @@ non c'è un risultato recente. Un job controlla i servizi all'avvio, ogni 5 minu
 (`STATUS_CHECK_MINUTES`, 0 per disattivare) e subito dopo ogni salvataggio delle Impostazioni; la
 pagina Stato si aggiorna da sola e ha il pulsante "Controlla tutto ora".
 
+L'icona **Job** è **gialla** se ci sono job in corso (in coda o in esecuzione) e **rossa** se ce ne
+sono di falliti nelle ultime 24 ore, a meno che un job dello stesso tipo sia poi riuscito. Entrambe
+le icone si aggiornano da sole ogni 15 secondi.
+
 ## Scoprire musica
 
 - **Cerca** (voce nel menu): cerca qualsiasi artista su MusicBrainz, anche se non è nella libreria.

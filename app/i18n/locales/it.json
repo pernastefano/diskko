@@ -59,7 +59,6 @@
   "action.filter": "Filtra",
   "action.previous": "Precedente",
   "action.next": "Successiva",
-  "jobs.run_demo": "Avvia job demo (30 s)",
   "jobs.all_types": "Tutti i tipi",
   "jobs.all_statuses": "Tutti gli stati",
   "jobs.empty": "Nessun job.",
@@ -473,5 +472,7 @@
   "status.health.unknown": "Stato delle connessioni non ancora noto",
   "status.auto_check": "Controllo automatico ogni {n} minuti.",
   "status.auto_check_off": "I controlli automatici sono disattivati.",
-  "status.test_all": "Controlla tutto ora"
+  "status.test_all": "Controlla tutto ora",
+  "jobs.health.active": "{n} in corso",
+  "jobs.health.failed": "{n} falliti di recente"
 }

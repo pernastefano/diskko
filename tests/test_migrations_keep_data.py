@@ -31,7 +31,7 @@ def seed(conn):
     conn.execute(
         text(
             "INSERT INTO jobs (type, queue, payload_json, status, progress_pct, created_by, created_at, attempts,"
-            " max_attempts, cancel_requested) VALUES ('demo', 'default', '{}', 'queued', 0, 1, '2026-01-01', 0, 3, 0)"
+            " max_attempts, cancel_requested) VALUES ('housekeeping', 'default', '{}', 'queued', 0, 1, '2026-01-01', 0, 3, 0)"
         )
     )
     conn.execute(

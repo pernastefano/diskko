@@ -59,7 +59,6 @@
   "action.filter": "Filter",
   "action.previous": "Previous",
   "action.next": "Next",
-  "jobs.run_demo": "Run demo job (30 s)",
   "jobs.all_types": "All types",
   "jobs.all_statuses": "All statuses",
   "jobs.empty": "No jobs yet.",
@@ -473,5 +472,7 @@
   "status.health.unknown": "Connection status not known yet",
   "status.auto_check": "Checked automatically every {n} minutes.",
   "status.auto_check_off": "Automatic checks are off.",
-  "status.test_all": "Check all now"
+  "status.test_all": "Check all now",
+  "jobs.health.active": "{n} in progress",
+  "jobs.health.failed": "{n} failed recently"
 }

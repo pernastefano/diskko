@@ -12,7 +12,7 @@ HX = {"HX-Request": "true"}
 
 @pytest.fixture
 def make_job(app, admin_client):
-    def make(type="demo", payload=None, **kw):
+    def make(type="test.steps", payload=None, **kw):
         with app.state.session_factory() as db:
             return engine.enqueue(db, type, payload, **kw).id
 
@@ -27,7 +27,7 @@ def fail(app, job_id, error="boom"):
 
 def test_empty_list(admin_client):
     page = admin_client.get("/admin/jobs").text
-    assert "No jobs yet." in page and "Run demo job" in page
+    assert "No jobs yet." in page and "/admin/jobs/demo" not in page
 
 
 def test_list_shows_jobs_and_is_live(admin_client, make_job):
@@ -39,14 +39,14 @@ def test_list_shows_jobs_and_is_live(admin_client, make_job):
 
 
 def test_filters_by_type_and_status_and_polling_keeps_them(admin_client, make_job, app):
-    demo = make_job("demo")
+    stepped = make_job("test.steps")
     hk = make_job("housekeeping")
-    fail(app, demo)
+    fail(app, stepped)
     page = admin_client.get("/admin/jobs?type=housekeeping").text
-    assert f"/admin/jobs/{hk}" in page and f"/admin/jobs/{demo}" not in page
+    assert f"/admin/jobs/{hk}" in page and f"/admin/jobs/{stepped}" not in page
     assert "type=housekeeping" in page  # the poller keeps the filter
     failed = admin_client.get("/admin/jobs?status=failed").text
-    assert f"/admin/jobs/{demo}" in failed and f"/admin/jobs/{hk}" not in failed
+    assert f"/admin/jobs/{stepped}" in failed and f"/admin/jobs/{hk}" not in failed
     assert "status=failed" in failed
 
 
@@ -71,19 +71,6 @@ def test_rows_fragment_is_only_rows(admin_client, make_job):
     r = admin_client.get("/admin/jobs/rows")
     assert r.status_code == 200
     assert "<html" not in r.text and "<tr" in r.text
-
-
-def test_demo_button_enqueues_and_redirects_to_detail(admin_client, app):
-    r = post(admin_client, "/admin/jobs/demo", page="/admin/jobs")
-    assert r.status_code == 303
-    with app.state.session_factory() as db:
-        job = db.scalar(select(Job))
-        assert job.type == "demo" and job.status == STATUS_QUEUED and job.created_by is not None
-    assert r.headers["location"] == f"/admin/jobs/{job.id}"
-
-
-def test_demo_button_requires_csrf(admin_client):
-    assert admin_client.post("/admin/jobs/demo").status_code == 403
 
 
 def test_detail_page_shows_logs_and_polls_while_active(admin_client, make_job):
@@ -204,7 +191,7 @@ def test_job_pages_follow_language(admin_client, make_job):
     make_job()
     post(admin_client, "/lang", {"lang": "it", "next": "/"})
     page = admin_client.get("/admin/jobs").text
-    assert "Avvia job demo" in page and "In coda" in page
+    assert "In coda" in page
 
 
 def test_regular_user_cannot_use_job_pages(admin_client, user_client, make_job):

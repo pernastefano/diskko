@@ -1,13 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ t('nav.jobs') }}{% endblock %}
 {% block content %}
-<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-  <h1 class="text-2xl font-semibold">{{ t('nav.jobs') }}</h1>
-  <form method="post" action="/admin/jobs/demo">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('jobs.run_demo') }}</button>
-  </form>
-</div>
+<h1 class="mb-4 text-2xl font-semibold">{{ t('nav.jobs') }}</h1>
 
 <form method="get" action="/admin/jobs" class="mb-4 flex flex-wrap items-end gap-3 text-sm">
   <div>
