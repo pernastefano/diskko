@@ -10,10 +10,12 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
 from app.auth.deps import DB, UserAuth
+from app.i18n import has_key
 from app.jobs import engine
 from app.jobs.handlers.fetch_tracklist import tracklist_dedupe_key
 from app.jobs.handlers.resolve_previews import previews_dedupe_key
 from app.models import (
+    REQ_ACTIVE,
     Artist,
     DownloadRequest,
     LibraryAlbum,
@@ -133,12 +135,19 @@ def _group_context(
 def _upgrade_context(request: Request, db: DB, group: ReleaseGroup, album: LibraryAlbum) -> dict:
     """What the "upgrade the quality" section of an owned album needs."""
     profiles = request.app.state.quality_profiles
+    minimum = request.app.state.settings.default_quality
     info = downloads_svc.request_infos(db, [group.id]).get(group.id)
+    below = downloads_svc.below_minimum(profiles, album.quality_tier, minimum)
+    running = bool(info and info.status in REQ_ACTIVE)
     return {
         "group": group,
         "album": album,
         "current": profiles.name(album.quality_tier),
-        "targets": downloads_svc.upgrade_targets(profiles, album.quality_tier),
+        "minimum": profiles.name(minimum),
+        "minimum_key": minimum,
+        # offered only to an album that fails the minimum quality (or while a request runs)
+        "offer": below or running,
+        "targets": downloads_svc.upgrade_targets(profiles, album.quality_tier, minimum),
         "info": info,
         "req": db.get(DownloadRequest, info.id) if info else None,
         "unavailable": not slskd_configured(request.app.state.settings),
@@ -175,7 +184,11 @@ def upgrade_request(
     error = None
     if not slskd_configured(settings):
         error = "request_no_slskd"
-    elif wanted is None or wanted.rank <= profiles.rank(album.quality_tier):
+    elif not downloads_svc.below_minimum(profiles, album.quality_tier, settings.default_quality):
+        error = "request_meets_minimum"
+    elif wanted is None or wanted not in downloads_svc.upgrade_targets(
+        profiles, album.quality_tier, settings.default_quality
+    ):
         error = "request_bad_target"
     if error:
         if is_htmx(request):
@@ -228,6 +241,8 @@ def album_page(request: Request, db: DB, auth: UserAuth, group_id: int):
         raise HTTPException(status_code=404, detail="not_found")
     # The page itself only reads: its tracks section asks for the missing pieces (a POST).
     ctx = _group_context(request, db, auth, group, enqueue=False)
+    failed = f"error.{request.query_params.get('error', '')}"  # after a refused plain form post
+    ctx["page_error"] = failed if has_key(failed) else None
     return render(request, "album.html", ctx)
 
 

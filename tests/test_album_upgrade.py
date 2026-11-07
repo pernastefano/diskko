@@ -1,6 +1,7 @@
 """Asking for a better copy of an album we already own."""
 
 import json
+import re
 
 import pytest
 from sqlalchemy import select
@@ -132,15 +133,91 @@ def test_the_request_page_shows_that_it_is_an_upgrade(admin_client, db, owned):
     assert "Upgrade from MP3 320 / V0" in detail and "FLAC Standard (16/44.1)" in detail
 
 
-def test_an_album_with_the_best_quality_has_nothing_to_upgrade(admin_client, db, owned):
+def test_an_album_that_meets_the_minimum_quality_is_not_offered_an_upgrade(admin_client, db, owned):
     _, group, album = owned
-    album.quality_tier = "flac_master"
+    for tier in ("flac_standard", "flac_hires", "flac_master"):  # the minimum is FLAC Standard
+        album.quality_tier = tier
+        db.commit()
+        text = admin_client.get(f"/album/{group.id}").text
+        assert "album-upgrade" not in text and "Quality upgrade" not in text, tier
+        assert (
+            admin_client.get(f"/album/{group.id}/upgrade").text.strip()
+            == '<div id="album-upgrade"></div>'
+        )
+
+
+def test_the_offer_depends_on_the_minimum_set_in_the_configuration(
+    app, settings, admin_client, db, owned
+):
+    _, group, album = owned  # an MP3 320 / V0 album
+    app.state.settings = settings.model_copy(update={"default_quality": "mp3_320"})
+    assert (
+        "album-upgrade" not in admin_client.get(f"/album/{group.id}").text
+    )  # it meets this minimum
+    app.state.settings = settings.model_copy(update={"default_quality": "flac_hires"})
+    text = admin_client.get(f"/album/{group.id}").text
+    assert "below the minimum quality (FLAC Hi-Res (24/96))" in text
+    options = re.findall(
+        r'<option value="([a-z_0-9]+)"\s*(selected)?>', text[text.index("upgrade-target") :]
+    )
+    assert [o[0] for o in options] == ["flac_master", "flac_hires"]  # nothing below the minimum
+    assert [o[0] for o in options if o[1]] == ["flac_hires"]  # the minimum is preselected
+    album.quality_tier = "flac_standard"  # better than before, still under this minimum
+    db.commit()
+    assert "album-upgrade" in admin_client.get(f"/album/{group.id}").text
+
+
+def test_the_default_target_is_the_minimum_quality(admin_client, owned):
+    _, group, _ = owned
+    text = admin_client.get(f"/album/{group.id}").text
+    assert re.search(r'<option value="flac_standard" selected>', text)
+    assert "below the minimum quality (FLAC Standard (16/44.1))" in text
+
+
+def test_an_upgrade_is_refused_for_an_album_that_meets_the_minimum(admin_client, db, owned):
+    _, group, album = owned
+    album.quality_tier = "flac_standard"
+    db.commit()
+    r = upgrade(admin_client, group, "flac_master", headers=HX)
+    assert r.status_code == 400 and requests_in(db) == []
+    plain = upgrade(admin_client, group, "flac_master")
+    assert plain.status_code == 303 and plain.headers["location"].endswith(
+        "error=request_meets_minimum"
+    )
+    assert "already meets the minimum quality" in admin_client.get(plain.headers["location"]).text
+
+
+def test_a_running_upgrade_stays_visible_even_if_the_album_now_meets_the_minimum(
+    admin_client, db, owned
+):
+    _, group, album = owned
+    upgrade(admin_client, group, "flac_standard", headers=HX)
+    album.quality_tier = "flac_standard"  # e.g. the minimum was lowered meanwhile
     db.commit()
     text = admin_client.get(f"/album/{group.id}").text
-    assert "data-upgrade-top" in text and "data-upgrade-button" not in text
+    assert "data-upgrade-status" in text and "data-upgrade-button" not in text
 
 
-@pytest.mark.parametrize("target", ["mp3_320", "mp3_192", "any", "nope", ""])
+def test_the_minimum_also_limits_the_targets_in_the_service(app, client):
+    profiles = app.state.quality_profiles
+    keys = lambda current, minimum: [p.key for p in svc.upgrade_targets(profiles, current, minimum)]  # noqa: E731
+    assert keys("mp3_320", "flac_hires") == ["flac_master", "flac_hires"]
+    assert keys("mp3_320", "") == [
+        "flac_master",
+        "flac_hires",
+        "flac_standard",
+    ]  # no minimum: all better
+    assert keys("flac_hires", "flac_standard") == ["flac_master"]  # better than now wins
+    assert keys("flac_master", "flac_standard") == []
+    assert keys("mp3_320", "deleted-profile") == ["flac_master", "flac_hires", "flac_standard"]
+    assert svc.below_minimum(profiles, "mp3_320", "flac_standard") is True
+    assert svc.below_minimum(profiles, "flac_standard", "flac_standard") is False
+    assert (
+        svc.below_minimum(profiles, "any", "deleted-profile") is False
+    )  # an unknown minimum asks nothing
+
+
+@pytest.mark.parametrize("target", ["mp3_320", "mp3_256", "mp3_192", "any", "nope", ""])
 def test_a_target_that_is_not_better_is_refused(admin_client, db, owned, target):
     _, group, _ = owned
     r = upgrade(admin_client, group, target, headers=HX)

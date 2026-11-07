@@ -3,6 +3,7 @@
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
 <a href="/artist/{{ artist.id }}" class="text-sm text-indigo-600 hover:underline">← {{ artist.name }}</a>
+{% if page_error %}<p role="alert" class="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-error>{{ t(page_error) }}</p>{% endif %}
 <div class="mt-3 flex flex-col gap-5 sm:flex-row">
   <div class="shrink-0">{{ cover(group, 'h-48 w-48 sm:h-56 sm:w-56', title) }}</div>
   <div class="min-w-0 flex-1">
@@ -26,8 +27,8 @@
     </div>
     {% if mode == 'remote' %}
       <div class="mt-3" data-album-request>{% include "_request_control.html" %}</div>
-    {% elif mode == 'owned' and upgrade %}
-      {% with group=upgrade.group, album=upgrade.album, current=upgrade.current, targets=upgrade.targets, info=upgrade.info, req=upgrade.req, unavailable=upgrade.unavailable %}{% include "_album_upgrade.html" %}{% endwith %}
+    {% elif mode == 'owned' and upgrade and upgrade.offer %}
+      {% with group=upgrade.group, album=upgrade.album, current=upgrade.current, minimum=upgrade.minimum, minimum_key=upgrade.minimum_key, offer=upgrade.offer, targets=upgrade.targets, info=upgrade.info, req=upgrade.req, unavailable=upgrade.unavailable %}{% include "_album_upgrade.html" %}{% endwith %}
     {% elif mode == 'local' %}
       <p class="mt-3 text-sm text-slate-500">{{ t('album.local_hint') }}</p>
     {% endif %}

@@ -139,10 +139,22 @@ def request_infos(db: Session, release_group_ids: list[int]) -> dict[int, Reques
     }
 
 
-def upgrade_targets(profiles, current_key: str) -> list:
-    """The quality profiles better than the current one, best first (an upgrade aims at one)."""
-    here = profiles.rank(current_key)
-    return [p for p in reversed(profiles.profiles) if p.rank > here]
+def minimum_rank(profiles, minimum_key: str) -> int:
+    """Rank of the minimum quality; an unknown key (a deleted profile) asks for nothing."""
+    minimum = profiles.get(minimum_key)
+    return minimum.rank if minimum else profiles.lowest.rank
+
+
+def upgrade_targets(profiles, current_key: str, minimum_key: str = "") -> list:
+    """What an upgrade can aim at, best first: better than the current quality and at least the
+    minimum quality (an upgrade that still missed the minimum would be pointless)."""
+    floor = max(profiles.rank(current_key) + 1, minimum_rank(profiles, minimum_key))
+    return [p for p in reversed(profiles.profiles) if p.rank >= floor]
+
+
+def below_minimum(profiles, current_key: str, minimum_key: str) -> bool:
+    """Does an album of this quality fail the minimum quality set in the configuration?"""
+    return profiles.rank(current_key) < minimum_rank(profiles, minimum_key)
 
 
 def request_statuses(db: Session, release_group_ids: list[int]) -> dict[int, str]:

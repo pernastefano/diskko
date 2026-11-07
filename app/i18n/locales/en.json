@@ -558,10 +558,9 @@
   "albums.sort.quality": "Quality (best first)",
   "albums.sort.recent": "Recently added",
   "album.upgrade.title": "Quality upgrade",
-  "album.upgrade.now": "This copy is {quality}. Ask for a better one and it is searched and downloaded like any request.",
+  "album.upgrade.now": "This copy is {quality}, below the minimum quality ({minimum}). Ask for a better one and it is searched and downloaded like any request.",
   "album.upgrade.target": "Look for at least",
   "album.upgrade.button": "Request upgrade",
-  "album.upgrade.top": "This copy already has the best quality there is.",
   "album.upgrade.last_failed": "The last attempt found nothing suitable.",
   "requests.upgrade_from": "Upgrade from {quality}",
   "requests.upgrade_to": "to at least {quality}",
@@ -582,5 +581,6 @@
   "settings.hint.job_retention_failed_days": "Every other job that failed: they explain what went wrong.",
   "settings.field.job_retention_overrides": "Per job type",
   "settings.hint.job_retention_overrides": "Optional, “type:days” separated by commas, for example scan_library:90,fetch_covers:7. It wins over the values above.",
-  "settings.error.retention_invalid": "Use “job_type:days” pairs separated by commas."
+  "settings.error.retention_invalid": "Use “job_type:days” pairs separated by commas.",
+  "error.request_meets_minimum": "This album already meets the minimum quality."
 }
