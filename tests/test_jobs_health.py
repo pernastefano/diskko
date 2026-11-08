@@ -151,3 +151,40 @@ def test_the_demo_job_is_gone(admin_client):
     page = admin_client.get("/admin/jobs").text
     assert "/admin/jobs/demo" not in page and "demo" not in page.lower()
     assert post(admin_client, "/admin/jobs/demo", page="/admin/jobs").status_code in (404, 405, 422)
+
+
+# ------------------------------------------- what "in progress" and "seen" mean
+
+
+def test_a_job_waiting_for_its_retry_is_not_in_progress(jdb):
+    waiting = add(jdb, status=STATUS_QUEUED)
+    waiting.next_run_at = utcnow() + timedelta(minutes=30)  # backoff or debounce
+    due = add(jdb, status=STATUS_QUEUED)
+    due.next_run_at = utcnow() - timedelta(seconds=1)  # ready: about to run
+    add(jdb, status=STATUS_QUEUED)  # ready now
+    jdb.commit()
+    assert jobs_health(jdb).active == 2
+
+
+def test_failures_the_user_has_seen_stop_colouring_the_icon(jdb):
+    add(jdb, status=STATUS_FAILED, finished_ago=timedelta(hours=2))
+    assert jobs_health(jdb).failed == 1
+    seen = utcnow() - timedelta(hours=1)
+    assert jobs_health(jdb, seen_at=seen).failed == 0  # failed before the user looked
+    add(jdb, type_="housekeeping", status=STATUS_FAILED, finished_ago=timedelta(minutes=5))
+    assert jobs_health(jdb, seen_at=seen).failed == 1  # a new one after: red again
+
+
+def test_opening_the_job_list_puts_the_red_icon_out_for_that_admin_only(admin_client, db):
+    job = add(db, status=STATUS_FAILED, finished_ago=timedelta(minutes=5))
+    assert job.id
+    icons = admin_client.get("/nav/icons").text
+    assert 'data-jobs="failed"' in icons
+    assert admin_client.get("/admin/jobs").status_code == 200
+    assert "data-jobs=" not in admin_client.get("/nav/icons").text  # seen: off, not yellow
+
+
+def test_the_current_page_is_not_painted_like_a_state(admin_client):
+    html = admin_client.get("/admin/jobs").text
+    nav = re.search(r'<a href="/admin/jobs"[^>]*>', html).group(0)
+    assert "aria-current" in nav and "bg-indigo-50" not in nav and "bg-amber" not in nav

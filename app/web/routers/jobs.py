@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
-from app.auth.deps import DB, require_admin
+from app.auth.deps import DB, AdminAuth, require_admin
 from app.jobs import engine, registry
 from app.jobs.errors import JobError
 from app.models import JOB_STATUSES, Job
@@ -71,12 +71,15 @@ def _list_context(db: DB, type_: str, status: str, q: str, routine: str, page: i
 def jobs_page(
     request: Request,
     db: DB,
+    auth: AdminAuth,
     type: str = "",
     status: str = "",
     q: str = "",
     routine: str = "",
     page: Annotated[int, Query(ge=1)] = 1,
 ):
+    engine.mark_failures_seen(db, auth.user.id)  # looking at the list puts the red icon out
+    db.commit()
     return render(request, "admin/jobs.html", _list_context(db, type, status, q, routine, page))
 
 

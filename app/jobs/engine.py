@@ -30,6 +30,7 @@ from app.models import (
     JobLog,
     utcnow,
 )
+from app.services.app_settings import get_setting, set_setting
 
 BACKOFF_CAP_SECONDS = 15 * 60
 BACKOFF_JITTER = 0.10
@@ -477,16 +478,37 @@ FAILURE_WINDOW = timedelta(hours=24)  # how long a failure keeps the Jobs icon r
 
 @dataclass(frozen=True)
 class JobsHealth:
-    active: int  # queued or running
-    failed: int  # failed recently and not fixed by a later success of the same job type
+    active: int  # running, or queued and ready to run now (not waiting for a retry)
+    failed: int  # failed, not seen yet, and not fixed by a later success of the same job type
 
 
 def jobs_health(
-    db: Session, *, now: Callable[[], datetime] = utcnow, window: timedelta = FAILURE_WINDOW
+    db: Session,
+    *,
+    now: Callable[[], datetime] = utcnow,
+    window: timedelta = FAILURE_WINDOW,
+    seen_at: datetime | None = None,
 ) -> JobsHealth:
-    """What the Jobs icon shows. A failure stops counting after `window`, or as soon as a
-    job of the same type succeeded after it (the problem is evidently gone)."""
-    active = db.scalar(select(func.count(Job.id)).where(Job.status.in_(ACTIVE_STATUSES))) or 0
+    """What the Jobs icon shows: yellow while something is running (or about to), red for
+    failures the user has not looked at. A failure stops counting after `window`, once the user
+    has seen the job list after it (`seen_at`), or as soon as a job of the same type succeeded
+    after it (the problem is evidently gone). A job waiting for its retry is not "in progress"."""
+    current = now()
+    cutoff = current - window
+    active = (
+        db.scalar(
+            select(func.count(Job.id)).where(
+                or_(
+                    Job.status == STATUS_RUNNING,
+                    and_(
+                        Job.status == STATUS_QUEUED,
+                        or_(Job.next_run_at.is_(None), Job.next_run_at <= current),
+                    ),
+                )
+            )
+        )
+        or 0
+    )
     later = aliased(Job)
     fixed = (
         select(later.id)
@@ -500,12 +522,31 @@ def jobs_health(
     failed = (
         db.scalar(
             select(func.count(Job.id)).where(
-                Job.status == STATUS_FAILED, Job.finished_at >= now() - window, ~fixed
+                Job.status == STATUS_FAILED,
+                Job.finished_at >= (max(cutoff, seen_at) if seen_at else cutoff),
+                ~fixed,
             )
         )
         or 0
     )
     return JobsHealth(active, failed)
+
+
+SEEN_KEY = "jobs.failures_seen"  # per user: when they last looked at the job list
+
+
+def failures_seen_at(db: Session, user_id: int) -> datetime | None:
+    raw = get_setting(db, SEEN_KEY, None, user_id=user_id)
+    try:
+        return datetime.fromisoformat(raw) if raw else None
+    except (TypeError, ValueError):
+        return None
+
+
+def mark_failures_seen(db: Session, user_id: int, *, now: Callable[[], datetime] = utcnow) -> None:
+    """The user has looked at the job list: the failures so far stop colouring the icon. The
+    caller commits."""
+    set_setting(db, SEEN_KEY, now().isoformat(), user_id=user_id)
 
 
 def queue_stats(db: Session) -> dict[str, dict[str, int]]:

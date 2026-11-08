@@ -147,12 +147,15 @@ async def test_the_fallback_can_be_turned_off(mbsettings, session_factory):
     artist_id = seed(session_factory, "Obscure Band", albums=OBSCURE)
     with respx.mock(base_url=MB_BASE, assert_all_called=False) as mock:
         mount(mock, NO_ARTIST)
-        deezer = mock.get(f"{DEEZER}/search/artist").respond(200, json={"data": []})
+        mock.get(f"{DEEZER}/search/artist").respond(200, json={"data": []})
         worker, job_id = await run_job(settings, session_factory, artist_id)
         await wait_for_status(session_factory, job_id, "succeeded")
         await worker.stop()
     assert state(session_factory, artist_id).mb_status == MB_REVIEW
-    assert deezer.call_count == 0
+    # Not deezer.call_count: the picture job that follows the sync also searches Deezer, and may
+    # or may not have run by now. What counts is that the sync itself never went to Deezer.
+    assert not any("deezer" in m.lower() for m in logs(session_factory, job_id))
+    assert state(session_factory, artist_id).provider != "deezer"
 
 
 async def test_ambiguous_artists_are_not_a_case_for_the_fallback(mbsettings, session_factory):
@@ -161,12 +164,15 @@ async def test_ambiguous_artists_are_not_a_case_for_the_fallback(mbsettings, ses
     artist_id = seed(session_factory, "Nirvana", albums=(("Some Obscure Demo", 1990),))
     with respx.mock(base_url=MB_BASE, assert_all_called=False) as mock:
         mount(mock, load("artist_search_nirvana.json"), nirvana_discographies())
-        deezer = mock.get(f"{DEEZER}/search/artist").respond(200, json={"data": []})
+        mock.get(f"{DEEZER}/search/artist").respond(200, json={"data": []})
         worker, job_id = await run_job(settings, session_factory, artist_id)
         await wait_for_status(session_factory, job_id, "succeeded")
         await worker.stop()
     assert state(session_factory, artist_id).mb_status == MB_REVIEW
-    assert deezer.call_count == 0
+    # Not deezer.call_count: the picture job that follows the sync also searches Deezer, and may
+    # or may not have run by now. What counts is that the sync itself never went to Deezer.
+    assert not any("deezer" in m.lower() for m in logs(session_factory, job_id))
+    assert state(session_factory, artist_id).provider != "deezer"
 
 
 # ------------------------------------------------- later on: MusicBrainz wins

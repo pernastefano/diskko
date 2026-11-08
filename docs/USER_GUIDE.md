@@ -124,8 +124,9 @@ types counted as "missing" are the same for everyone and set by an administrator
   covers, previews, similar artists, top tracks, biographies) a default service and fallbacks. A
   service that fails five times in a row is paused for ten minutes; the others take over.
 - **Settings → Jobs**: how many jobs run at once and how long finished ones and their logs are kept.
-- **Jobs** (top bar): live progress and logs, with cancel and retry. Yellow means jobs are running,
-  red means some failed in the last 24 hours.
+- **Jobs** (top bar): live progress and logs, with cancel and retry. Yellow means a job is running (or about to),
+  red means one failed and you have not looked yet: opening the job list turns it off, and it comes
+  back only for new failures. With nothing running the icon is plain.
 - **Artist management**: the review queue for artists MusicBrainz could not match with certainty
   (choose the right one, paste an MBID, or mark *not on MusicBrainz*). When MusicBrainz does not have
   an artist or album, DISKKO may use Deezer if it is certain; those artists are marked *Data from

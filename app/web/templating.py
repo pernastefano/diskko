@@ -12,7 +12,7 @@ from app import __version__
 from app.auth.csrf import CSRF_COOKIE, get_csrf_token
 from app.i18n import LANG_COOKIE, LANG_NAMES, has_key, resolve_lang, translate
 from app.integrations.status import integration_health
-from app.jobs.engine import jobs_health
+from app.jobs.engine import failures_seen_at, jobs_health
 from app.models import THEMES, utcnow
 from app.quality import DEFAULT_PROFILES
 
@@ -72,7 +72,7 @@ def nav_state(request: Request, auth) -> dict[str, Any]:
     with factory() as db:
         return {
             "health": integration_health(db, request.app.state.settings),
-            "jobs_health": jobs_health(db),
+            "jobs_health": jobs_health(db, seen_at=failures_seen_at(db, auth.user.id)),
         }
 
 

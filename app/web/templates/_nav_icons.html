@@ -20,7 +20,7 @@
        {% if current_path.startswith(href) %}aria-current="page"{% endif %}
        {% if name == 'status' and tone %}data-health="{{ health.state }}"{% endif %}
        {% if name == 'jobs' and tone %}data-jobs="{{ 'failed' if jobs_health.failed else 'active' }}"{% endif %}
-       class="rounded-md p-2 {% if tone %}{{ tones[tone] }}{% elif current_path.startswith(href) %}bg-indigo-50 text-indigo-700{% else %}text-slate-500 hover:bg-slate-100 hover:text-slate-900{% endif %} focus:outline-none focus:ring-2 focus:ring-indigo-500">
+       class="rounded-md p-2 {% if tone %}{{ tones[tone] }}{% elif current_path.startswith(href) %}bg-slate-100 text-slate-900{% else %}text-slate-500 hover:bg-slate-100 hover:text-slate-900{% endif %} focus:outline-none focus:ring-2 focus:ring-indigo-500">
       {{ icon(name) }}<span class="sr-only">{{ tip }}</span>
     </a>
   {% endfor %}
