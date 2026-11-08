@@ -63,7 +63,7 @@
         {% endif %}
       </div>
       <div class="flex items-center gap-1 text-sm">
-        {% if user %}{% set unread = 0 %}{% include "_notif_bell.html" %}{% endif %}
+        {% if user %}{% set unread = 0 %}{% set initial = true %}{% include "_notif_bell.html" %}{% endif %}
         {% if user and user.is_admin %}{% include "_nav_icons.html" %}{% endif %}
         {% if not user %}
           {# before logging in there is no user preference yet #}
@@ -115,6 +115,19 @@
     </p>
     <p class="mt-1">{{ t('footer.credits') }}</p>
   </footer>
+  {# The bell hears about every action: after any request that changes something, and when the tab
+     comes back into view, it asks the server again instead of waiting for its 30 second tick. #}
+  <script>
+    document.body.addEventListener('htmx:afterRequest', function (e) {
+      var verb = e.detail.requestConfig && e.detail.requestConfig.verb;
+      if (verb && verb !== 'get' && !(e.target.closest && e.target.closest('#nav-bell'))) {
+        htmx.trigger(document.body, 'refreshBell');
+      }
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) { htmx.trigger(document.body, 'refreshBell'); }
+    });
+  </script>
   {# One preview at a time: starting an audio element pauses every other one #}
   <script>
     document.addEventListener('play', function (e) {

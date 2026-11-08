@@ -714,3 +714,47 @@ def test_the_bell_and_the_audit_link_are_translated(two_users):
     assert "Notifiche" in bob.get("/notifications").text
     post(admin, "/lang", {"lang": "it", "next": "/admin/audit"})
     assert "Registro attività" in admin.get("/admin/audit").text
+
+
+# ------------------------------------------------------------- the bell's menu
+
+
+def test_the_bell_menu_lists_the_latest_five_with_links_and_reads_them_all(two_users, db):
+    admin, bob, carol = two_users
+    uid = user_id(db, "bob")
+    ids = [new_request(db, uid, artist=f"Band{i}").id for i in range(7)]
+    for rid in ids:
+        svc.set_status(db, rid, "completed")
+    db.commit()
+    html = bob.get("/nav/notifications").text
+    assert html.count("data-notification=") == 5 and "data-bell-menu" in html
+    assert f'href="/requests/{ids[-1]}"' in html and f'href="/requests/{ids[2]}"' in html
+    assert f'href="/requests/{ids[1]}"' not in html  # only the latest five
+    assert 'data-unread="7"' in html and "data-bell-all" in html
+    # mark all as read from the menu: the bell comes back, nothing unread, nothing for others
+    r = post(bob, "/notifications/read", {}, page="/dashboard", headers=HX)
+    assert r.status_code == 200 and 'id="nav-bell"' in r.text and "data-unread=" not in r.text
+    assert notes.unread_count(db, uid) == 0
+
+
+def test_the_empty_menu_says_when_notifications_arrive(two_users):
+    admin, bob, carol = two_users
+    html = bob.get("/nav/notifications").text
+    assert "data-bell-empty" in html and "waits for your choice" in html
+    assert "data-read-all" not in html  # nothing to mark
+
+
+def test_the_bell_refreshes_on_actions_not_only_every_30_seconds(two_users):
+    admin, bob, carol = two_users
+    bell = bob.get("/nav/notifications").text
+    assert "refreshBell from:body" in bell and "every 30s" in bell
+    page = bob.get("/dashboard").text
+    assert "htmx:afterRequest" in page and "visibilitychange" in page
+
+
+def test_the_bell_loads_once_and_its_reply_does_not_load_again(two_users):
+    """The page's bell asks for itself on load; the reply must not, or it would swap forever."""
+    admin, bob, carol = two_users
+    assert 'hx-trigger="load, refreshBell' in bob.get("/dashboard").text
+    reply = bob.get("/nav/notifications").text
+    assert 'hx-trigger="refreshBell' in reply and "load, " not in reply.split("hx-trigger")[1][:40]

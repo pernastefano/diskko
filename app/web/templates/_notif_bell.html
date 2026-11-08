@@ -1,11 +1,48 @@
 {% from "_icons.html" import icon %}
-{# The bell: the number of notifications not read yet. It refreshes itself. #}
-<div id="nav-bell" hx-get="/nav/notifications" hx-trigger="load, every 30s" hx-swap="outerHTML">
-  <a href="/notifications" data-bell {% if unread %}data-unread="{{ unread }}"{% endif %}
-     title="{{ t('notifications.unread', n=unread) if unread else t('notifications.title') }}"
-     aria-label="{{ t('notifications.unread', n=unread) if unread else t('notifications.title') }}"
-     class="relative block rounded-md p-2 {% if unread %}bg-amber-100 text-amber-800{% else %}text-slate-500 hover:bg-slate-100 hover:text-slate-900{% endif %} focus:outline-none focus:ring-2 focus:ring-indigo-500">
+{# `initial` is set only by the page itself: the first load. The reply to that request must not
+   load again, or the bell would replace itself forever. #}
+{# The bell: the number of notifications not read yet and a menu with the latest five. It refreshes
+   itself when the page opens, every 30 seconds, when the tab comes back and right after any action
+   you take (the "refreshBell" event). While the menu is open it is left alone. #}
+{% set label = t('notifications.unread', n=unread) if unread else t('notifications.title') %}
+<div id="nav-bell" class="relative" hx-get="/nav/notifications" hx-swap="outerHTML"
+     hx-trigger="{{ 'load, ' if initial }}refreshBell from:body, every 30s [!document.querySelector('#nav-bell [data-open]')]"
+     x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
+  <button type="button" data-bell {% if unread %}data-unread="{{ unread }}"{% endif %}
+          @click="open = !open" :aria-expanded="open" aria-haspopup="true"
+          title="{{ label }}" aria-label="{{ label }}"
+          class="relative block rounded-md p-2 {% if unread %}bg-amber-100 text-amber-800{% else %}text-slate-500 hover:bg-slate-100 hover:text-slate-900{% endif %} focus:outline-none focus:ring-2 focus:ring-indigo-500">
     {{ icon('bell') }}
     {% if unread %}<span class="absolute -right-1 -top-1 min-w-[1.1rem] rounded-full bg-red-600 px-1 text-center text-[10px] font-semibold leading-4 text-white" data-unread-count>{{ unread if unread < 100 else '99+' }}</span>{% endif %}
-  </a>
+  </button>
+  <div x-show="open" x-cloak :data-open="open ? '' : null" data-bell-menu
+       class="absolute right-0 z-30 mt-2 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-lg">
+    <div class="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+      <span class="text-sm font-semibold">{{ t('notifications.title') }}</span>
+      {% if unread %}
+        <button type="button" hx-post="/notifications/read" hx-target="#nav-bell" hx-swap="outerHTML"
+                class="text-xs text-indigo-700 hover:underline" data-read-all>{{ t('notifications.read_all') }}</button>
+      {% endif %}
+    </div>
+    {% if not notes %}
+      <p class="px-3 py-4 text-sm text-slate-500" data-bell-empty>{{ t('notifications.empty') }}</p>
+    {% else %}
+      <ul class="max-h-96 divide-y divide-slate-100 overflow-y-auto" data-bell-list>
+        {% for n in notes %}
+          <li data-notification="{{ n.id }}" data-kind="{{ n.kind }}" {% if not n.read_at %}data-unread{% endif %}
+              class="{{ '' if n.read_at else 'bg-amber-50' }}">
+            <a href="{{ '/requests/' ~ n.request_id if n.request_id else '/notifications' }}"
+               {% if not n.read_at %}@click="fetch('/notifications/read', {method: 'POST', keepalive: true, headers: {'X-CSRF-Token': document.querySelector('meta[name=csrf-token]').content, 'Content-Type': 'application/x-www-form-urlencoded'}, body: 'id={{ n.id }}'})"{% endif %}
+               class="block px-3 py-2 hover:bg-slate-50">
+              <span class="block text-sm font-medium">{{ t('notifications.kind.' ~ n.kind) }}</span>
+              <span class="block truncate text-sm text-slate-700">{{ n.album_label }}</span>
+              {% if n.detail %}<span class="block truncate text-xs text-red-700">{{ n.detail }}</span>{% endif %}
+              <span class="block text-xs text-slate-500">{{ n.created_at|fmt_dt }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <a href="/notifications" class="block border-t border-slate-100 px-3 py-2 text-center text-sm text-indigo-700 hover:bg-slate-50" data-bell-all>{{ t('notifications.view_all') }}</a>
+  </div>
 </div>

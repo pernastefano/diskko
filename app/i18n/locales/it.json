@@ -727,7 +727,7 @@
   "audit.action.library.scan": "Ha avviato una scansione della libreria",
   "notifications.title": "Notifiche",
   "notifications.unread": "{n} notifica/he non letta/e",
-  "notifications.empty": "Niente di nuovo. Qui vieni avvisato quando una richiesta è completata, fallisce o aspetta una tua scelta.",
+  "notifications.empty": "Niente di nuovo. Qui vieni avvisato quando una tua richiesta è completata, fallisce, non trova nulla o aspetta una tua scelta.",
   "notifications.read_all": "Segna tutte come lette",
   "notifications.read": "Segna come letta",
   "notifications.new": "nuova",
@@ -759,5 +759,6 @@
   "backups.col.size": "Dimensione",
   "backups.download": "Scarica",
   "backups.warning": "Un backup contiene tutto ciò che c'è nel database, anche i token e le chiavi API salvati: conservalo con la stessa cura del database. Per ripristinare, ferma DISKKO e sostituisci data/app.db con la copia.",
-  "settings.jobtype.backup_db": "Backup del database"
+  "settings.jobtype.backup_db": "Backup del database",
+  "notifications.view_all": "Vedi tutte le notifiche"
 }

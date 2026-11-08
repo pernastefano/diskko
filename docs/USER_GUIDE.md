@@ -94,8 +94,10 @@ once it is finished (the downloaded files and your library are not touched).
 ### Notifications
 
 The bell in the top bar counts what you have not read. You are told, once per event, when a request
-of yours **completes**, **fails**, **finds nothing** or **waits for your choice**. Open it for the list,
-mark one or all as read; read ones disappear after 30 days. Requests that were already finished
+of yours **completes**, **fails**, **finds nothing** or **waits for your choice**. Click it for a menu with the latest five (each links to its request,
+and opening one marks it read), **Mark all as read**, or **See all notifications** for the full list.
+It updates by itself every 30 seconds, when you come back to the tab and right after anything you do.
+Read ones disappear after 30 days. Requests that were already finished
 before notifications existed do not produce one.
 
 ## Discovering music
