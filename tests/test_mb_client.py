@@ -195,7 +195,10 @@ async def test_requests_are_spaced_by_the_limiter(make_client, ft):
     assert len(ft.sleeps) == 2 and all(s >= 1.1 - 1e-9 for s in ft.sleeps)
 
 
-async def test_503_is_retried_with_a_growing_pause(make_client, ft):
+async def test_503_is_retried_with_a_growing_pause(make_client, ft, monkeypatch):
+    from app.integrations.musicbrainz_client import MusicBrainzClient
+
+    monkeypatch.setattr(MusicBrainzClient, "BACKOFF_BASE", 2.0)  # the real pause is under test
     with respx.mock(base_url=BASE) as mock:
         route = mock.get("/artist").mock(
             side_effect=[

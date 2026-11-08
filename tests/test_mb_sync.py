@@ -487,10 +487,12 @@ async def test_sync_pending_artists_without_a_user_agent_does_nothing(mbsettings
 async def test_no_duplicate_sync_jobs_for_the_same_artist(mbsettings, session_factory):
     seed(session_factory)
     worker = JobWorker(mbsettings.model_copy(update={"jobs_enabled": True}), session_factory)
-    await worker.start()
-    for _ in range(2):
-        job = enqueue(session_factory, "sync_pending_artists", {})
-        worker.notify()
-        await wait_for_status(session_factory, job, STATUS_SUCCEEDED)
-    await worker.stop()
+    with respx.mock(assert_all_called=False) as mock:  # the queued syncs run: nothing real is asked
+        mock.get(url__regex=r".*").respond(404)
+        await worker.start()
+        for _ in range(2):
+            job = enqueue(session_factory, "sync_pending_artists", {})
+            worker.notify()
+            await wait_for_status(session_factory, job, STATUS_SUCCEEDED)
+        await worker.stop()
     assert count(session_factory, Job, Job.type == "sync_artist_metadata") == 1

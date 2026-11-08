@@ -1,4 +1,8 @@
 import re
+import shutil
+import sqlite3
+import sys
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +13,66 @@ from app.main import create_app
 from tests import stepjob  # noqa: F401  (registers the test-only "test.steps" job)
 
 PASSWORD = "correct-horse-battery"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cheap_password_hashing():
+    """Argon2 is slow on purpose (about 30 ms a hash and the same to check one) and the tests
+    create and check hundreds of passwords: use the cheapest settings it accepts."""
+    from argon2 import PasswordHasher
+
+    from app.auth import security
+
+    cheap = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
+    security._hasher = cheap
+    security._DUMMY_HASH = cheap.hash("diskko-dummy-password")
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _no_real_backoff(monkeypatch):
+    """The HTTP clients wait seconds between retries of a failing service. A test that makes a
+    service fail must not really wait: tests of the delays themselves set their own."""
+    from app.integrations.cached_http import CachedJsonClient
+    from app.integrations.musicbrainz_client import MusicBrainzClient
+
+    monkeypatch.setattr(CachedJsonClient, "BACKOFF_BASE", 0.0)
+    monkeypatch.setattr(MusicBrainzClient, "BACKOFF_BASE", 0.0)
+
+
+@pytest.fixture(scope="session")
+def _migrated_db(tmp_path_factory):
+    """The database after every migration, made once: a test starts from a copy of it instead of
+    running 18 migrations again (the migrations have tests of their own)."""
+    path = tmp_path_factory.mktemp("template") / "app.db"
+    run_migrations(f"sqlite:///{path}")
+    con = sqlite3.connect(path)
+    con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    con.execute("PRAGMA journal_mode=DELETE")  # one plain file: a copy is the whole database
+    con.close()
+    return path
+
+
+@pytest.fixture(autouse=True)
+def _fast_migrations(monkeypatch, _migrated_db):
+    """Anything that "migrates to head" at the start of a test (the fixtures, the app's start-up)
+    gets the prepared database when there is none yet. Migrating to another revision, which the
+    migration tests do, is left alone."""
+    import app.main
+    from app.db import run_migrations as real
+
+    def fast(url, revision="head"):
+        from sqlalchemy.engine import make_url
+
+        target = Path(make_url(url).database or "")
+        if revision != "head" or not target.name:
+            return real(url, revision)
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(_migrated_db, target)
+
+    monkeypatch.setattr(app.main, "run_migrations", fast)
+    monkeypatch.setattr(sys.modules[__name__], "run_migrations", fast)
 
 
 @pytest.fixture(autouse=True)

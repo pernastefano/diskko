@@ -184,6 +184,8 @@ def peek_artist_search(
 
 
 class MusicBrainzClient:
+    BACKOFF_BASE = 2.0  # first retry delay in seconds; it doubles at every attempt
+
     def __init__(
         self,
         settings: Settings,
@@ -288,7 +290,7 @@ class MusicBrainzClient:
         raise MusicBrainzError(f"MusicBrainz is not answering ({last}) after retries")
 
     async def _backoff(self, attempt: int, retry_after: str | None) -> None:
-        delay = 2.0 * (2**attempt)
+        delay = self.BACKOFF_BASE * (2**attempt)
         if retry_after:
             with contextlib.suppress(ValueError):
                 delay = max(delay, min(float(retry_after), RETRY_AFTER_CAP))
