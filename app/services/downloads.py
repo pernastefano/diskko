@@ -256,6 +256,12 @@ def cancel_request(db: Session, request: DownloadRequest) -> list[int]:
     )
 
 
+def can_delete(request: DownloadRequest) -> bool:
+    """A request that is over (completed, failed, cancelled, nothing found) may be removed from
+    the list; one that is still running must be cancelled first."""
+    return request.status in REQ_FINISHED
+
+
 def can_retry(request: DownloadRequest) -> bool:
     return request.status in (REQ_FAILED, REQ_NO_RESULTS, REQ_CANCELLED)
 

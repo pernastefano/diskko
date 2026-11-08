@@ -179,6 +179,114 @@ def test_an_admin_retrying_keeps_the_owner_of_the_request(two_users, db):
     assert rows(bob.get("/requests").text).count(new.id) == 1  # and it shows in bob's list
 
 
+# ------------------------------------------------------- deleting finished requests
+
+
+@pytest.mark.parametrize("status", ["completed", "failed", "cancelled", "no_results"])
+def test_a_finished_request_can_be_deleted_by_its_owner(two_users, db, status):
+    admin, bob, _ = two_users
+    [rid] = make_requests(db, user_id(db, "bob"), 1, status=status)
+    r = post(bob, f"/requests/{rid}/delete", {}, page="/requests")
+    assert r.status_code == 303 and r.headers["location"] == "/requests?flash=request_deleted"
+    db.expire_all()
+    assert db.get(DownloadRequest, rid) is None
+    assert "The request was deleted." in bob.get(r.headers["location"]).text
+    [entry] = entries(db, "request.deleted")
+    assert entry.actor_name == "bob" and json.loads(entry.details_json)["status"] == status
+    assert entry.target_label.startswith("Aretha Franklin") and " – Album " in entry.target_label
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "queued",
+        "searching",
+        "candidate_found",
+        "awaiting_choice",
+        "downloading",
+        "downloaded",
+        "postprocessing",
+        "importing",
+    ],
+)
+def test_a_request_that_is_still_running_cannot_be_deleted(two_users, db, status):
+    admin, bob, _ = two_users
+    [rid] = make_requests(db, user_id(db, "bob"), 1, status=status)
+    r = post(bob, f"/requests/{rid}/delete", {}, page="/requests")
+    assert r.status_code == 303 and r.headers["location"].endswith("error=request_not_deletable")
+    db.expire_all()
+    assert db.get(DownloadRequest, rid).status == status and not entries(db, "request.deleted")
+
+
+def test_an_admin_deletes_anyones_request_and_a_user_not_other_peoples(two_users, db):
+    admin, bob, carol = two_users
+    [hers] = make_requests(db, user_id(db, "carol"), 1, status="failed")
+    assert post(bob, f"/requests/{hers}/delete", {}, page="/requests").status_code == 404
+    db.expire_all()
+    assert db.get(DownloadRequest, hers) is not None
+    assert post(admin, f"/requests/{hers}/delete", {}, page="/requests").status_code == 303
+    db.expire_all()
+    assert db.get(DownloadRequest, hers) is None
+    [entry] = entries(db, "request.deleted")
+    assert entry.actor_name == "admin" and json.loads(entry.details_json)["owner"] == "carol"
+    assert admin.post(f"/requests/{hers}/delete", data={}).status_code in (403, 404)  # no token
+
+
+def test_the_list_offers_delete_only_on_finished_requests_and_goes_back_to_it(two_users, db):
+    admin, bob, _ = two_users
+    uid = user_id(db, "bob")
+    running = make_requests(db, uid, 1, status="downloading", artist="R")[0]
+    failed = make_requests(db, uid, 1, status="failed", artist="F")[0]
+    done = make_requests(db, uid, 1, status="completed", artist="D")[0]
+    html = bob.get("/requests").text
+    row = lambda i: re.search(rf'<tr data-request="{i}".*?</tr>', html, re.S).group(0)  # noqa: E731
+    assert "data-row-delete" not in row(running) and "data-row-cancel" in row(running)
+    assert "data-row-delete" in row(failed) and "data-row-retry" in row(failed)  # both
+    assert "data-row-delete" in row(done) and "data-row-retry" not in row(done)
+    assert "confirm(" in row(done)  # asks before deleting
+    back = "/requests?status=failed&page=1"
+    r = post(bob, f"/requests/{failed}/delete", {"next": back}, page="/requests")
+    assert r.headers["location"] == back + "&flash=request_deleted"
+    r = post(bob, f"/requests/{done}/delete", {"next": "https://evil.example/"}, page="/requests")
+    assert r.headers["location"] == "/requests?flash=request_deleted"  # only ever a list
+
+
+def test_the_page_of_a_finished_request_has_a_delete_button_and_goes_back_to_the_list(
+    two_users, db
+):
+    admin, bob, _ = two_users
+    [done] = make_requests(db, user_id(db, "bob"), 1, status="completed")
+    [running] = make_requests(db, user_id(db, "bob"), 1, status="queued", artist="Q")
+    assert "data-delete" in bob.get(f"/requests/{done}").text
+    assert "data-delete" not in bob.get(f"/requests/{running}").text
+    r = post(bob, f"/requests/{done}/delete", {}, page=f"/requests/{done}")
+    assert r.headers["location"] == "/requests?flash=request_deleted"  # its own page is gone
+    assert bob.get(f"/requests/{done}").status_code == 404
+
+
+def test_deleting_a_request_takes_its_files_and_notifications_with_it(two_users, db):
+    from app.models import DownloadFile
+
+    admin, bob, _ = two_users
+    req = new_request(db, user_id(db, "bob"), artist="Gone", title="Album")
+    db.add(DownloadFile(request_id=req.id, username="u", filename="a.flac", subdir=""))
+    svc.set_status(db, req.id, "completed")
+    db.commit()
+    assert db.query(Notification).count() == 1 and db.query(DownloadFile).count() == 1
+    post(bob, f"/requests/{req.id}/delete", {}, page="/requests")
+    db.expire_all()
+    assert db.query(Notification).count() == 0 and db.query(DownloadFile).count() == 0
+    assert entries(db, "request.deleted")  # the audit log still says what was there
+
+
+def test_the_delete_texts_are_translated(two_users, db):
+    admin, bob, _ = two_users
+    make_requests(db, user_id(db, "bob"), 1, status="failed")
+    post(bob, "/lang", {"lang": "it", "next": "/requests"})
+    html = bob.get("/requests").text
+    assert "Elimina" in html and "Eliminare questa richiesta" in html
+
+
 # ------------------------------------------------------- the quality of my requests
 
 

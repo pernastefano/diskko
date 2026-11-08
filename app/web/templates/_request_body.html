@@ -21,6 +21,13 @@
     </form>
   {% endif %}
 
+  {% if can_delete %}
+    <form method="post" action="/requests/{{ r.id }}/delete" class="mb-4" onsubmit="return confirm('{{ t('requests.confirm_delete')|e }}')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-delete>{{ t('requests.delete') }}</button>
+    </form>
+  {% endif %}
+
   {% if can_retry %}
     <form method="post" action="/requests/{{ r.id }}/retry" class="mb-6 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-retry>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

@@ -23,6 +23,7 @@ ACTIONS = (
     "request.cancelled",
     "request.retried",
     "request.chosen",
+    "request.deleted",
     "request.upgrade",
     "user.created",
     "user.role",
@@ -39,7 +40,6 @@ ACTIONS = (
     "album.match",
     "album.refresh",
     "library.scan",
-    "plex.scan",
 )
 PAGE_SIZE = 50
 _SECRET_WORDS = ("password", "token", "secret", "key", "passwd")

@@ -97,10 +97,10 @@ def test_tiles_show_albums_and_missing_state(admin_client, lib):
     chips = dict(
         zip(names_in(text), re.findall(r'data-ownership="(\w+)"[^>]*>([^<]*)<', text), strict=True)
     )
-    # Alpha owns 1 and misses 2 (the live album is not a selected type): "1 / 2", yellow
-    assert chips["Alpha"] == ("yellow", "1 / 2")
+    # Alpha owns 1 and misses 2 (the live album is not a selected type): 1 of 3, yellow
+    assert chips["Alpha"] == ("yellow", "1 / 3")
     assert chips["Beta"][0] == "unknown" and "No metadata" in chips["Beta"][1]  # not synced yet
-    assert chips["Gamma"] == ("green", "1 / 0")  # owns everything: nothing missing
+    assert chips["Gamma"] == ("green", "1 / 1")  # owns everything: 1 of 1
 
 
 def test_cover_or_initial(admin_client, lib):
@@ -122,14 +122,15 @@ def test_artist_names_are_escaped(app, admin_client):
     assert "<script>alert" not in text and "&lt;script&gt;" in text
 
 
-def test_missing_counts_follow_the_system_wide_types(admin_client, user_client, lib):
-    assert "2 missing" in page(admin_client, "/artists") and "2 missing" in page(
-        user_client, "/artists"
-    )
+def test_the_totals_follow_the_system_wide_types(admin_client, user_client, lib):
+    # Alpha owns 1 and misses 2 of the selected types: 1 of 3
+    assert "1 of 3 album(s) owned" in page(admin_client, "/artists")
+    assert "1 of 3 album(s) owned" in page(user_client, "/artists")
     post(admin_client, "/settings/albums/types", {"types": ["live"]}, page="/settings/albums")
     for client in (admin_client, user_client):  # the same for everybody
         text = page(client, "/artists")
-        assert "1 missing" in text and "2 missing" not in text
+        # Alpha has one live release group and owns none of it
+        assert "0 of 1 album(s) owned" in text and "1 of 3 album(s) owned" not in text
 
 
 # ---------------------------------------------------------------- filtering
@@ -271,7 +272,7 @@ def test_a_thousand_five_hundred_artists(app, admin_client):
 def test_italian(admin_client, lib):
     post(admin_client, "/lang", {"lang": "it", "next": "/artists"})
     text = page(admin_client, "/artists")
-    assert "Cerca artisti" in text and "3 artisti" in text and "1 / 2" in text
+    assert "Cerca artisti" in text and "3 artisti" in text and "1 / 3" in text
     assert "Senza metadati" in text and "Più mancanti" in text
 
 
@@ -285,4 +286,28 @@ def test_every_release_group_type_is_counted_only_when_selected(app, admin_clien
         {"types": ["album", "live"]},
         page="/settings/albums",
     )
-    assert "1 / 3" in page(admin_client, "/artists")
+    assert "1 / 4" in page(admin_client, "/artists")
+
+
+def test_a_compilation_is_no_album_of_the_discography(admin_client, app):
+    """Only a compilation owned, 11 albums known: the badge reads 0 / 11, not 1 / 12."""
+    from app.models import utcnow
+
+    with app.state.session_factory() as db:
+        a = make_artist(
+            db, "Tencc", mbid="b" * 8 + "-0000-4000-8000-000000000009", status="resolved"
+        )
+        a.metadata_synced_at = utcnow()
+        for i in range(11):
+            make_rg(db, a, f"Tencc {i}", 1970 + i)
+        make_rg(db, a, "Greatest Hits", 1990, "Album", ("Compilation",))
+        make_album(db, a, "Greatest Hits", year=1990)
+        match_artist_albums(db, a.id)
+        db.commit()
+    text = page(admin_client, "/artists")
+    assert "0 of 11 album(s) owned" in text and "0 / 11" in text
+
+
+def test_the_footer_links_to_the_repository(admin_client, new_client):
+    for text in (page(admin_client, "/artists"), new_client().get("/login").text):
+        assert 'href="https://github.com/pernastefano/diskko"' in text and "data-footer" in text

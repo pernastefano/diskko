@@ -64,10 +64,17 @@
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ here }}">
                   <button type="submit" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" data-row-cancel>{{ t('requests.cancel') }}</button>
                 </form>
-              {% elif can_retry[r.id] %}
+              {% endif %}
+              {% if not row.active and can_retry[r.id] %}
                 <form method="post" action="/requests/{{ r.id }}/retry" class="inline">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ here }}">
                   <button type="submit" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" data-row-retry>{{ t('requests.retry') }}</button>
+                </form>
+              {% endif %}
+              {% if can_delete[r.id] %}
+                <form method="post" action="/requests/{{ r.id }}/delete" class="ml-1 inline" onsubmit="return confirm('{{ t('requests.confirm_delete')|e }}')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ here }}">
+                  <button type="submit" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" data-row-delete>{{ t('requests.delete') }}</button>
                 </form>
               {% endif %}
             </td>

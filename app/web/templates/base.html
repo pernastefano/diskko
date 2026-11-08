@@ -107,6 +107,14 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  <footer class="mx-auto max-w-5xl px-4 pb-8 pt-4 text-center text-xs text-slate-500" data-footer>
+    <p>
+      <a href="https://github.com/pernastefano/diskko" target="_blank" rel="noopener noreferrer" class="font-medium underline hover:text-slate-900">DISKKO</a>
+      v{{ app_version }} · {{ t('footer.made_by') }}
+      <a href="https://github.com/pernastefano" target="_blank" rel="noopener noreferrer" class="underline hover:text-slate-900">pernastefano</a>
+    </p>
+    <p class="mt-1">{{ t('footer.credits') }}</p>
+  </footer>
   {# One preview at a time: starting an audio element pauses every other one #}
   <script>
     document.addEventListener('play', function (e) {

@@ -1,4 +1,4 @@
-{# Grid tile of one artist: needs `r` (ArtistRow). The picture, the name, then "owned / missing". #}
+{# Grid tile of one artist: needs `r` (ArtistRow). The picture, the name, then "owned / total" albums. #}
 {% set a = r.artist %}
 <a href="/artist/{{ a.id }}" class="group block overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-indigo-300 hover:shadow focus:outline-none focus:ring-2 focus:ring-indigo-500">
   {% if a.image_url %}

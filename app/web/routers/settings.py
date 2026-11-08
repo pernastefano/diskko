@@ -411,18 +411,6 @@ async def save_library(request: Request, db: DB, auth: AdminAuth):
     return await _save(request, db, "library", fields_of("library"), actor=auth.user)
 
 
-@router.post("/integrations/plex/scan")
-async def scan_plex_now(request: Request, db: DB, auth: AdminAuth):
-    """Scan the whole Plex section now (also a way to check the connection and the scan)."""
-    job = engine.enqueue(
-        db, "plex_refresh", {"full": True}, dedupe_key="plex_refresh_full", created_by=auth.user.id
-    )
-    audit.record(db, auth.user, "plex.scan", details={"job": job.id})
-    db.commit()
-    notify_worker(request)
-    return RedirectResponse(f"/admin/jobs/{job.id}", status_code=303)
-
-
 @router.post("/integrations/{group}")
 async def save_integration(request: Request, db: DB, auth: AdminAuth, group: str):
     if group not in GROUPS:

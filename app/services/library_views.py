@@ -29,9 +29,15 @@ UNMATCHED = "unmatched"  # pseudo-category of albums with no release group
 @dataclass
 class ArtistRow:
     artist: Artist
-    albums: int
-    missing: int
+    albums: int  # rows of the library (every type, a compilation, duplicates...)
+    missing: int  # release groups of the selected types that the library does not have
     cover: str | None = None
+    total: int = 0  # release groups of the selected types the artist has (owned or not)
+
+    @property
+    def owned(self) -> int:
+        """How many of those the library has: what the "owned / total" badge shows."""
+        return max(self.total - self.missing, 0)
 
 
 def _owned_group_exists():
@@ -53,6 +59,19 @@ def missing_counts_subquery(types: Iterable[str]):
         .where(ReleaseGroup.category.in_(wanted), ~_owned_group_exists())
         .group_by(ReleaseGroup.artist_id)
         .subquery("missing")
+    )
+
+
+def total_counts_subquery(types: Iterable[str]):
+    """Per-artist number of release groups of the wanted categories (owned or not)."""
+    wanted = [c for c in CATEGORIES if c in set(types)]
+    if not wanted:
+        return None
+    return (
+        select(ReleaseGroup.artist_id.label("artist_id"), func.count().label("n"))
+        .where(ReleaseGroup.category.in_(wanted))
+        .group_by(ReleaseGroup.artist_id)
+        .subquery("totals")
     )
 
 
@@ -78,14 +97,18 @@ def list_artists(
         .subquery("albums")
     )
     missing = missing_counts_subquery(types)
+    totals = total_counts_subquery(types)
     albums_col = func.coalesce(albums.c.n, 0)
     missing_col = func.coalesce(missing.c.n, 0) if missing is not None else literal(0)
+    total_col = func.coalesce(totals.c.n, 0) if totals is not None else literal(0)
 
-    base = select(Artist, albums_col.label("albums"), missing_col.label("missing")).outerjoin(
-        albums, albums.c.artist_id == Artist.id
-    )
+    base = select(
+        Artist, albums_col.label("albums"), missing_col.label("missing"), total_col.label("total")
+    ).outerjoin(albums, albums.c.artist_id == Artist.id)
     if missing is not None:
         base = base.outerjoin(missing, missing.c.artist_id == Artist.id)
+    if totals is not None:
+        base = base.outerjoin(totals, totals.c.artist_id == Artist.id)
     base = base.where(Artist.in_library.is_(True))
 
     needle = name_key(q) if q.strip() else ""
@@ -108,7 +131,7 @@ def list_artists(
         order = (func.lower(Artist.sort_name), Artist.id)
     page = max(page, 1)
     rows = db.execute(base.order_by(*order).limit(page_size).offset((page - 1) * page_size)).all()
-    result = [ArtistRow(artist=r[0], albums=r[1], missing=r[2]) for r in rows]
+    result = [ArtistRow(artist=r[0], albums=r[1], missing=r[2], total=r[3]) for r in rows]
     covers = representative_covers(db, [r.artist.id for r in result])
     for row in result:
         row.cover = covers.get(row.artist.id)

@@ -8,6 +8,7 @@ from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
 
+from app import __version__
 from app.auth.csrf import CSRF_COOKIE, get_csrf_token
 from app.i18n import LANG_COOKIE, LANG_NAMES, has_key, resolve_lang, translate
 from app.integrations.status import integration_health
@@ -60,6 +61,7 @@ def mark(text: Any, needle: str) -> Markup:
 
 templates.env.filters["mark"] = mark
 templates.env.globals["duration"] = duration
+templates.env.globals["app_version"] = __version__
 
 
 def nav_state(request: Request, auth) -> dict[str, Any]:

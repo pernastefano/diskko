@@ -133,7 +133,7 @@ Le copertine mancanti si scaricano in background quando si apre la pagina.
   qualità (ogni voce apre gli album con quella qualità) e ultima scansione. Gli amministratori
   hanno anche sorgente, cartella, frequenza e i pulsanti di scansione.
 - **Artisti** (`/artists`): per ogni artista l'immagine (da Deezer, altrimenti una copertina o
-  l'iniziale), il nome e "album posseduti / album mancanti": **verde** se non manca nulla,
+  l'iniziale), il nome e "album posseduti / album totali" (totali = posseduti + ancora mancanti): **verde** se non manca nulla,
   **gialla** se ne hai alcuni e ne mancano altri, **rossa** se non ne hai nessuno.
 - **Album** (`/albums`): tutti gli album posseduti, con ricerca e filtri per **qualità audio**,
   formato e tipo.
@@ -178,6 +178,8 @@ siano arrivati e a importarli (deve stare sullo stesso NAS, con `MUSIC_DIR` acce
   utente). Filtri per stato (in corso, completate, fallite o annullate), 50 per pagina, e nella riga
   il pulsante Annulla (se è in corso) o Cerca di nuovo (se è fallita). L'admin può annullare e
   riprovare le richieste di chiunque; una richiesta riprovata resta dell'utente che l'aveva fatta.
+  Le richieste finite (completate, fallite, senza risultati o annullate) si possono **eliminare** dalla
+  lista, dal proprietario o da un admin; i file scaricati e la libreria non vengono toccati.
 - **Qualità delle mie richieste**: in Preferenze ogni utente sceglie la qualità a cui puntano le sue
   richieste (o quella del sistema). I **tipi di album** "mancanti" restano invece uguali per tutti,
   come li imposta l'admin.
@@ -241,8 +243,7 @@ da cartella), il job `plex_refresh` gli fa scansionare le cartelle nuove:
   importate, senza scansione completa. Con `PLEX_REFRESH_METADATA` chiede anche a Plex di aggiornare i
   metadati degli album.
 - Un problema con Plex non fa mai fallire un import: il job si riprova da solo e le cartelle restano
-  in elenco finché la scansione non è andata a buon fine. In Impostazioni → Integrazioni → Plex il
-  pulsante **Scansiona Plex ora** scansiona l'intera sezione e mostra l'esito nel log del job.
+  in elenco finché la scansione non è andata a buon fine.
 
 Mai sovrascritto nulla: se la cartella di destinazione esiste, il download va in **quarantena**
 (`<downloads>/diskko/quarantine/<id>/`, o la cartella scelta nelle impostazioni) con un file

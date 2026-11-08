@@ -123,6 +123,7 @@ def requests_page(
             "here": "/requests"
             + (f"?{urlencode({**query, 'page': page})}" if query or page > 1 else ""),
             "can_retry": {r["r"].id: svc.can_retry(r["r"]) for r in rows},
+            "can_delete": {r["r"].id: svc.can_delete(r["r"]) for r in rows},
         },
     )
 
@@ -150,6 +151,7 @@ def _detail_context(db: DB, auth: UserAuth, request: DownloadRequest) -> dict:
         **row,
         "candidates": svc.candidates_of(request),
         "files": files,
+        "can_delete": svc.can_delete(request),
         "job": job if auth.user.is_admin else None,
         "polling": request.status in RUNNING,
         "can_retry": svc.can_retry(request),
@@ -276,6 +278,38 @@ def request_cancel(
     db.commit()
     notify_worker(request)
     return RedirectResponse(_return_to(next, request_id), status_code=303)
+
+
+@router.post("/requests/{request_id}/delete")
+def request_delete(
+    request: Request,
+    db: DB,
+    auth: UserAuth,
+    request_id: int,
+    next: Annotated[str, Form()] = "",
+):
+    """Remove a finished request from the list (its owner, or an administrator). The files of
+    the download, the quarantine and the library are not touched."""
+    req = _get(db, auth, request_id)
+    if not svc.can_delete(req):
+        return RedirectResponse(
+            f"/requests/{request_id}?error=request_not_deletable", status_code=303
+        )
+    audit.record(
+        db,
+        auth.user,
+        "request.deleted",
+        target_type="request",
+        label=_label(db, req),
+        details={"status": req.status, "owner": _owner_name(db, req)},
+    )
+    db.delete(req)
+    db.commit()
+    target = _return_to(next, request_id)
+    if target.startswith("/requests/"):  # that page is gone: back to the list
+        target = "/requests"
+    sep = "&" if "?" in target else "?"
+    return RedirectResponse(f"{target}{sep}flash=request_deleted", status_code=303)
 
 
 @router.post("/requests/{request_id}/retry")

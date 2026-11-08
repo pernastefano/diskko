@@ -541,18 +541,11 @@ async def test_a_requested_full_scan_scans_the_section_and_ignores_the_list(
     )
 
 
-def test_the_settings_page_has_a_scan_plex_button_for_admins(admin_client, user_client, db):
+def test_the_settings_page_has_no_scan_plex_now_section(admin_client):
     html = admin_client.get("/settings/integrations").text
-    assert 'id="plex-scan"' in html and 'action="/settings/integrations/plex/scan"' in html
-    r = post(admin_client, "/settings/integrations/plex/scan", page="/settings/integrations")
-    assert r.status_code == 303
-    job_row = db.scalar(select(Job).where(Job.type == "plex_refresh"))
-    assert r.headers["location"] == f"/admin/jobs/{job_row.id}"
-    assert job_row.payload_json == '{"full": true}' and job_row.next_run_at is None
-    post(admin_client, "/settings/integrations/plex/scan", page="/settings/integrations")
-    assert len(db.scalars(select(Job).where(Job.type == "plex_refresh")).all()) == 1  # deduped
-    assert post(user_client, "/settings/integrations/plex/scan").status_code == 403
-    assert admin_client.post("/settings/integrations/plex/scan").status_code == 403  # no token
+    assert 'id="plex-scan"' not in html and "Scan Plex now" not in html
+    assert "/integrations/plex/scan" not in html
+    assert admin_client.post("/settings/integrations/plex/scan").status_code in (403, 404, 405)
 
 
 def test_the_plex_refresh_settings_are_in_the_plex_form_and_validated(app, admin_client):

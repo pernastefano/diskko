@@ -305,8 +305,8 @@ def test_the_labels_are_red_yellow_or_green(admin_client, artists):
     text = admin_client.get("/artists").text
     found = chips(text)
     assert found["Red"] == ("red", "0 / 2")  # nothing owned
-    assert found["Yellow"] == ("yellow", "1 / 2")  # some owned, some missing
-    assert found["Green"] == ("green", "1 / 0")  # nothing missing
+    assert found["Yellow"] == ("yellow", "1 / 3")  # owns 1 of 3: 2 are missing
+    assert found["Green"] == ("green", "1 / 1")  # owns 1 of 1: nothing missing
     assert found["Grey"][0] == "unknown"  # not synced: the number of missing albums is unknown
     assert 'class="rounded px-1.5 py-0.5 font-medium tabular-nums bg-red-100 text-red-800"' in tile(
         text, "Red"
@@ -315,9 +315,7 @@ def test_the_labels_are_red_yellow_or_green(admin_client, artists):
 
 
 def test_the_label_explains_itself(admin_client, artists):
-    assert 'title="1 album(s) owned / 2 missing"' in tile(
-        admin_client.get("/artists").text, "Yellow"
-    )
+    assert 'title="1 of 3 album(s) owned"' in tile(admin_client.get("/artists").text, "Yellow")
 
 
 def test_the_tile_shows_picture_name_and_label_in_that_order(admin_client, db, artists):
