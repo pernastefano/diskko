@@ -6,6 +6,7 @@
   <a href="https://github.com/pernastefano/diskko/actions/workflows/docker.yml"><img alt="CI / Docker" src="https://github.com/pernastefano/diskko/actions/workflows/docker.yml/badge.svg"></a>
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-3776ab.svg">
   <img alt="Multi-arch image" src="https://img.shields.io/badge/image-amd64%20%7C%20arm64-f2a431.svg">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 
 <p align="center">
@@ -177,4 +178,8 @@ Every feature comes with tests and every schema change with an Alembic migration
 
 ## Credits
 
-Music metadata from [MusicBrainz](https://musicbrainz.org) (CC0), artwork from the [Cover Art Archive](https://coverartarchive.org), [Wikipedia](https://www.wikipedia.org), [Last.fm](https://www.last.fm) and [Deezer](https://www.deezer.com), previews from iTunes and Deezer. Downloads go through [slskd](https://github.com/slskd/slskd). Plex is a trademark of Plex, Inc. Created by [Stefano Perna](https://github.com/pernastefano).
+Music metadata from [MusicBrainz](https://musicbrainz.org) (CC0), artwork from the [Cover Art Archive](https://coverartarchive.org), [Wikipedia](https://www.wikipedia.org), [Last.fm](https://www.last.fm) and [Deezer](https://www.deezer.com), previews from iTunes and Deezer. Downloads go through [slskd](https://github.com/slskd/slskd). Plex is a trademark of Plex, Inc.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Created by [Stefano Perna](https://github.com/pernastefano).
