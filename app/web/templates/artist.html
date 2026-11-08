@@ -1,29 +1,38 @@
 {% extends "base.html" %}
+{% from "_buttons.html" import btn %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ artist.name }}{% endblock %}
 {% block content %}
 <a href="/artists" class="text-sm text-indigo-600 hover:underline">← {{ t('nav.artists') }}</a>
-<div class="mt-2 flex flex-wrap items-start justify-between gap-3">
+<div class="mt-2 flex flex-col gap-4 md:flex-row md:items-start">
   <div class="flex min-w-0 flex-1 gap-4">
   {% include "_artist_image.html" %}
   <div class="min-w-0 flex-1">
-    <h1 class="text-3xl font-semibold">{{ artist.name }}{% if not artist.in_library %} <span class="ml-2 align-middle rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" data-external>{{ t('artist.not_in_library') }}</span>{% endif %}</h1>
+    <h1 class="text-3xl font-semibold">{{ artist.name }}</h1>
     <p class="mt-1 text-sm text-slate-500">
       {% if artist.mbid %}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/artist/{{ artist.mbid }}">MusicBrainz ↗</a>{% endif %}
       {% if artist.provider == 'deezer' and artist.provider_artist_id %}<a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://www.deezer.com/artist/{{ artist.provider_artist_id }}" data-source="deezer">{{ t('album.source.deezer') }} ↗</a>{% endif %}
       {% if artist.metadata_synced_at %}{% if artist.mbid or artist.provider %} · {% endif %}{{ t('artist.synced', when=artist.metadata_synced_at|fmt_dt) }}{% endif %}
     </p>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      {% if artist.in_library %}
+        <span class="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800" data-ownership="in-library">{{ t('badge.in_library') }}</span>
+      {% else %}
+        <span class="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" data-external data-ownership="external">{{ t('artist.not_in_library') }}</span>
+      {% endif %}
+    </div>
     <div class="mt-3 max-w-3xl" id="artist-bio" hx-post="/artist/{{ artist.id }}/bio" hx-trigger="load" hx-swap="outerHTML"></div>
   </div>
   </div>
   {% if user.is_admin %}
-    <div class="flex flex-wrap gap-2">
+    <aside class="w-full shrink-0 space-y-2 md:w-60" data-page-actions>
       <form method="post" action="/admin/artists/{{ artist.id }}/sync">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="force" value="1">
         <button type="submit" {% if not mb_configured %}disabled title="{{ t('error.mb_not_configured') }}"{% endif %}
-                class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">{{ t('artist.refresh') }}</button>
+                class="{{ btn('secondary') }}" data-action="refresh-metadata">{{ icon('refresh', 'h-4 w-4') }}{{ t('action.refresh_metadata') }}</button>
       </form>
-      <a href="/admin/artists/{{ artist.id }}" class="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100">{{ t('artist.manage') }}</a>
-    </div>
+      <a href="/admin/artists/{{ artist.id }}" class="{{ btn('secondary') }}" data-action="manage-matching">{{ icon('link', 'h-4 w-4') }}{{ t('action.manage_matching') }}</a>
+    </aside>
   {% endif %}
 </div>
 
@@ -41,7 +50,7 @@
 
 {% include "_artist_sections.html" %}
 
-<h2 class="mb-2 mt-10 text-xl font-semibold">{{ t('artist.similar') }}</h2>
+<h2 class="mb-3 mt-8 text-xl font-semibold">{{ t('artist.similar') }}</h2>
 <div id="similar" hx-post="/artist/{{ artist.id }}/similar" hx-trigger="load" hx-swap="outerHTML">
   <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">{{ t('similar.loading') }}</p>
 </div>

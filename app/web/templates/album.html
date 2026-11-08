@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% from "_covers.html" import cover %}
+{% from "_buttons.html" import btn %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
 <a href="/artist/{{ artist.id }}" class="text-sm text-indigo-600 hover:underline">← {{ artist.name }}</a>
 {% if page_error %}<p role="alert" class="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-error>{{ t(page_error) }}</p>{% endif %}
-<div class="mt-3 flex flex-col gap-5 sm:flex-row">
+<div class="mt-3 flex flex-col gap-5 md:flex-row md:items-start">
   <div class="shrink-0">{{ cover(group, 'h-48 w-48 sm:h-56 sm:w-56', title) }}</div>
   <div class="min-w-0 flex-1">
     <h1 class="text-3xl font-semibold" data-album-title>{{ title }}</h1>
@@ -24,30 +26,33 @@
         {% if album %}{% set tier = album.quality_tier %}{% include "_quality_badge.html" %}{% endif %}
       {% endif %}
     </div>
-    {% if user.is_admin %}
-      <div class="mt-3 flex flex-wrap gap-2" data-album-admin>
-        {% if group %}
-          <form method="post" action="/album/{{ group.id }}/refresh">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-album-refresh>{{ t('album.refresh') }}</button>
-          </form>
-        {% endif %}
-        {% if album %}
-          <a href="/admin/artists/{{ artist.id }}#album-{{ album.id }}" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-album-match>{{ t('album.manage_match') }}</a>
-        {% endif %}
-      </div>
-    {% endif %}
-    {% if mode == 'remote' %}
-      <div class="mt-3" data-album-request>{% include "_request_control.html" %}</div>
-    {% elif mode == 'owned' and upgrade and upgrade.offer %}
-      {% with group=upgrade.group, album=upgrade.album, current=upgrade.current, minimum=upgrade.minimum, minimum_key=upgrade.minimum_key, offer=upgrade.offer, targets=upgrade.targets, info=upgrade.info, req=upgrade.req, unavailable=upgrade.unavailable %}{% include "_album_upgrade.html" %}{% endwith %}
-    {% elif mode == 'local' %}
+    {% if mode == 'local' %}
       <p class="mt-3 text-sm text-slate-500">{{ t('album.local_hint') }}</p>
     {% endif %}
   </div>
+  <aside class="w-full shrink-0 space-y-2 md:w-60" data-page-actions>
+    {% if mode == 'remote' %}
+      <div data-album-request>{% with big=true %}{% include "_request_control.html" %}{% endwith %}</div>
+    {% elif mode == 'owned' and upgrade and upgrade.offer %}
+      {% with group=upgrade.group, album=upgrade.album, current=upgrade.current, minimum=upgrade.minimum, minimum_key=upgrade.minimum_key, offer=upgrade.offer, targets=upgrade.targets, info=upgrade.info, req=upgrade.req, unavailable=upgrade.unavailable %}{% include "_album_upgrade.html" %}{% endwith %}
+    {% endif %}
+    {% if user.is_admin %}
+      <div class="space-y-2" data-album-admin>
+        {% if group %}
+          <form method="post" action="/album/{{ group.id }}/refresh">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="{{ btn('secondary') }}" data-album-refresh data-action="refresh-metadata">{{ icon('refresh', 'h-4 w-4') }}{{ t('action.refresh_metadata') }}</button>
+          </form>
+        {% endif %}
+        {% if album %}
+          <a href="/admin/artists/{{ artist.id }}#album-{{ album.id }}" class="{{ btn('secondary') }}" data-album-match data-action="manage-matching">{{ icon('link', 'h-4 w-4') }}{{ t('action.manage_matching') }}</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </aside>
 </div>
 
-<h2 class="mb-2 mt-8 text-xl font-semibold">{{ t('album.tracks') }}</h2>
+<h2 class="mb-3 mt-8 text-xl font-semibold">{{ t('album.tracks') }}</h2>
 {% include "_album_tracks.html" %}
 {% if mode == 'remote' and group %}
   {# asks for what is missing (the track list, the previews) once the page is open #}

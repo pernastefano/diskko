@@ -170,6 +170,7 @@ def list_albums(
     quality: str = "",
     fmt: str = "",
     category: str = "",
+    letter: str = "",
     sort: str = "title",
     page: int = 1,
     page_size: int = PAGE_SIZE,
@@ -195,6 +196,10 @@ def list_albums(
                 Artist.name_key.like(key_like, escape="\\"),
             )
         )
+    if letter == "#":
+        base = base.where(_album_initial().not_in(_LETTERS))
+    elif letter in _LETTERS:
+        base = base.where(_album_initial() == letter)
     if quality:
         base = base.where(LibraryAlbum.quality_tier == quality)
     if fmt:
@@ -253,6 +258,27 @@ def album_facets(db: Session) -> dict[str, list[str]]:
         "formats": sorted(formats),
         "categories": [c for c in CATEGORIES if c in present],
     }
+
+
+_LETTERS = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+
+def _album_initial():
+    """First character of an album title, upper-cased (SQLite upper() only knows A-Z)."""
+    return func.upper(func.substr(LibraryAlbum.title, 1, 1))
+
+
+def available_album_letters(db: Session) -> set[str]:
+    """Initial letters of the albums in the library ('#' for anything that is not A-Z)."""
+    letters = set()
+    for (first,) in db.execute(
+        select(_album_initial())
+        .join(Artist, Artist.id == LibraryAlbum.artist_id)
+        .where(Artist.in_library.is_(True))
+        .distinct()
+    ):
+        letters.add(first if first in _LETTERS else "#")
+    return letters
 
 
 def available_letters(db: Session) -> set[str]:

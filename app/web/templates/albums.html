@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_list_controls.html" import view_toggle, letter_bar with context %}
 {% block title %}{{ t('nav.albums') }}{% endblock %}
 {% block content %}
 <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -14,6 +15,8 @@
            hx-get="/albums/items" hx-trigger="input changed delay:300ms, search" hx-target="#tiles" hx-swap="innerHTML"
            hx-include="#filters" hx-sync="this:replace">
   </div>
+  <input type="hidden" name="letter" value="{{ p.letter }}">
+  <input type="hidden" name="view" value="{{ p.view }}">
   <div>
     <label for="quality" class="block text-xs text-slate-500">{{ t('albums.quality') }}</label>
     <select id="quality" name="quality" @change="$el.form.submit()" class="rounded-md border border-slate-300 bg-white px-2 py-2">
@@ -42,11 +45,14 @@
       {% for s in sorts %}<option value="{{ s }}" {% if p.sort == s %}selected{% endif %}>{{ t('albums.sort.' ~ s) }}</option>{% endfor %}
     </select>
   </div>
-  {% if p.filtered %}<a href="/albums" class="py-2 text-indigo-600 hover:underline">{{ t('albums.clear') }}</a>{% endif %}
+  {% if p.filtered %}<a href="/albums{{ '?view=list' if p.view == 'list' }}" class="py-2 text-indigo-600 hover:underline">{{ t('albums.clear') }}</a>{% endif %}
+  {{ view_toggle('/albums', p) }}
   <noscript><button type="submit" class="rounded-md border border-slate-300 px-3 py-2">{{ t('action.filter') }}</button></noscript>
 </form>
 
-<div id="tiles" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+{{ letter_bar('/albums', p, alphabet, letters) }}
+
+<div id="tiles" class="{{ 'grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6' if p.view == 'grid' else 'grid grid-cols-1 gap-2' }}">
   {% include "_album_items.html" %}
 </div>
 {% endblock %}

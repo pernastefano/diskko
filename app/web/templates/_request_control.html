@@ -1,8 +1,10 @@
 {# "Request download" for a missing release group.
    Needs: artist, g (release group), status (request status or none), unavailable (bool).
    Optional: info (the request: id, progress). The control polls itself while a request runs. #}
+{% from "_buttons.html" import btn %}
+{% from "_icons.html" import icon %}
 {% set running = status in ('queued', 'searching', 'candidate_found', 'downloading', 'downloaded', 'postprocessing', 'importing') %}
-<div class="request-control mt-2" id="request-{{ g.id }}"
+<div class="request-control {{ '' if big else 'mt-2' }}" id="request-{{ g.id }}"
      {% if running and info %}hx-get="/requests/{{ info.id }}/control" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
   {% if status %}
     {% set colors = {'queued': 'bg-slate-200 text-slate-700', 'searching': 'bg-blue-100 text-blue-800', 'candidate_found': 'bg-blue-100 text-blue-800', 'awaiting_choice': 'bg-amber-100 text-amber-800', 'downloading': 'bg-blue-100 text-blue-800', 'downloaded': 'bg-indigo-100 text-indigo-800', 'postprocessing': 'bg-indigo-100 text-indigo-800', 'importing': 'bg-indigo-100 text-indigo-800', 'completed': 'bg-green-100 text-green-800', 'failed': 'bg-red-100 text-red-800', 'cancelled': 'bg-slate-200 text-slate-700', 'no_results': 'bg-amber-100 text-amber-800'} %}
@@ -19,7 +21,11 @@
     <form method="post" action="/artist/{{ artist.id }}/request/{{ g.id }}"
           hx-post="/artist/{{ artist.id }}/request/{{ g.id }}" hx-target="#request-{{ g.id }}" hx-swap="outerHTML">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit" class="rounded-md border border-indigo-300 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ t('artist.request') }}</button>
+      {% if big %}
+        <button type="submit" class="{{ btn('primary') }}" data-action="request-download">{{ icon('download', 'h-4 w-4') }}{{ t('action.request_download') }}</button>
+      {% else %}
+        <button type="submit" class="rounded-md border border-indigo-300 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500" data-action="request-download">{{ t('action.request_download') }}</button>
+      {% endif %}
     </form>
     {% if unavailable %}<p class="mt-1 text-xs text-amber-700" role="status">{{ t('artist.request_unavailable') }}</p>{% endif %}
   {% endif %}

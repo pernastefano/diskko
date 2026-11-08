@@ -1,5 +1,5 @@
 {# One page of albums plus the sentinel that loads the next one when it scrolls into view. #}
-{% for r in rows %}{% include "_album_tile.html" %}
+{% for r in rows %}{% if p.view == 'list' %}{% include "_album_row.html" %}{% else %}{% include "_album_tile.html" %}{% endif %}
 {% else %}
   {% if page == 1 %}
     <p class="col-span-full rounded-lg border border-slate-200 bg-white px-4 py-8 text-center text-slate-500 shadow-sm" data-empty>

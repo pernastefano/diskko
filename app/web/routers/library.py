@@ -22,6 +22,7 @@ from app.services.library_views import (
     PAGE_SIZE,
     SORTS,
     album_facets,
+    available_album_letters,
     available_letters,
     build_artist_sections,
     list_albums,
@@ -123,8 +124,23 @@ def artist_items(
 class AlbumParams:
     """Normalized filters of the albums page; builds the query strings of its links."""
 
-    def __init__(self, q: str, quality: str, fmt: str, category: str, sort: str, page: int) -> None:
+    def __init__(
+        self,
+        q: str,
+        quality: str,
+        fmt: str,
+        category: str,
+        sort: str,
+        page: int,
+        letter: str = "",
+        view: str = "grid",
+    ) -> None:
         self.q = q.strip()[:100]
+        initial = letter.strip()[:1]
+        self.letter = (
+            initial.upper() if initial == "#" or (initial.isascii() and initial.isalpha()) else ""
+        )
+        self.view = view if view in VIEWS else "grid"
         self.quality = quality.strip()[:48]
         self.fmt = fmt.strip().lower()[:16]
         self.category = category.strip()[:24]
@@ -133,7 +149,7 @@ class AlbumParams:
 
     @property
     def filtered(self) -> bool:
-        return bool(self.q or self.quality or self.fmt or self.category)
+        return bool(self.q or self.quality or self.fmt or self.category or self.letter)
 
     def query(self, **overrides: object) -> str:
         values = {
@@ -141,6 +157,8 @@ class AlbumParams:
             "quality": self.quality,
             "fmt": self.fmt,
             "category": self.category,
+            "letter": self.letter,
+            "view": self.view if self.view != "grid" else "",
             "sort": self.sort if self.sort != "title" else "",
             "page": self.page if self.page > 1 else "",
         }
@@ -155,8 +173,10 @@ def _album_params(
     category: str = "",
     sort: str = "title",
     page: int = 1,
+    letter: str = "",
+    view: str = "grid",
 ) -> AlbumParams:
-    return AlbumParams(q, quality, fmt, category, sort, page)
+    return AlbumParams(q, quality, fmt, category, sort, page, letter, view)
 
 
 def _album_context(request: Request, db: DB, params: AlbumParams) -> dict:
@@ -168,6 +188,7 @@ def _album_context(request: Request, db: DB, params: AlbumParams) -> dict:
         quality=params.quality,
         fmt=params.fmt,
         category=params.category,
+        letter=params.letter,
         sort=params.sort,
         page=params.page,
     )
@@ -190,6 +211,8 @@ def albums_page(
     ctx["profiles"] = list(reversed(request.app.state.quality_profiles.profiles))
     ctx["sorts"] = ALBUM_SORTS
     ctx.update(album_facets(db))
+    ctx["letters"] = available_album_letters(db)
+    ctx["alphabet"] = [*"ABCDEFGHIJKLMNOPQRSTUVWXYZ", "#"]
     return render(request, "albums.html", ctx)
 
 

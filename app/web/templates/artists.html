@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_list_controls.html" import view_toggle, letter_bar with context %}
 {% block title %}{{ t('nav.artists') }}{% endblock %}
 {% block content %}
 <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -24,23 +25,11 @@
     </select>
   </div>
   <label class="flex items-center gap-2 py-2"><input type="checkbox" name="missing" value="1" {% if p.only_missing %}checked{% endif %} @change="$el.form.submit()"> {{ t('lib.only_missing') }}</label>
-  <div class="flex overflow-hidden rounded-md border border-slate-300" role="group" aria-label="{{ t('lib.view') }}">
-    <a href="/artists?{{ p.query(view='', page='') }}" class="px-3 py-2 {{ 'bg-indigo-600 text-white' if p.view == 'grid' else 'bg-white hover:bg-slate-100' }}">{{ t('lib.view.grid') }}</a>
-    <a href="/artists?{{ p.query(view='list', page='') }}" class="px-3 py-2 {{ 'bg-indigo-600 text-white' if p.view == 'list' else 'bg-white hover:bg-slate-100' }}">{{ t('lib.view.list') }}</a>
-  </div>
+  {{ view_toggle('/artists', p) }}
   <noscript><button type="submit" class="rounded-md border border-slate-300 px-3 py-2">{{ t('action.filter') }}</button></noscript>
 </form>
 
-<nav class="mb-4 flex flex-wrap gap-1 text-xs" aria-label="{{ t('lib.letters') }}">
-  <a href="/artists?{{ p.query(letter='', page='') }}" class="rounded px-2 py-1 {{ 'bg-indigo-600 text-white' if not p.letter else 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200' }}">{{ t('lib.all') }}</a>
-  {% for ch in alphabet %}
-    {% if ch in letters %}
-      <a href="/artists?{{ p.query(letter=ch, page='') }}" class="rounded px-2 py-1 {{ 'bg-indigo-600 text-white' if p.letter == ch else 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200' }}">{{ ch }}</a>
-    {% else %}
-      <span class="rounded border border-slate-100 px-2 py-1 text-slate-300">{{ ch }}</span>
-    {% endif %}
-  {% endfor %}
-</nav>
+{{ letter_bar('/artists', p, alphabet, letters) }}
 
 <div id="tiles" class="{{ 'grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6' if p.view == 'grid' else 'grid grid-cols-1 gap-2' }}">
   {% include "_artist_items.html" %}

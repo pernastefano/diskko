@@ -41,13 +41,15 @@ def test_admins_get_update_and_match_buttons_on_an_owned_album(admin_client, own
     html = page(admin_client, f"/album/{group.id}")
     assert "data-album-refresh" in html and f'action="/album/{group.id}/refresh"' in html
     assert f'href="/admin/artists/{album.artist_id}#album-{album.id}"' in html
-    assert "Update metadata" in html and "Manage match" in html
+    assert "Refresh metadata" in html and "Manage matching" in html
 
 
 def test_ordinary_users_get_neither_button(user_client, owned):
     _, group, _, _ = owned
     html = page(user_client, f"/album/{group.id}")
-    assert "data-album-admin" not in html and "/refresh" not in html and "Manage match" not in html
+    assert (
+        "data-album-admin" not in html and "/refresh" not in html and "Manage matching" not in html
+    )
     assert (
         post(user_client, f"/album/{group.id}/refresh", page=f"/album/{group.id}").status_code
         == 403
@@ -441,3 +443,60 @@ async def test_the_refresh_does_not_look_for_a_cover_the_album_already_has(
         kinds = {j.type for j in fresh.scalars(select(Job)) if j.parent_job_id == job_id}
         assert fresh.get(ReleaseGroup, group.id).cover_status == "ok"
     assert kinds == {"fetch_tracklist", "resolve_previews"}  # no fetch_covers
+
+
+# ------------------------------------------- the same actions, in the same place, on every page
+
+
+def actions(html):
+    import re
+
+    block = re.search(r"<aside[^>]*data-page-actions.*?</aside>", html, re.S)
+    return block.group(0) if block else ""
+
+
+def test_artist_and_album_pages_name_and_place_their_actions_the_same_way(
+    admin_client, user_client, db
+):
+    import re
+
+    from tests.dbhelpers import make_album, make_artist, make_rg
+
+    artist = make_artist(
+        db, "Alpha", mbid="a" * 8 + "-0000-4000-8000-000000000001", status="resolved"
+    )
+    owned = make_rg(db, artist, "Owned", 2000)
+    missing = make_rg(db, artist, "Missing", 2001)
+    album = make_album(db, artist, "Owned", year=2000)
+    album.release_group_id, album.match_status = owned.id, "matched"
+    db.commit()
+    pages = {
+        "artist": admin_client.get(f"/artist/{artist.id}").text,
+        "owned": admin_client.get(f"/album/{owned.id}").text,
+        "missing": admin_client.get(f"/album/{missing.id}").text,
+    }
+    # one right-hand column on every page, the same two admin buttons with the same names
+    for name, html in pages.items():
+        assert actions(html), name
+    for name in ("artist", "owned", "missing"):
+        assert "Refresh metadata" in actions(pages[name]), name
+    for name in ("artist", "owned"):
+        assert "Manage matching" in actions(pages[name]), name
+    assert "Manage matching" not in actions(pages["missing"])  # nothing of ours to match
+    # the request is the primary button of the column, with the same name everywhere
+    assert "Request download" in actions(pages["missing"]) and "Request download" not in actions(
+        pages["owned"]
+    )
+    for old in ("Update metadata", "Manage match<", "Refresh Metadata"):
+        assert all(old not in html for html in pages.values())
+    # buttons look the same: one style, with an icon
+    classes = {
+        re.search(r'class="([^"]*)"[^>]*data-action="refresh-metadata"', actions(h)).group(1)
+        for h in pages.values()
+    }
+    assert len(classes) == 1
+    assert "<svg" in actions(pages["artist"])
+    # users see no admin buttons, but still the request
+    user_missing = user_client.get(f"/album/{missing.id}").text
+    assert "Refresh metadata" not in user_missing and "Request download" in actions(user_missing)
+    assert actions(user_client.get(f"/artist/{artist.id}").text) == ""

@@ -208,3 +208,53 @@ def test_the_dashboard_is_the_home_page_and_the_nav_has_the_new_pages(admin_clie
 
 def test_album_rows_are_owned_albums_only(db, albums):
     assert db.query(LibraryAlbum).count() == 3
+
+
+# ------------------------------------------------- letters and views, like the Artists page
+
+
+def test_albums_have_a_letter_bar_and_filter_by_the_initial(admin_client, db, albums):
+    make_album(db, make_artist(db, "Gamma"), "9 Lives", 2001)
+    text = page(admin_client)
+    assert "data-letter-bar" in text
+    bar = re.search(r"<nav[^>]*data-letter-bar.*?</nav>", text, re.S).group(0)
+    assert 'href="/albums?letter=A"' in bar and 'href="/albums?letter=%23"' in bar  # A and "#"
+    assert 'href="/albums?letter=Z"' not in bar  # no album starts with Z: not a link
+    assert sorted(tile_titles(page(admin_client, "?letter=A"))) == ["Alpha Live", "Alpha One"]
+    assert tile_titles(page(admin_client, "?letter=b")) == ["Beta Tape"]  # case does not matter
+    assert tile_titles(page(admin_client, "?letter=%23")) == ["9 Lives"]  # not A-Z
+    assert "data-empty" in page(admin_client, "?letter=Z")
+    assert tile_titles(page(admin_client, "?letter=%25%27")) == tile_titles(page(admin_client))
+
+
+def test_the_letter_filter_works_in_the_infinite_scroll_fragment_and_keeps_the_view(
+    admin_client, albums
+):
+    r = admin_client.get("/albums/items?letter=A&view=list", headers=HX)
+    assert r.status_code == 200 and "<html" not in r.text
+    assert "Alpha One" in r.text and "Beta Tape" not in r.text
+    assert 'data-album="' in r.text and "aspect-square" not in r.text  # rows, not tiles
+
+
+def test_albums_can_be_shown_as_a_list_and_the_toggle_uses_icons_not_words(admin_client, albums):
+    grid, rows = page(admin_client), page(admin_client, "?view=list")
+    for text in (grid, rows):
+        toggle = re.search(r"<div[^>]*data-view-toggle.*?</div>", text, re.S).group(0)
+        assert (
+            toggle.count("<svg") == 2
+            and 'data-view="grid"' in toggle
+            and 'data-view="list"' in toggle
+        )
+        links = re.findall(r"<a [^>]*data-view[^>]*>(.*?)</a>", toggle, re.S)
+        assert all(re.sub(r"<[^>]+>", "", x).strip() == "" for x in links)  # no visible label
+        assert 'aria-label="Grid"' in toggle and 'aria-label="List"' in toggle  # but accessible
+    assert 'aria-current="true"' in re.search(r'<a [^>]*data-view="list"[^>]*>', rows).group(0)
+    assert "grid-cols-1" in rows and "lg:grid-cols-6" in grid
+    assert rows.count('data-album="') == 3
+    assert 'name="view" value="list"' in rows  # the search box keeps the view
+
+
+def test_the_artists_page_uses_the_same_icon_toggle(admin_client):
+    text = admin_client.get("/artists").text
+    toggle = re.search(r"<div[^>]*data-view-toggle.*?</div>", text, re.S).group(0)
+    assert toggle.count("<svg") == 2 and ">Grid<" not in toggle and ">List<" not in toggle

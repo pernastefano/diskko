@@ -1,0 +1,26 @@
+{% from "_icons.html" import icon %}
+{# Controls shared by the Artists and Albums lists. Import with context. `base` is the page path,
+   `p` the page's parameters (needs .query(), .view, .letter). #}
+
+{% macro view_toggle(base, p) %}
+<div class="flex overflow-hidden rounded-md border border-slate-300" role="group" aria-label="{{ t('lib.view') }}" data-view-toggle>
+  {% for v in ('grid', 'list') %}
+    <a href="{{ base }}?{{ p.query(view='' if v == 'grid' else v, page='') }}" data-view="{{ v }}"
+       title="{{ t('lib.view.' ~ v) }}" aria-label="{{ t('lib.view.' ~ v) }}" {% if p.view == v %}aria-current="true"{% endif %}
+       class="flex items-center px-3 py-2 {{ 'bg-indigo-600 text-white' if p.view == v else 'bg-white hover:bg-slate-100' }}">{{ icon(v, 'h-4 w-4') }}</a>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro letter_bar(base, p, alphabet, letters) %}
+<nav class="mb-4 flex flex-wrap gap-1 text-xs" aria-label="{{ t('lib.letters') }}" data-letter-bar>
+  <a href="{{ base }}?{{ p.query(letter='', page='') }}" class="rounded px-2 py-1 {{ 'bg-indigo-600 text-white' if not p.letter else 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200' }}">{{ t('lib.all') }}</a>
+  {% for ch in alphabet %}
+    {% if ch in letters %}
+      <a href="{{ base }}?{{ p.query(letter=ch, page='') }}" class="rounded px-2 py-1 {{ 'bg-indigo-600 text-white' if p.letter == ch else 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200' }}">{{ ch }}</a>
+    {% else %}
+      <span class="rounded border border-slate-100 px-2 py-1 text-slate-300">{{ ch }}</span>
+    {% endif %}
+  {% endfor %}
+</nav>
+{% endmacro %}

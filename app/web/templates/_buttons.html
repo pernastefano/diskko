@@ -1,0 +1,5 @@
+{# The one look of the action buttons of the artist and album pages. Usage:
+   <button class="{{ btn('primary') }}">...</button>  (kind: primary, secondary) #}
+{% macro btn(kind='secondary') -%}
+inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 {{ 'bg-indigo-600 text-white hover:bg-indigo-700' if kind == 'primary' else 'border border-slate-300 hover:bg-slate-100' }}
+{%- endmacro %}
