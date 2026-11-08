@@ -13,11 +13,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
-from app.models import SOURCE_FILESYSTEM, LibraryAlbum
+from app.models import SOURCE_FILESYSTEM, LibraryAlbum, LibraryTrack
 from app.quality import ProfileSet
 from app.services.importer.integrity import DownloadedFile, ImportRejected
 from app.services.importer.naming import (
@@ -171,6 +171,70 @@ def owned_folders(db: Session, music_dir: Path, release_group_id: int) -> list[t
         )
     )
     return [(a.id, Path(music_dir) / a.path) for a in rows if a.path]
+
+
+def shared_folders(
+    db: Session, music_dir: Path, owned: list[tuple[int, Path]]
+) -> dict[Path, list[Path]]:
+    """Of the folders of `owned` albums, those that hold other library albums too (flat layouts,
+    discs merged into the parent folder), with the files of the owned albums inside each: a
+    shared folder must never be moved as a whole, only the files of the album itself."""
+    music = Path(music_dir)
+    ids = [album_id for album_id, _ in owned]
+    shared: dict[Path, list[Path]] = {}
+    for album_id, folder in owned:
+        relative = folder.relative_to(music).as_posix() if folder.is_relative_to(music) else None
+        if relative is None:
+            continue
+        others = db.scalar(
+            select(func.count(LibraryAlbum.id)).where(
+                LibraryAlbum.source == SOURCE_FILESYSTEM,
+                LibraryAlbum.path == relative,
+                LibraryAlbum.id.not_in(ids),
+            )
+        )
+        if others:
+            tracks = db.scalars(
+                select(LibraryTrack.path).where(
+                    LibraryTrack.album_id == album_id, LibraryTrack.source == SOURCE_FILESYSTEM
+                )
+            )
+            shared.setdefault(folder, []).extend(music / p for p in tracks)
+    return shared
+
+
+def set_aside_files(
+    files: list[Path], folder: Path, replaced_root: Path, request_id: int, stamp: str
+) -> Path:
+    """Move only some files of a shared folder out of the library (never deleted)."""
+    base = replaced_root / f"{request_id}-{stamp}" / folder.name
+    base.mkdir(parents=True, exist_ok=True)
+    for path in files:
+        if path.is_file() and path.resolve().is_relative_to(folder.resolve()):
+            target = base / path.name
+            n = 2
+            while target.exists():
+                target = base / f"{path.stem} ({n}){path.suffix}"
+                n += 1
+            shutil.move(str(path), str(target))
+    return base
+
+
+MARKER_PREFIX = ".diskko-import-"
+
+
+def mark_staged(staging: Path, request_id: int) -> None:
+    """Put a hidden marker in the staged folder: it travels with the atomic rename, so a folder
+    that has it was put in place by this very request (an earlier, interrupted run)."""
+    (staging / f"{MARKER_PREFIX}{request_id}").write_text("diskko import in progress\n")
+
+
+def is_marked(folder: Path, request_id: int) -> bool:
+    return (folder / f"{MARKER_PREFIX}{request_id}").is_file()
+
+
+def unmark(folder: Path, request_id: int) -> None:
+    (folder / f"{MARKER_PREFIX}{request_id}").unlink(missing_ok=True)
 
 
 def set_aside(folder: Path, replaced_root: Path, request_id: int, stamp: str) -> Path:

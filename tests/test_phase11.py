@@ -75,7 +75,9 @@ def test_forwarded_addresses_count_only_when_the_proxy_is_trusted(settings, app)
     request = Request(scope)
     assert client_ip(request, settings) == "172.18.0.1"
     trusted = settings.model_copy(update={"trust_proxy": True})
-    assert client_ip(request, trusted) == "9.9.9.9"
+    assert client_ip(request, trusted) == "10.0.0.1"  # what our proxy added: the last entry
+    two = settings.model_copy(update={"trust_proxy": True, "trust_proxy_hops": 2})
+    assert client_ip(request, two) == "9.9.9.9"  # two proxies in front: one more to the left
 
 
 def test_a_throttled_attempt_is_in_the_audit_log(admin_client, new_client):
@@ -308,3 +310,44 @@ def test_a_library_path_cannot_climb_out_or_follow_a_link_out(tmp_path):
 def test_the_covers_route_only_serves_its_own_files(admin_client):
     for name in ("..%2f..%2fapp.db", "a%2fb.jpg", "x.php", "%2e%2e%2fapp.db"):
         assert admin_client.get(f"/covers/{name}").status_code == 404
+
+
+def test_a_spoofed_first_forwarded_address_does_not_choose_who_is_counted(settings):
+    """A browser can write anything at the left of X-Forwarded-For; the proxy appends the real
+    address at the right. Rotating the spoofed part must not change the address counted."""
+    from starlette.requests import Request
+
+    from app.auth.throttle import client_ip
+
+    trusted = settings.model_copy(update={"trust_proxy": True})
+    seen = set()
+    for fake in ("1.1.1.1", "2.2.2.2", "3.3.3.3, 4.4.4.4"):
+        scope = {
+            "type": "http",
+            "headers": [(b"x-forwarded-for", f"{fake}, 198.51.100.7".encode())],
+            "client": ("172.18.0.1", 1),
+        }
+        seen.add(client_ip(Request(scope), trusted))
+    assert seen == {"198.51.100.7"}
+    # fewer entries than proxies configured: fall back to the connection's own address
+    scope = {"type": "http", "headers": [], "client": ("172.18.0.1", 1)}
+    assert client_ip(Request(scope), trusted) == "172.18.0.1"
+
+
+def test_the_throttle_forgets_stale_keys_instead_of_growing_for_ever():
+    from app.auth import throttle as th
+
+    now = [0.0]
+    t = th.LoginThrottle(clock=lambda: now[0])
+
+    class S:
+        login_window_seconds = 60
+        login_max_attempts = 5
+        login_max_attempts_ip = 20
+
+    for i in range(th.SWEEP_ABOVE + 50):  # made-up account names
+        t.failed(f"10.0.{i % 250}.1", f"ghost{i}")
+    assert len(t._failures) > th.SWEEP_ABOVE
+    now[0] += 61
+    t.retry_after(S, "9.9.9.9", "someone")
+    assert len(t._failures) == 0

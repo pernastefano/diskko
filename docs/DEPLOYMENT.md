@@ -12,7 +12,7 @@ docker run -d --name diskko \
   -e PUID=1000 -e PGID=1000 \
   -e SECRET_KEY='<a long random value>' \
   -e BASE_URL=http://localhost:8000 \
-  -v ./data:/data \
+  -v "$(pwd)/data":/data \
   -v /path/to/music:/music \
   -v /path/to/slskd-downloads:/downloads \
   --restart unless-stopped \
@@ -48,8 +48,8 @@ services:
     image: ghcr.io/pernastefano/diskko:latest
     container_name: diskko
     restart: unless-stopped
+    mem_limit: 1g          # raise it for a very large library
     init: true
-    mem_limit: 1g                  # raise it for a very large library
     security_opt: ["no-new-privileges:true"]
     logging:
       driver: json-file
@@ -61,34 +61,45 @@ services:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
       TZ: ${TZ:-Europe/Rome}
-      BASE_URL: ${BASE_URL:-http://localhost:8000}
-      SLSKD_URL: http://slskd:5030
+      PORT: "8000"
+      # container paths (they win over the dev values in .env)
       DATA_DIR: /data
       MUSIC_DIR: /music
       DOWNLOADS_DIR: /downloads
+      BASE_URL: ${BASE_URL:-http://localhost:8000}
+      SLSKD_URL: http://slskd:5030
     volumes:
       - ./data:/data
       - /path/to/music:/music
-      - ./downloads:/downloads     # shared with slskd
-    depends_on: [slskd]
+      - ./downloads:/downloads   # shared with slskd
+    depends_on:
+      - slskd
 
   slskd:
     image: slskd/slskd:latest
     container_name: slskd
     restart: unless-stopped
-    ports: ["5030:5030", "5031:5031", "50300:50300"]
+    ports:
+      - "127.0.0.1:5030:5030"   # slskd's own web page, for setting it up (DISKKO uses the Compose network)
+      - "50300:50300"           # Soulseek peers; forward it on your router for full connectivity
     environment:
       SLSKD_REMOTE_CONFIGURATION: "true"
       SLSKD_DOWNLOADS_DIR: /downloads
-      SLSKD_API_KEY: ${SLSKD_API_KEY:-}
+      SLSKD_SLSK_USERNAME: ${SLSKD_SLSK_USERNAME}   # your Soulseek account
+      SLSKD_SLSK_PASSWORD: ${SLSKD_SLSK_PASSWORD}
+      SLSKD_USERNAME: ${SLSKD_USERNAME:-admin}      # slskd web page (default slskd/slskd is public knowledge)
+      SLSKD_PASSWORD: ${SLSKD_PASSWORD}
+      SLSKD_API_KEY: ${SLSKD_API_KEY}               # 16 to 255 characters; the same value goes in DISKKO
     volumes:
       - ./slskd:/app
-      - ./downloads:/downloads     # the same host folder as diskko
+      - ./downloads:/downloads   # same host folder as diskko
 ```
 
-The repository's [`docker-compose.yml`](../docker-compose.yml) is this file. Put the secrets in an
+This is the repository's [`docker-compose.yml`](../docker-compose.yml). Put the secrets in an
 `.env` next to it (Compose reads it, and so does DISKKO through `env_file`) and keep it out of
-version control. Update with `docker compose pull && docker compose up -d`; the database is
+version control. Copy [`.env.example`](../.env.example) to `.env` and edit it: set `SECRET_KEY`, the
+Soulseek and SLSKD values below, and `MB_USER_AGENT`. The container listens on `PORT=8000` (the
+Compose file sets it, so the `8080` of the example file only applies to development). Update with `docker compose pull && docker compose up -d`; the database is
 migrated at start-up.
 
 ## PUID and PGID
@@ -121,9 +132,26 @@ in Plex, `/music` here), set `LIBRARY_PATH_MAP` (`plex_prefix=local_prefix;...`,
 `/data/music=/music`). The same map, reversed, is used to tell Plex which folder to scan after an
 import. Plex does not need to run on the same machine, only to reach the same files.
 
-**SLSKD.** Create an API key with the `ReadWrite` (or `Administrator`) role in its configuration and
-paste it in **Settings → Integrations**. Soulseek downloads are saved under
-`/downloads/diskko/<request id>/` and moved into the library when they pass the checks.
+**SLSKD.** DISKKO talks to slskd's API; slskd talks to the Soulseek network. Before the first
+request:
+
+1. **A Soulseek account.** slskd needs a username and password for the Soulseek network (a free
+   account: choose any free name). In the Compose file above they are `SLSKD_SLSK_USERNAME` and
+   `SLSKD_SLSK_PASSWORD`; in slskd's own `slskd.yml` they are `soulseek.username` and
+   `soulseek.password`. Without them slskd is not connected and every search finds nothing
+   (DISKKO's **Status** page says so).
+2. **An API key** (16 to 255 characters). `SLSKD_API_KEY` defines slskd's main key, which has the
+   `Administrator` role, so it can search and download. Put the same value in **Settings →
+   Integrations → SLSKD** together with the address (`http://slskd:5030`). If you define other keys in
+   `slskd.yml` (`web.authentication.api_keys`), do not give DISKKO a read-only one.
+3. **Change slskd's web login.** Its default is `slskd` / `slskd`; set `SLSKD_USERNAME` and
+   `SLSKD_PASSWORD`. The Compose file publishes the web page only on `127.0.0.1`; DISKKO does not
+   need it, it reaches slskd as `slskd:5030` on the Compose network.
+4. **Forward port 50300** (the Soulseek listening port) on your router, or other users cannot
+   connect to you and downloads are slower or fail more often.
+
+Soulseek downloads are saved under `/downloads/diskko/<request id>/` and moved into the library
+when they pass the checks.
 
 ## HTTPS and a reverse proxy
 
@@ -132,8 +160,11 @@ address: session cookies then get the `Secure` flag (they are always `HttpOnly` 
 `SameSite=Lax`), and the app insists on a real `SECRET_KEY`.
 
 Behind a proxy you control, also set `TRUST_PROXY=true` so the sign-in limit counts the browser's
-address and not the proxy's. Never set it when DISKKO is reachable directly, or anyone could pick
-the address they are counted as.
+address and not the proxy's. DISKKO takes the address your proxy appended to `X-Forwarded-For`
+(the last entry; if several proxies are chained set `TRUST_PROXY_HOPS` to how many, e.g. `2` for a
+CDN plus your proxy), never the left-most one, which a browser can write
+itself. Never set it when DISKKO is reachable directly, or anyone could pick the address they are
+counted as.
 
 Caddy:
 
@@ -174,7 +205,7 @@ can be read, and `503` otherwise. The image has a `HEALTHCHECK` on it (`docker p
 The image logs one JSON object per line (`LOG_FORMAT=json`); set `LOG_FORMAT=text` for readable
 lines. `LOG_LEVEL` defaults to `INFO`. Plex tokens, API keys, the secret key and `token=`/`api_key=`
 pairs are scrubbed from every line, including tracebacks. Job logs, with their progress, are in
-**Admin → Jobs** and are kept for 1 to 60 days depending on the job (configurable).
+the **Jobs** page (icon in the top bar) and are kept for 1 to 60 days depending on the job (configurable).
 
 ## Security notes
 
@@ -198,7 +229,7 @@ pairs are scrubbed from every line, including tracebacks. Job logs, with their p
 
 ## Backups and restore
 
-DISKKO backs up its database every night at 03:15 (`BACKUP_CRON`, empty to turn it off) into
+DISKKO backs up its database every night at 03:15 in your `TZ` (`BACKUP_CRON`, empty to turn it off) into
 `/data/backups/diskko-YYYYmmdd-HHMMSS.db` and keeps the newest 7 (`BACKUP_KEEP`). It uses SQLite's
 online backup, so the copy is consistent while the app runs, and it is integrity-checked before it
 appears. **Settings → Backups** lists the copies, makes one now and downloads any of them.
@@ -207,7 +238,8 @@ A backup holds everything in the database (users, requests, settings, the saved 
 library index) and none of your music files. Copy it somewhere else regularly: a backup on the
 same disk does not survive the disk.
 
-To restore:
+To restore (this is for the bind-mounted `./data` of the Compose file; a downloaded backup must be
+renamed to `app.db`):
 
 ```bash
 docker compose stop diskko
@@ -225,14 +257,20 @@ folder changed since the backup.
 docker compose pull && docker compose up -d
 ```
 
-Database migrations run at start-up. Back up first (**Backups → Back up now**) before a major
-upgrade. To go back, restore the backup and run the previous image tag.
+Database migrations run at start-up and are not reversible. Back up first (**Settings → Backups →
+Back up now**) before a major upgrade, and pin a version tag (`image: ghcr.io/pernastefano/diskko:v0.1.2`)
+instead of `latest` so you can go back: stop DISKKO, restore the backup as above, set the previous
+tag and start it again.
 
 ## Configuration reference
 
-Environment variables are the defaults and the start-up values; what an administrator saves under
-**Settings** replaces them (and *Use default* brings them back). `SECRET_KEY`, `BASE_URL`,
-`DATA_DIR`, `TZ` and the logging, sign-in and backup variables are read only from the environment.
+Environment variables are the defaults and the start-up values. Once an administrator saves a field
+under **Settings**, the saved value wins and the environment value for that field is ignored (also
+if you change it later in `.env`); change it in Settings. Some variables are not in Settings at
+all and are read only from the environment: `ENV`, `SECRET_KEY`, `BASE_URL`, `PORT`, `DATA_DIR`,
+`TZ`, `JOBS_ENABLED`, `SESSION_TTL_HOURS`, `MIN_PASSWORD_LENGTH`, `STATUS_CHECK_MINUTES`,
+`LIBRARY_MAX_REMOVAL_PCT`, `SLSKD_STALL_MINUTES`, `SLSKD_QUEUE_MINUTES`, `SLSKD_MAX_HOURS`,
+`SLSKD_FILE_RETRIES`, and the logging, sign-in and backup variables.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -240,13 +278,16 @@ Environment variables are the defaults and the start-up values; what an administ
 | `SECRET_KEY` | `change-me` | Signs session cookies. |
 | `BASE_URL` | `http://localhost:8080` | Public address; `https://` makes cookies `Secure`. |
 | `PUID`, `PGID` | `1000` | Container user and group. |
-| `TZ` | `UTC` | Time zone for schedules. |
+| `PORT` | `8000` in the image | Port inside the container (the Compose file sets it; `.env.example` says 8080 for development). |
+| `TZ` | `UTC` | Time zone of the schedules (nightly scan, backup, cleanup). Backup file names are always UTC. |
+| `JOBS_ENABLED` | `true` | `false` runs the web app without the job worker (development only). |
+| `MIN_PASSWORD_LENGTH` | `8` | Shortest password accepted. |
 | `DATA_DIR`, `MUSIC_DIR`, `DOWNLOADS_DIR` | | Container paths (see Volumes). |
 | `QUARANTINE_DIR` | `<downloads>/diskko/quarantine` | Where downloads that cannot be imported wait. |
 | `IMPORT_FOLDER_TEMPLATE`, `IMPORT_FILE_TEMPLATE` | `{artist}/{album} ({year})`, `{track:02d} - {title}` | Naming of imported albums. |
 | `SESSION_TTL_HOURS` | `336` | Session length (sliding). |
 | `LOGIN_MAX_ATTEMPTS`, `LOGIN_MAX_ATTEMPTS_IP`, `LOGIN_WINDOW_SECONDS` | `5`, `20`, `300` | Sign-in limit. |
-| `TRUST_PROXY` | `false` | Trust `X-Forwarded-For`. |
+| `TRUST_PROXY`, `TRUST_PROXY_HOPS` | `false`, `1` | Trust `X-Forwarded-For`, and how many proxies in front append to it. |
 | `LOG_FORMAT`, `LOG_LEVEL` | `text` (`json` in the image), `INFO` | Logging. |
 | `BACKUP_CRON`, `BACKUP_KEEP` | `15 3 * * *`, `7` | Nightly backup. |
 | `LIBRARY_SOURCE` | `filesystem` | `filesystem` or `plex`. |
@@ -265,7 +306,7 @@ Environment variables are the defaults and the start-up values; what an administ
 | `JOB_RETENTION_*_DAYS`, `AUDIT_RETENTION_DAYS` | `1`/`14`/`60`, `365` | How long finished jobs and the audit log are kept. |
 | `STATUS_CHECK_MINUTES` | `5` | How often services are checked (0 turns it off). |
 
-[`.env.example`](../.env.example) lists them all with comments.
+[`.env.example`](../.env.example) lists the ones you are most likely to set, with comments; the table above is the complete list of what you normally change (the rest, such as service URLs, has sensible defaults in `app/config.py`).
 
 ## Troubleshooting
 
@@ -276,6 +317,9 @@ Environment variables are the defaults and the start-up values; what an administ
 | Plex source finds no files | Plex's paths differ from yours: set `LIBRARY_PATH_MAP`. |
 | A scan stops with *Is the music folder mounted?* | It would remove more than 50% of known tracks. Mount the folder, or raise `LIBRARY_MAX_REMOVAL_PCT` on purpose. |
 | Downloads finish but are not imported | DISKKO and SLSKD do not share the downloads folder, or `DOWNLOADS_DIR` points elsewhere. |
-| Everyone gets `429` at sign-in behind a proxy | Set `TRUST_PROXY=true` so each browser is counted by its own address. |
+| Everyone gets `429` at sign-in behind a proxy | Set `TRUST_PROXY=true`: otherwise all browsers share the proxy's address and its limit of 20 failed attempts. |
+| The page is unstyled or buttons do nothing | The browser cannot reach the CDNs the interface loads Tailwind, HTMX and Alpine from (see *Good to know* in the README). |
+| Albums listed twice after switching library source | The purge of the other source is skipped when the scanned source has fewer than half its tracks; fix the scan (mount, Plex path) and scan again. |
+| Plex scans the whole library after an import | Plex refused a partial scan, did not show the album afterwards, or more than 20 folders were waiting; it falls back to scanning the music section once. |
 | MusicBrainz lookups never start | `MB_USER_AGENT` is empty. |
 | `docker ps` shows `unhealthy` | `docker logs diskko`: usually the database file is not writable. |

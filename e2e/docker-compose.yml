@@ -1,4 +1,4 @@
-# End-to-end test stack (used by .github/workflows/e2e.yml; runnable locally with Docker too):
+# End-to-end test stack (used by .github/workflows/docker.yml (the `e2e` job); runnable locally with Docker too):
 #   docker compose -f e2e/docker-compose.yml up -d --build --wait
 #   python e2e/run_e2e.py
 # DISKKO runs from the image built from this repository, next to a mock Plex and a mock SLSKD

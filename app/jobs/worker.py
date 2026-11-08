@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import time
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -14,6 +15,8 @@ from app.jobs.errors import JobCancelled, PermanentJobError, RetryLater
 from app.models import Job
 
 log = logging.getLogger("diskko.jobs")
+DB_WRITE_ATTEMPTS = 5  # tries to record the end of a job when the database is busy
+DB_WRITE_PAUSE = 0.5  # seconds, times the attempt number
 
 
 class JobWorker:
@@ -95,13 +98,21 @@ class JobWorker:
             if self._active[queue] > self._target[queue]:  # fewer workers wanted: retire
                 self._active[queue] -= 1
                 return
-            job = await asyncio.to_thread(self._claim, queue)
+            try:
+                job = await asyncio.to_thread(self._claim, queue)
+            except Exception as exc:  # noqa: BLE001 - a busy database must not end the loop
+                log.warning("queue %s: could not claim a job: %s", queue, type(exc).__name__)
+                await asyncio.sleep(interval)
+                continue
             if job is None:
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(self._wake.wait(), timeout=interval)
                 self._wake.clear()
                 continue
-            await self._run_job(job)
+            try:
+                await self._run_job(job)
+            except Exception:  # noqa: BLE001 - the loop survives whatever one job does
+                log.exception("queue %s: job %s could not be finished", queue, job.id)
 
     def _claim(self, queue: str) -> Job | None:
         with self._factory() as db:
@@ -148,16 +159,30 @@ class JobWorker:
 
     # ---------------------------------------------------------- DB helpers
 
+    def _retrying(self, action) -> None:
+        """Run a write that records the end of a job. "database is locked" and the like are
+        transient: try again a few times before giving up (the caller logs the failure)."""
+        for attempt in range(DB_WRITE_ATTEMPTS):
+            try:
+                with self._factory() as db:
+                    action(db)
+                return
+            except Exception:  # noqa: BLE001
+                if attempt == DB_WRITE_ATTEMPTS - 1:
+                    raise
+                time.sleep(DB_WRITE_PAUSE * (attempt + 1))
+
     def _call(self, func, *args) -> None:
-        with self._factory() as db:
-            func(db, *args)
+        self._retrying(lambda db: func(db, *args))
 
     def _fail(self, job_id: int, message: str, retry_in: float | None = None) -> None:
-        with self._factory() as db:
-            engine.finish_failure(
+        self._retrying(
+            lambda db: engine.finish_failure(
                 db, job_id, message, retry_in=retry_in, max_lines=self.settings.job_log_max_lines
             )
+        )
 
     def _succeed(self, job_id: int) -> None:
-        with self._factory() as db:
-            engine.finish_success(db, job_id, max_lines=self.settings.job_log_max_lines)
+        self._retrying(
+            lambda db: engine.finish_success(db, job_id, max_lines=self.settings.job_log_max_lines)
+        )

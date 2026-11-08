@@ -2,12 +2,12 @@
 
 import time
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Artist, LibraryAlbum, LibraryTrack, utcnow
+from app.models import MATCH_UNMATCHED, MB_RESOLVED, Artist, LibraryAlbum, LibraryTrack, utcnow
 from app.services.app_settings import get_setting, set_setting
 from app.services.library.grouping import name_key
 from app.services.library.provider import (
@@ -47,6 +47,9 @@ class ScanSummary:
     other_source_albums_removed: int = 0  # rows of the source that is no longer the active one
     duration_s: float = 0.0
     finished_at: str = ""
+    # Artists with new tracks whose albums MusicBrainz data we have does not know yet (a very new
+    # release): their discography is synced again. Not saved with the last scan.
+    resync_artist_ids: list[int] = field(default_factory=list)
 
 
 def _track_to_scanned(row: LibraryTrack) -> ScannedTrack:
@@ -254,6 +257,45 @@ def _purge_other_sources(
     return albums, tracks
 
 
+def _unmatched_artists(db: Session) -> set[int]:
+    """Artists we know from MusicBrainz that have a library album with no match."""
+    return set(
+        db.scalars(
+            select(LibraryAlbum.artist_id)
+            .join(Artist, Artist.id == LibraryAlbum.artist_id)
+            .where(
+                LibraryAlbum.match_status == MATCH_UNMATCHED, Artist.metadata_synced_at.is_not(None)
+            )
+            .distinct()
+        )
+    )
+
+
+def match_new_albums(db: Session, changed: list[int]) -> list[int]:
+    """Match albums to MusicBrainz right after a scan (it is local work, no request): the albums
+    of the artists that got new tracks, and any album of a known artist still without a match (a
+    scan that stopped halfway, a source switch). Returns the artists that got new tracks and
+    still have an unmatched album: the release is probably newer than their stored discography,
+    so the caller syncs them again. Artists never synced wait for their first sync."""
+    todo = set(changed) | _unmatched_artists(db)
+    resync: list[int] = []
+    for artist_id in sorted(todo):
+        artist = db.get(Artist, artist_id)
+        if artist is None or artist.metadata_synced_at is None:
+            continue
+        match_artist_albums(db, artist_id)
+        if artist_id in changed and artist.mb_status == MB_RESOLVED:
+            left = db.scalar(
+                select(func.count(LibraryAlbum.id)).where(
+                    LibraryAlbum.artist_id == artist_id,
+                    LibraryAlbum.match_status == MATCH_UNMATCHED,
+                )
+            )
+            if left:
+                resync.append(artist_id)
+    return resync
+
+
 def save_artists(db: Session, source: str, artists: list[ScannedArtist]) -> list[int]:
     """Save scanned artists with their albums and tracks (the caller commits). Returns the ids of
     the artists. Used to record one imported album without scanning the whole library."""
@@ -323,12 +365,7 @@ def run_scan(
             db, source, max_removal_pct, reporter
         )
         summary.artists_deactivated = deactivated + _deactivate_empty_artists(db)
-        # New albums of artists we already know from MusicBrainz are matched right away (it is
-        # local work); the others wait for their first sync.
-        for artist_id in changed:
-            artist = db.get(Artist, artist_id)
-            if artist is not None and artist.metadata_synced_at is not None:
-                match_artist_albums(db, artist_id)
+        summary.resync_artist_ids = match_new_albums(db, changed)
         summary.artists = db.scalar(
             select(func.count(Artist.id)).where(Artist.in_library.is_(True))
         )
@@ -337,7 +374,9 @@ def run_scan(
         )
         summary.duration_s = round(time.monotonic() - started, 2)
         summary.finished_at = utcnow().isoformat(timespec="seconds")
-        set_setting(db, LAST_SCAN_KEY, asdict(summary))
+        saved = asdict(summary)
+        saved.pop("resync_artist_ids", None)
+        set_setting(db, LAST_SCAN_KEY, saved)
         db.commit()
     reporter.progress(100, "Done")
     return summary

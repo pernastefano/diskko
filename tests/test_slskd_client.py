@@ -396,3 +396,16 @@ async def test_cancel_errors_are_reported(ssettings):
         async with client(ssettings) as c:
             with pytest.raises(SlskdError, match="HTTP 400"):
                 await c.cancel_transfer("alice", "x")
+
+
+async def test_a_peer_name_cannot_add_path_segments_to_the_cancel_request(ssettings):
+    """The username comes from a Soulseek peer: it is one path segment, whatever it contains."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.delete(url__regex=r".*/transfers/downloads/.*").respond(204)
+        async with client(ssettings) as c:
+            await c.cancel_transfer("../../application#x?y", "id/with/slashes")
+        sent = next(r for r in mock.calls if r.request.method == "DELETE").request
+    path = sent.url.raw_path.decode().split("?")[0]
+    assert path.startswith("/api/v0/transfers/downloads/")
+    assert path.count("/") == 6  # /api/v0/transfers/downloads/<user>/<id>: two segments only
+    assert "%2F" in path and "#" not in path and "application" not in path.split("/")

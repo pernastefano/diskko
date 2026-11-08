@@ -5,6 +5,7 @@ import asyncio
 from app.jobs import engine
 from app.jobs.context import JobContext
 from app.jobs.errors import PermanentJobError
+from app.jobs.handlers.sync_artist import sync_dedupe_key
 from app.jobs.registry import job_handler
 from app.services.library import build_provider
 from app.services.library.provider import LibraryError, ScanReporter
@@ -38,6 +39,23 @@ async def scan_library(ctx: JobContext) -> None:
                 db, "sync_pending_artists", {}, dedupe_key="sync_pending_artists"
             )
         )
+        if summary.resync_artist_ids:  # a new album their stored discography lacks: sync again
+
+            def resync(db) -> None:
+                for artist_id in summary.resync_artist_ids:
+                    engine.enqueue(
+                        db,
+                        "sync_artist_metadata",
+                        {"artist_id": artist_id},
+                        dedupe_key=sync_dedupe_key(artist_id),
+                        parent_job_id=ctx.job_id,
+                    )
+
+            await ctx.run_db(resync)
+            await ctx.log(
+                f"{len(summary.resync_artist_ids)} artist(s) have a new album without a "
+                "MusicBrainz match: their discography is synced again"
+            )
     await ctx.run_db(  # new artists get their picture
         lambda db: engine.enqueue(db, "fetch_artist_images", {}, dedupe_key="fetch_artist_images")
     )

@@ -24,6 +24,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -410,7 +411,8 @@ class SlskdClient:
     ) -> None:
         resp = await self._request(
             "DELETE",
-            f"/transfers/downloads/{username}/{transfer_id}",
+            # the username comes from a Soulseek peer: never let it add path segments
+            f"/transfers/downloads/{quote(username, safe='')}/{quote(str(transfer_id), safe='')}",
             params={"remove": str(remove).lower()},
         )
         if resp.status_code not in (200, 204, 404):

@@ -34,7 +34,7 @@
 - **From wish to library in one click.** Request an album and DISKKO searches SLSKD, picks the best source for the quality you want, follows the download, tags the files, moves them into the library and tells Plex.
 - **Safe with your files.** Nothing in the library is ever overwritten: a download that cannot be imported goes to quarantine with the reason, and every move is atomic.
 - **Shared, not mixed.** Several people can use one installation. The library is shared; requests, notifications and preferences are per user, and administrators see everything (with an audit log).
-- **Yours.** One SQLite file on your own server. No analytics, no accounts elsewhere. Sign-in is rate-limited and the database is backed up every night.
+- **Yours.** One SQLite file on your own server. No analytics and no accounts elsewhere; the only third-party requests from your browser are the interface libraries (see *Good to know*). Sign-in is rate-limited and the database is backed up every night.
 - **Simple to run.** One container (amd64 and arm64, so a NAS is fine) plus the SLSKD you probably already have. English and Italian interface, light (Sand) and dark (Graphite) themes.
 
 ## How it works
@@ -48,7 +48,7 @@ Everything slow or external is a **job** that you can follow in real time in the
 | **Request** | An album you miss, or an upgrade to a better quality, is requested from its artist page. |
 | **Download** | SLSKD is searched, candidates are scored against the quality profile, the best one is downloaded (or you choose). |
 | **Import** | Files are checked, tagged from MusicBrainz, cover art embedded, named from a template, moved atomically into the library. |
-| **Rescan** | Plex is asked to scan just the new folder, and the album leaves the "missing" list. |
+| **Rescan** | Plex is asked to scan the new folder (the whole music section if it has to), and the album leaves the "missing" list. |
 
 ## Features
 
@@ -65,7 +65,7 @@ Everything slow or external is a **job** that you can follow in real time in the
 
 **Discovery**
 - Search any artist on MusicBrainz, similar artists (Last.fm, ListenBrainz), previews (iTunes, Deezer).
-- Every external service has a fallback, a circuit breaker and a status light.
+- Metadata, cover, preview and discovery services have fallbacks and a circuit breaker; every service has a status light.
 
 **Administration**
 - Jobs with live logs, cancel and retry; service status; audit log; database backups with download.
@@ -87,6 +87,7 @@ services:
     environment:
       PUID: 1000                     # the owner of your music folder
       PGID: 1000
+      PORT: "8000"
       DATA_DIR: /data
       MUSIC_DIR: /music
       DOWNLOADS_DIR: /downloads
@@ -97,11 +98,11 @@ services:
 ```
 
 ```bash
-echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')" >> .env
+cp .env.example .env     # then set SECRET_KEY (python3 -c "import secrets; print(secrets.token_urlsafe(48))")
 docker compose up -d
 ```
 
-Open http://localhost:8000: the first visit asks you to create the administrator. Then set Plex, SLSKD and your MusicBrainz contact under **Settings → Integrations**. Put it behind HTTPS before exposing it: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) has the full Compose file with SLSKD, a reverse proxy, backups and upgrades.
+Open http://localhost:8000: the first visit asks you to create the administrator. Then set Plex, SLSKD and your MusicBrainz contact under **Settings → Integrations**. SLSKD also needs a Soulseek account and an API key: see [Set up SLSKD](docs/DEPLOYMENT.md#volumes-and-paths). Put it behind HTTPS before exposing it: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) has the full Compose file with SLSKD, a reverse proxy, backups and upgrades.
 
 ### From source
 
@@ -122,6 +123,7 @@ Configuration is read from environment variables (and a `.env` file in developme
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SECRET_KEY` | `change-me` | Signs session cookies. **Required** in production (the app refuses to start with the default when `BASE_URL` is https or `ENV=production`). |
+| `PORT` | `8000` in the image, `8080` in `.env.example` | Port the app listens on. The Compose file sets it to 8000. |
 | `BASE_URL` | `http://localhost:8080` | The address people use. An `https://` address makes cookies `Secure`. |
 | `PUID` / `PGID` | `1000` | User and group the container runs as (the owner of your music and downloads). |
 | `DATA_DIR` | `./data` (`/data` in the image) | Database, covers and backups. Keep it on a volume. |
@@ -129,7 +131,7 @@ Configuration is read from environment variables (and a `.env` file in developme
 | `DOWNLOADS_DIR` | `./downloads-test` (`/downloads`) | Where SLSKD saves; must be the same folder SLSKD sees. |
 | `LIBRARY_SOURCE` | `filesystem` | `filesystem` or `plex`. |
 | `PLEX_URL` / `PLEX_TOKEN` | | Plex server and token (library source and rescans). |
-| `SLSKD_URL` / `SLSKD_API_KEY` | | SLSKD address and an API key with `ReadWrite` role. |
+| `SLSKD_URL` / `SLSKD_API_KEY` | | SLSKD address and an API key that is not read-only (the slskd main key is `Administrator`). |
 | `MB_USER_AGENT` | | Required by MusicBrainz: `App/1.0 ( you@example.com )`. |
 | `LASTFM_API_KEY` | | Optional: similar artists and biographies. |
 | `LOG_FORMAT` | `text` (`json` in the image) | `json` prints one object per line; secrets are always scrubbed. |
@@ -137,7 +139,7 @@ Configuration is read from environment variables (and a `.env` file in developme
 | `TRUST_PROXY` | `false` | Read `X-Forwarded-For` for the sign-in limit. Only behind a proxy you control. |
 | `BACKUP_CRON` / `BACKUP_KEEP` | `15 3 * * *` / `7` | Nightly database backup and how many copies to keep. |
 
-[`.env.example`](.env.example) lists every variable, and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#configuration-reference) explains them.
+[`.env.example`](.env.example) lists the common ones, and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#configuration-reference) explains them.
 
 ## Good to know
 
@@ -145,7 +147,9 @@ Configuration is read from environment variables (and a `.env` file in developme
 - **Paths must agree.** DISKKO and SLSKD must see the downloads folder, and DISKKO and Plex the music folder, at paths you can map (`LIBRARY_PATH_MAP` translates Plex's view into yours).
 - **Quality is read, not guessed.** DISKKO trusts codec, bit depth, sample rate and bitrate. It does not analyze spectra, so a FLAC made from an MP3 looks like a FLAC.
 - **Back up `/data`.** It holds the database, including the saved Plex token and API keys: store backups as carefully as the database. Restore steps are in the [deployment guide](docs/DEPLOYMENT.md#backups-and-restore).
+- **Plex and the library source.** After an import Plex scans the album's folder; if it refuses or does not show the album, DISKKO scans the whole music section once. A scan that would remove more than half the known tracks stops (an unmounted folder).
 - **Respect the services.** MusicBrainz is limited to one request per second (built in), and Last.fm and Deezer allow non-commercial use only.
+- **The interface needs internet access in your browser.** Tailwind CSS, HTMX and Alpine.js are loaded from public CDNs (`cdn.tailwindcss.com`, `unpkg.com`, `cdn.jsdelivr.net`); without them the page is unstyled and does not respond to clicks. Your music data never goes there.
 - **No password recovery by email.** An administrator can reset any user's password.
 
 ## Documentation

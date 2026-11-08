@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     mem_limit: 1g          # raise it for a very large library
     init: true
+    security_opt: ["no-new-privileges:true"]
     logging:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
@@ -35,13 +36,16 @@ services:
     container_name: slskd
     restart: unless-stopped
     ports:
-      - "5030:5030"
-      - "5031:5031"
-      - "50300:50300"
+      - "127.0.0.1:5030:5030"   # slskd's own web page, for setting it up (DISKKO uses the Compose network)
+      - "50300:50300"           # Soulseek peers; forward it on your router for full connectivity
     environment:
       SLSKD_REMOTE_CONFIGURATION: "true"
       SLSKD_DOWNLOADS_DIR: /downloads
-      SLSKD_API_KEY: ${SLSKD_API_KEY:-}
+      SLSKD_SLSK_USERNAME: ${SLSKD_SLSK_USERNAME}   # your Soulseek account
+      SLSKD_SLSK_PASSWORD: ${SLSKD_SLSK_PASSWORD}
+      SLSKD_USERNAME: ${SLSKD_USERNAME:-admin}      # slskd web page (default slskd/slskd is public knowledge)
+      SLSKD_PASSWORD: ${SLSKD_PASSWORD}
+      SLSKD_API_KEY: ${SLSKD_API_KEY}               # 16 to 255 characters; the same value goes in DISKKO
     volumes:
       - ./slskd:/app
       - ./downloads:/downloads   # same host folder as diskko

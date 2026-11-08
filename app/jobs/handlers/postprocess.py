@@ -212,11 +212,17 @@ async def _releases(ctx: JobContext, group: dict) -> list[ReleaseData]:
         return await client.browse_releases(group["mbid"]) or []
 
 
-def _already_imported(final: Path, group: dict, count: int) -> bool:
-    """Is the folder the album of an earlier, interrupted run of this very import?"""
+def _already_imported(final: Path, group: dict, count: int, request_id: int, upgrade: bool) -> bool:
+    """Is the folder the album of an earlier, interrupted run of this very import?
+
+    The marker the run leaves in its staged folder says so exactly. Without it (an older run) the
+    tags are compared, but never for an upgrade: there the folder holds the copy being replaced,
+    whose tags look just the same."""
     from app.services.library.tags import UnreadableAudio, read_audio_file
 
-    if group["source"] != SOURCE_MUSICBRAINZ or not final.is_dir():
+    if lib.is_marked(final, request_id):
+        return True
+    if upgrade or group["source"] != SOURCE_MUSICBRAINZ or not final.is_dir():
         return False
     found = 0
     for path in final.iterdir():
@@ -351,6 +357,7 @@ async def postprocess(ctx: JobContext) -> None:
             cover=cover,
         )
         await asyncio.to_thread(lib.verify_staged, paths)
+        await asyncio.to_thread(lib.mark_staged, staging, request_id)
         await ctx.log(f"{len(paths)} file(s) tagged and renamed")
         await ctx.progress(80, "Tagged")
         await ctx.checkpoint(force=True)
@@ -360,12 +367,21 @@ async def postprocess(ctx: JobContext) -> None:
             lambda db: lib.owned_folders(db, music, group["id"]) if info["upgrade_from"] else []
         )
         old_dirs = [folder for _, folder in old]
+        shared = await ctx.run_db(lambda db: lib.shared_folders(db, music, old))
+        if final in shared:
+            raise ImportRejected(
+                f"the folder {final.relative_to(music)} also holds other albums: "
+                "an upgrade needs a folder of its own"
+            )
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         replaced_root = music / lib.REPLACED_DIR
         if final.exists():
-            if await asyncio.to_thread(_already_imported, final, group, len(paths)):
+            if await asyncio.to_thread(
+                _already_imported, final, group, len(paths), request_id, bool(info["upgrade_from"])
+            ):
                 await ctx.log("The album is already in place (an earlier run): not copying again")
                 await asyncio.to_thread(lib.clean_staging, music, request_id)
+                old_dirs = [d for d in old_dirs if d != final]  # it holds the new copy now
             elif info["upgrade_from"] and final in old_dirs:
                 aside = await asyncio.to_thread(
                     lib.set_aside, final, replaced_root, request_id, stamp
@@ -385,11 +401,17 @@ async def postprocess(ctx: JobContext) -> None:
             await asyncio.to_thread(lib.commit, staging, final)
         await asyncio.to_thread(lib.clean_staging, music, request_id)
         for folder in old_dirs:
-            if folder.exists():
+            if not folder.exists():
+                continue
+            if folder in shared:  # other albums live there: only this album's files move
+                aside = await asyncio.to_thread(
+                    lib.set_aside_files, shared[folder], folder, replaced_root, request_id, stamp
+                )
+            else:
                 aside = await asyncio.to_thread(
                     lib.set_aside, folder, replaced_root, request_id, stamp
                 )
-                await ctx.log(f"The old copy was set aside in {aside}")
+            await ctx.log(f"The old copy was set aside in {aside}")
         await ctx.log(f"Imported into {final.relative_to(music)}")
         await ctx.progress(90, "Moved")
 
@@ -407,6 +429,8 @@ async def postprocess(ctx: JobContext) -> None:
             )
         else:
             await ctx.log("Plex library: its rows come from the next scan of Plex")
+
+        await asyncio.to_thread(lib.unmark, final, request_id)
 
         # Plex is told about the new folder; whatever goes wrong there never fails the import
         try:

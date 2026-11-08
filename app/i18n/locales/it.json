@@ -184,7 +184,7 @@
   "review.reason.invalid_mbid": "MBID non riconosciuto da MusicBrainz",
   "preferences.intro": "Le tue impostazioni personali.",
   "library.missing_types": "Tipi di album mancanti (predefinito condiviso)",
-  "library.missing_types_hint": "Gli utenti possono cambiarlo nelle proprie preferenze.",
+  "library.missing_types_hint": "Tutti vedono gli stessi tipi: solo un amministratore li cambia.",
   "flash.sync_queued": "Sincronizzazione accodata.",
   "flash.review_resolved": "Identità MusicBrainz salvata. Sincronizzo…",
   "flash.artist_dismissed": "Artista segnato come non presente su MusicBrainz.",

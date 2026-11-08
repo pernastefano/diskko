@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     login_window_seconds: int = 300
     # Trust X-Forwarded-For (only behind a reverse proxy that sets it): the address that is counted
     trust_proxy: bool = False
+    # How many reverse proxies stand in front (each appends the address it saw to X-Forwarded-For):
+    # the address counted is the one that many entries from the right, never the left-most one,
+    # which the browser can set to anything.
+    trust_proxy_hops: int = 1
 
     # Logs: text (readable) or json (one object per line, for a log collector)
     log_format: str = "text"

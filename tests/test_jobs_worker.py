@@ -305,3 +305,42 @@ async def test_pending_cancellation_wins_over_recovery(wsettings, session_factor
     await asyncio.sleep(0.1)
     await worker.stop()
     assert fetch(session_factory, job_id).status == STATUS_CANCELLED
+
+
+async def test_a_busy_database_does_not_end_the_queue_loop(settings, session_factory, monkeypatch):
+    """ "database is locked" while claiming or finishing a job is transient: the loop lives on."""
+    from sqlalchemy.exc import OperationalError
+
+    from app.jobs import engine as eng
+    from app.jobs import worker as worker_mod
+    from app.jobs.worker import JobWorker
+
+    monkeypatch.setattr(worker_mod, "DB_WRITE_PAUSE", 0.01)
+    real_claim, real_success = eng.claim_next, eng.finish_success
+    state = {"claim": 0, "success": 0}
+
+    def flaky_claim(db, queue):
+        state["claim"] += 1
+        if state["claim"] <= 2:
+            raise OperationalError("claim", {}, Exception("database is locked"))
+        return real_claim(db, queue)
+
+    def flaky_success(db, job_id, **kw):
+        state["success"] += 1
+        if state["success"] <= 2:
+            raise OperationalError("finish", {}, Exception("database is locked"))
+        return real_success(db, job_id, **kw)
+
+    monkeypatch.setattr(eng, "claim_next", flaky_claim)
+    monkeypatch.setattr(eng, "finish_success", flaky_success)
+    worker = JobWorker(settings.model_copy(update={"job_poll_interval": 0.02}), session_factory)
+    await worker.start()
+    first = enqueue(session_factory, "test.steps", {"steps": 1})
+    worker.notify()
+    await wait_for_status(session_factory, first, "succeeded", timeout=10)
+    # and the queue keeps working for the next job
+    second = enqueue(session_factory, "test.steps", {"steps": 1})
+    worker.notify()
+    await wait_for_status(session_factory, second, "succeeded", timeout=10)
+    await worker.stop()
+    assert state["claim"] > 2 and state["success"] > 2

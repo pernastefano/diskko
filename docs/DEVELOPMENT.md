@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.12
+- Python 3.12 (a `python3.12` binary on your PATH: `make install` calls it)
 - Nothing else. Docker is not needed to develop: the image is built by GitHub Actions (and the
   end-to-end stack runs there too, though you can run it locally if you have Docker).
 
@@ -26,9 +26,13 @@ The first visit goes to `/setup` to create the administrator. Test data lives in
 |---------|--------------|
 | `make run` | Development server with reload on port 8080 (or `uvicorn app.main:app --reload --port 8080`). |
 | `make test` | `pytest -q`. |
-| `make lint` / `make format` | `ruff check .` / `ruff format .`. |
+| `make lint` | `ruff check .` and `ruff format --check .` (what CI runs). |
+| `make format` | `ruff check --fix .` and `ruff format .` (rewrites files). |
 | `alembic revision --autogenerate -m "msg"` | New migration after a model change. |
 | `alembic upgrade head` | Apply migrations (the app also does it at start-up). |
+
+A pre-commit configuration (`.pre-commit-config.yaml`, `pre-commit` is a dev dependency) runs ruff
+before each commit if you install it with `pre-commit install`.
 
 Dependencies are added with `pip` inside the venv and recorded in `requirements.txt` (runtime) or
 `requirements-dev.txt` (tests, lint).
@@ -127,12 +131,16 @@ aligns `PUID`/`PGID`, owns `/data` and drops to that user with `gosu`; the image
 
 ## Releasing
 
+1. Bump the version in **both** `app/__init__.py` (`__version__`, shown in the footer and `/health`)
+   and `pyproject.toml`.
+2. Commit, wait for CI to pass on `main`, then tag and push:
+
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+git tag -a v0.2.0 -m "DISKKO 0.2.0" && git push origin main v0.2.0
 ```
 
-The tag builds and publishes `ghcr.io/pernastefano/diskko:v0.2.0`. The version shown in the footer
-and in `/health` is `app/__init__.py`'s `__version__`.
+The tag builds and publishes `ghcr.io/pernastefano/diskko:v0.2.0`. Tag only a commit whose CI is
+green: a failed run publishes nothing for that tag.
 
 ## Database
 
