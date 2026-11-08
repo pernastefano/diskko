@@ -19,14 +19,13 @@ from app.integrations.cover_sources import DeezerCoverSource
 from app.integrations.coverart import CoverArtClient, CoverArtError
 from app.integrations.musicbrainz_client import (
     MusicBrainzClient,
-    MusicBrainzError,
     MusicBrainzNotConfigured,
     ReleaseData,
     TrackData,
 )
 from app.jobs import engine
 from app.jobs.context import JobContext
-from app.jobs.errors import PermanentJobError
+from app.jobs.errors import JobCancelled, PermanentJobError, RetryLater
 from app.jobs.registry import job_handler
 from app.models import (
     REQ_COMPLETED,
@@ -59,7 +58,7 @@ RESUMABLE = (REQ_DOWNLOADED, REQ_POSTPROCESSING, REQ_IMPORTING)
 
 
 def postprocess_dedupe_key(request_id: int) -> str:
-    return f"postprocess:{request_id}"
+    return downloads_svc.postprocess_dedupe_key(request_id)
 
 
 def _db(func):
@@ -271,6 +270,8 @@ async def postprocess(ctx: JobContext) -> None:
         raise PermanentJobError(f"download request {request_id} not found")
     if info["status"] not in RESUMABLE:
         await ctx.log(f"Skipped: the request is {info['status']}")
+        if info["status"] == REQ_FAILED:  # a retry of this job cannot revive it
+            raise PermanentJobError("The request failed: search again from the Requests page")
         return
     settings = ctx.settings
     group, artist_name, profiles = info["group"], info["artist"], info["profiles"]
@@ -477,7 +478,25 @@ async def postprocess(ctx: JobContext) -> None:
         message = f"{reason}{where}"[:500]
         await ctx.run_db(fail(message))
         raise PermanentJobError(message) from exc
-    except (MusicBrainzError, ServiceError, OSError):
+    except JobCancelled:
+        # cancelled by hand: what was being prepared goes, what was already put in place stays
+        if staging is not None:
+            await asyncio.to_thread(lib.clean_staging, Path(settings.music_dir), request_id)
+        raise
+    except RetryLater:
+        # a service is paused: waiting is the answer, for a day at most
+        if await ctx.run_db(lambda db: engine.waited_too_long(db, ctx.job_id)):
+            message = "Import gave up: a service stayed unavailable for a day"
+            await ctx.run_db(fail(message))
+            raise PermanentJobError(message) from None
+        raise
+    except Exception as exc:
+        # Whatever it is (a service, the disk, a bug): after the last attempt the request must
+        # not stay "importing" for ever, with no way to ask again.
         if ctx.attempt >= MAX_ATTEMPTS:
-            await ctx.run_db(fail("Import failed after several attempts: see the job log"))
+            await ctx.run_db(
+                fail(
+                    f"Import failed after several attempts ({type(exc).__name__}): see the job log"
+                )
+            )
         raise

@@ -19,7 +19,7 @@ from app.integrations.cached_http import ServiceError
 from app.integrations.cover_sources import LABELS, SOURCES
 from app.integrations.providers import provider_order
 from app.jobs.context import JobContext
-from app.jobs.errors import RetryLater
+from app.jobs.errors import PermanentJobError, RetryLater
 from app.jobs.registry import job_handler
 from app.models import Artist, ReleaseGroup
 from app.services.musicbrainz.missing import get_missing_types, owned_release_group_ids
@@ -80,7 +80,9 @@ async def fetch_covers(ctx: JobContext) -> None:
             if category in types or rid in owned
         ]
 
-    artist_name = await ctx.run_db(lambda db: db.get(Artist, artist_id).name)
+    artist_name = await ctx.run_db(lambda db: a.name if (a := db.get(Artist, artist_id)) else None)
+    if artist_name is None:
+        raise PermanentJobError(f"artist {artist_id} not found")
     todo = await ctx.run_db(wanted)
     if not todo:
         await ctx.log(f"{artist_name}: no covers to fetch")

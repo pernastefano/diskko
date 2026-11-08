@@ -22,7 +22,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: ruff format --check .
-      - run: pytest -q
+      - run: pytest -q -n auto
 
   # The whole product in containers: DISKKO next to a mock Plex and a mock SLSKD (e2e/).
   e2e:

@@ -782,5 +782,6 @@
   "albummatch.in_discography": "nella discografia dell'artista",
   "albummatch.score": "corrispondenza {n}%",
   "error.search_expired": "Il risultato della ricerca non è più disponibile: cerca di nuovo e sceglilo.",
-  "settings.jobtype.search_release_groups": "Ricerca album su MusicBrainz"
+  "settings.jobtype.search_release_groups": "Ricerca album su MusicBrainz",
+  "search.busy": "Hai troppe ricerche in corso: aspetta che una finisca."
 }

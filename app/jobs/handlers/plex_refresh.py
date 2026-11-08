@@ -13,7 +13,7 @@ from plexapi.exceptions import PlexApiException, Unauthorized
 
 from app.jobs import engine
 from app.jobs.context import JobContext
-from app.jobs.errors import PermanentJobError
+from app.jobs.errors import PermanentJobError, RetryLater
 from app.jobs.registry import job_handler
 from app.services import plex_refresh as svc
 from app.services.library.provider import LibraryError
@@ -167,7 +167,10 @@ async def plex_refresh(ctx: JobContext) -> None:
         return left
 
     left = await ctx.run_db(finish)
-    if left:  # folders that arrived while this job was running
-        await ctx.run_db(lambda db: svc.request_refresh(db, settings, [], parent_job_id=ctx.job_id))
-        await ctx.log(f"{len(left)} more folder(s) arrived: another scan was queued")
+    if left:
+        # Folders arrived while this job was running. A new job cannot be queued from here (this
+        # one still holds the "plex_refresh" key, so the request would find it and stop), so this
+        # one goes back in the queue and takes them: they are in the list.
+        await ctx.log(f"{len(left)} more folder(s) arrived: another scan follows")
+        raise RetryLater("more folders arrived", float(settings.plex_refresh_debounce_seconds))
     await ctx.progress(100, "Done")

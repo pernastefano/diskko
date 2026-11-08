@@ -10,7 +10,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.auth.deps import DB, UserAuth
 from app.integrations.musicbrainz_client import ArtistHit, peek_artist_search
@@ -83,9 +83,15 @@ def _annotate(db: DB, hits: list[ArtistHit]) -> list[dict]:
     ]
 
 
+MAX_ACTIVE_SEARCHES = 3  # per user: one person cannot fill the single MusicBrainz queue
+
+
 def _search_context(
-    request: Request, db: DB, auth: UserAuth, raw: str, *, retry: bool = False
+    request: Request, db: DB, auth: UserAuth, raw: str, *, retry: bool = False, start: bool = False
 ) -> dict:
+    """What the search page shows. Looking never asks MusicBrainz: when there is no answer yet
+    the state is "starting", and the page then POSTs /search/start (`start=True`) to queue the
+    job. A GET that queued jobs could be triggered from any other page by a link or an image."""
     query = clean_query(raw)
     ctx: dict = {"q": query, "state": "empty", "rows": []}
     if len(query) < MIN_QUERY:
@@ -102,16 +108,42 @@ def _search_context(
     if state == "failed" and not retry:
         ctx["state"] = "failed"
         return ctx
-    if state != "active":
+    if state == "active":
+        ctx["state"] = "searching"
+    elif not start:
+        ctx.update(state="starting", retry=retry)
+    elif _active_searches(db, auth.user.id) >= MAX_ACTIVE_SEARCHES:
+        ctx["state"] = "busy"
+    else:
         queue_job(request, db, auth, "search_artists", {"query": query}, key)
-    ctx["state"] = "searching"
+        ctx["state"] = "searching"
     return ctx
+
+
+def _active_searches(db: DB, user_id: int) -> int:
+    return (
+        db.scalar(
+            select(func.count(Job.id)).where(
+                Job.type == "search_artists",
+                Job.created_by == user_id,
+                Job.status.in_(ACTIVE_STATUSES),
+            )
+        )
+        or 0
+    )
 
 
 @router.get("/search")
 def search_page(request: Request, db: DB, auth: UserAuth, q: str = "", retry: str = ""):
     ctx = _search_context(request, db, auth, q, retry=retry == "1")
     return render(request, "search.html", ctx)
+
+
+@router.post("/search/start")
+def search_start(request: Request, db: DB, auth: UserAuth, q: str = "", retry: str = ""):
+    """Queue the search (the page asks for it by itself) and answer with the results block."""
+    ctx = _search_context(request, db, auth, q, retry=retry == "1", start=True)
+    return render(request, "_search_results.html", ctx)
 
 
 @router.get("/search/results")

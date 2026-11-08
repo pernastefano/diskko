@@ -4,6 +4,11 @@
     <p class="text-sm text-slate-500">{{ t('search.hint') }}</p>
   {% elif state == 'not_configured' %}
     <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" data-search-state="not_configured">{{ t('error.mb_not_configured') }}</p>
+  {% elif state == 'starting' %}
+    <p class="text-sm text-slate-500" data-search-state="starting"
+       hx-post="/search/start?q={{ q|urlencode }}{{ '&retry=1' if retry }}" hx-trigger="load" hx-target="#search-results" hx-swap="outerHTML">{{ t('search.searching') }}</p>
+  {% elif state == 'busy' %}
+    <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" data-search-state="busy">{{ t('search.busy') }}</p>
   {% elif state == 'searching' %}
     <p class="text-sm text-slate-500" data-search-state="searching">{{ t('search.searching') }}</p>
   {% elif state == 'failed' %}

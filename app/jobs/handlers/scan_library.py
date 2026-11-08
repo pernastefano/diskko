@@ -8,7 +8,7 @@ from app.jobs.errors import PermanentJobError
 from app.jobs.handlers.sync_artist import sync_dedupe_key
 from app.jobs.registry import job_handler
 from app.services.library import build_provider
-from app.services.library.provider import LibraryError, ScanReporter
+from app.services.library.provider import LibraryError, LibraryUnavailable, ScanReporter
 from app.services.library.scan import run_scan
 from app.services.quality_profiles import load_profiles
 
@@ -31,6 +31,8 @@ async def scan_library(ctx: JobContext) -> None:
             force=force,
             max_removal_pct=ctx.settings.library_max_removal_pct,
         )
+    except LibraryUnavailable:
+        raise  # Plex is down for now: the engine retries with backoff
     except LibraryError as exc:  # configuration/mount problems: retrying will not help
         raise PermanentJobError(str(exc)) from exc
     if ctx.settings.mb_user_agent.strip():  # new artists get their MusicBrainz identity

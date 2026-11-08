@@ -361,8 +361,24 @@ def requeue_interrupted(db: Session, job_id: int, message: str) -> None:
     add_log(db, job_id, "warning", message)
 
 
+DEFER_LIMIT = timedelta(hours=24)  # how long a job may keep waiting for a service
+
+
+def waited_too_long(db: Session, job_id: int, *, now: Callable[[], datetime] = utcnow) -> bool:
+    """Has the job been waiting for a service (put back without using an attempt) for so long
+    that it is time to stop? A service that is dead for good must not keep a job for ever."""
+    created = db.scalar(select(Job.created_at).where(Job.id == job_id))
+    return created is not None and now() - created > DEFER_LIMIT
+
+
 def requeue_later(db: Session, job_id: int, message: str, delay: float) -> None:
-    """Put a running job back in the queue after `delay` seconds without using an attempt."""
+    """Put a running job back in the queue after `delay` seconds without using an attempt.
+    After DEFER_LIMIT of waiting the job fails instead (see `waited_too_long`)."""
+    if waited_too_long(db, job_id):
+        finish_failure(
+            db, job_id, f"Gave up after {DEFER_LIMIT.total_seconds() / 3600:.0f}h: {message}"
+        )
+        return
     db.execute(
         update(Job)
         .where(Job.id == job_id, Job.status == STATUS_RUNNING)

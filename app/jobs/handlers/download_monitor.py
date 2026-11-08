@@ -30,7 +30,7 @@ from app.integrations.slskd_client import (
 )
 from app.jobs import engine
 from app.jobs.context import JobContext
-from app.jobs.errors import JobCancelled, PermanentJobError
+from app.jobs.errors import JobCancelled, PermanentJobError, RetryLater
 from app.jobs.handlers.postprocess import postprocess_dedupe_key
 from app.jobs.registry import job_handler
 from app.models import (
@@ -82,6 +82,14 @@ async def download_monitor(ctx: JobContext) -> None:
         if ctx.attempt >= MAX_ATTEMPTS:
             await ctx.run_db(fail_request(f"SLSKD: {exc}"))
         raise
+    except (JobCancelled, RetryLater, PermanentJobError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - whatever it is, the request must not hang
+        if ctx.attempt >= MAX_ATTEMPTS:
+            await ctx.run_db(
+                fail_request(f"Download failed ({type(exc).__name__}): see the job log")
+            )
+        raise
 
 
 async def _status(ctx: JobContext, request_id: int):
@@ -98,6 +106,8 @@ async def _run(ctx: JobContext, client: SlskdClient, request_id: int) -> None:
         raise PermanentJobError(f"download request {request_id} not found")
     if status not in (REQ_CANDIDATE_FOUND, REQ_DOWNLOADING):
         await ctx.log(f"Skipped: the request is {status}")
+        if status == REQ_FAILED:  # a retry of this job cannot revive it
+            raise PermanentJobError("The request failed: search again from the Requests page")
         return
 
     while True:

@@ -10,9 +10,16 @@ from app.integrations.slskd_client import (
 )
 from app.jobs import engine
 from app.jobs.context import JobContext
-from app.jobs.errors import PermanentJobError
+from app.jobs.errors import JobCancelled, PermanentJobError, RetryLater
 from app.jobs.registry import job_handler
-from app.models import MODE_MANUAL, REQ_FAILED, REQ_QUEUED, REQ_SEARCHING, DownloadRequest
+from app.models import (
+    MODE_MANUAL,
+    REQ_CANCELLED,
+    REQ_FAILED,
+    REQ_QUEUED,
+    REQ_SEARCHING,
+    DownloadRequest,
+)
 from app.services import downloads as svc
 from app.services.candidate_selection import query_variants, select_candidates
 from app.services.quality_profiles import load_profiles
@@ -47,6 +54,8 @@ async def slskd_search(ctx: JobContext) -> None:
         raise PermanentJobError(f"download request {request_id} not found")
     if data["status"] not in (REQ_QUEUED, REQ_SEARCHING):
         await ctx.log(f"Skipped: the request is {data['status']}")
+        if data["status"] == REQ_FAILED:  # a retry of this job cannot revive it
+            raise PermanentJobError("The request failed: search again from the Requests page")
         return
 
     def fail(message: str):
@@ -109,6 +118,12 @@ async def slskd_search(ctx: JobContext) -> None:
         if ctx.attempt >= MAX_ATTEMPTS:
             await ctx.run_db(fail(f"SLSKD: {exc}"))
         raise
+    except (JobCancelled, RetryLater, PermanentJobError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - whatever it is, the request must not hang
+        if ctx.attempt >= MAX_ATTEMPTS:
+            await ctx.run_db(fail(f"Search failed ({type(exc).__name__}): see the job log"))
+        raise
 
     if not candidates:
 
@@ -126,6 +141,8 @@ async def slskd_search(ctx: JobContext) -> None:
     def save(db):
         svc.store_candidates(db, request_id, candidates, used)
         request = db.get(DownloadRequest, request_id)
+        if request is None or request.status == REQ_CANCELLED:
+            return  # cancelled while the search ran: no download must start
         if manual:
             svc.awaiting_choice(db, request_id)
         else:

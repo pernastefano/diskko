@@ -58,6 +58,10 @@ def monitor_dedupe_key(request_id: int) -> str:
     return f"download_monitor:{request_id}"
 
 
+def postprocess_dedupe_key(request_id: int) -> str:
+    return f"postprocess:{request_id}"
+
+
 # ----------------------------------------------------------------------- creating
 
 
@@ -212,6 +216,8 @@ def set_status(
     request = db.get(DownloadRequest, request_id)
     if request is None:
         return None
+    if request.status == REQ_CANCELLED and status != REQ_CANCELLED:
+        return request  # the user cancelled while a job was working: the job must not revive it
     request.status = status
     request.error = error
     for key, value in fields.items():
@@ -233,6 +239,8 @@ def store_candidates(db: Session, request_id: int, candidates: list[Candidate], 
 
 def choose_candidate(db: Session, request: DownloadRequest, index: int) -> None:
     """Pick one of the stored candidates (manual choice, or the best one in auto mode)."""
+    if request.status == REQ_CANCELLED:
+        raise RequestError("request_not_active")
     if not 0 <= index < len(candidates_of(request)):
         raise RequestError("request_bad_candidate")
     request.candidate_index = index
@@ -248,7 +256,11 @@ def cancel_request(db: Session, request: DownloadRequest) -> list[int]:
     request.status = REQ_CANCELLED
     request.finished_at = utcnow()
     db.flush()
-    keys = [search_dedupe_key(request.id), monitor_dedupe_key(request.id)]
+    keys = [
+        search_dedupe_key(request.id),
+        monitor_dedupe_key(request.id),
+        postprocess_dedupe_key(request.id),
+    ]
     return list(
         db.scalars(
             select(Job.id).where(Job.dedupe_key.in_(keys), Job.status.in_(("queued", "running")))
@@ -392,6 +404,8 @@ def reset_file(db: Session, file_id: int, *, error: str | None = None) -> None:
 def next_candidate(db: Session, request_id: int, reason: str) -> bool:
     """The chosen candidate failed: forget its files and move on. False when none is left."""
     request = db.get(DownloadRequest, request_id)
+    if request.status == REQ_CANCELLED:
+        return False  # cancelled meanwhile: nothing to move on to, and nothing to announce
     for row in db.scalars(select(DownloadFile).where(DownloadFile.request_id == request_id)):
         db.delete(row)
     request.candidate_index += 1

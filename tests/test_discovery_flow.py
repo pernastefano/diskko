@@ -35,6 +35,7 @@ from tests.mbdata import ARETHA, LADY_SOUL_RG
 from tests.mbdata import load as mb_load
 from tests.test_discovery_clients import no_waiting  # noqa: F401  (autouse fixture)
 
+HX = {"HX-Request": "true"}
 MB = "https://musicbrainz.test/ws/2"
 LASTFM = "https://ws.audioscrobbler.com/2.0/"
 LB = "https://labs.api.listenbrainz.org/similar-artists/json"
@@ -169,9 +170,14 @@ def test_search_an_unowned_artist_then_see_albums_similar_artists_and_a_preview(
         mock.get(LASTFM).respond(json=similar)
         itunes_for_lady_soul(mock)
 
-        # 1. the search page asks for a job and shows that it is searching
+        # 1. the search page itself never asks MusicBrainz: it asks for the job in a second step
         r = admin_client.get("/search?q=Aretha")
-        assert r.status_code == 200 and 'data-search-state="searching"' in r.text
+        assert r.status_code == 200 and 'data-search-state="starting"' in r.text
+        assert 'hx-post="/search/start?q=Aretha"' in r.text and jobs(db) == []
+        assert jobs(db) == [] and admin_client.get("/search/results?q=Aretha").status_code == 200
+        assert jobs(db) == []  # not even the polled fragment
+        r = post(admin_client, "/search/start?q=Aretha", {}, page="/search", headers=HX)
+        assert 'data-search-state="searching"' in r.text
         assert [j.type for j in jobs(db)] == ["search_artists"]
         drain(app)
 
@@ -236,29 +242,50 @@ def test_a_cached_search_answers_without_a_job(admin_client, db):
     assert 'data-search-state="results"' in text and jobs(db) == []
 
 
+def start(client, q="Aretha", retry=False):
+    """What the page does by itself once it sees "starting": POST /search/start."""
+    return post(
+        client, f"/search/start?q={q}{'&retry=1' if retry else ''}", {}, page="/search", headers=HX
+    )
+
+
+def test_looking_at_a_search_never_queues_a_job(admin_client, db):
+    for path in ("/search?q=Aretha", "/search/results?q=Aretha", "/search?q=Aretha&retry=1"):
+        assert admin_client.get(path).status_code == 200
+    assert jobs(db, "search_artists") == []
+
+
 def test_searching_twice_queues_one_job(admin_client, db):
-    admin_client.get("/search?q=Aretha")
-    admin_client.get("/search?q=Aretha")
+    start(admin_client)
+    start(admin_client)
     admin_client.get("/search/results?q=Aretha")
     assert len(jobs(db, "search_artists")) == 1
 
 
+def test_a_person_cannot_fill_the_queue_with_searches(admin_client, db):
+    for name in ("Ab", "Cd", "Ef", "Gh"):
+        text = start(admin_client, name).text
+    assert len(jobs(db, "search_artists")) == 3 and 'data-search-state="busy"' in text
+
+
 def test_a_failed_search_is_reported_and_can_be_retried(admin_client, db):
-    admin_client.get("/search?q=Aretha")
+    start(admin_client)
     job = jobs(db, "search_artists")[0]
     job.status, job.finished_at, job.error = STATUS_FAILED, utcnow(), "boom"
     db.commit()
     text = admin_client.get("/search?q=Aretha").text
     assert 'data-search-state="failed"' in text and "retry=1" in text
     assert len(jobs(db, "search_artists")) == 1  # not queued again in a loop
-    assert 'data-search-state="searching"' in admin_client.get("/search?q=Aretha&retry=1").text
+    page = admin_client.get("/search?q=Aretha&retry=1").text
+    assert 'data-search-state="starting"' in page and "&amp;retry=1" in page
+    assert 'data-search-state="searching"' in start(admin_client, retry=True).text
     assert len(jobs(db, "search_artists")) == 2
 
 
 def test_the_search_job_fills_the_cache(app, admin_client, db):
     with respx.mock() as mock:
         mock.get(f"{MB}/artist").respond(json=mb_load("artist_search_aretha.json"))
-        admin_client.get("/search?q=Aretha")
+        start(admin_client)
         drain(app)
     hits = peek_artist_search(db, "Aretha", 15)
     assert [h.name for h in hits] == ["Aretha Franklin"]

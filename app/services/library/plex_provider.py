@@ -31,6 +31,7 @@ from app.services.library.grouping import (
 from app.services.library.provider import (
     LibraryError,
     LibraryProvider,
+    LibraryUnavailable,
     RecordingReporter,
     ScannedAlbum,
     ScannedArtist,
@@ -158,9 +159,9 @@ def open_section(settings: Settings, server_factory=None, *, timeout: int = 30):
             f"Plex library section {settings.plex_music_section!r} not found"
         ) from exc
     except requests.exceptions.RequestException as exc:
-        raise LibraryError(f"Cannot connect to Plex ({type(exc).__name__})") from exc
+        raise LibraryUnavailable(f"Cannot connect to Plex ({type(exc).__name__})") from exc
     except PlexApiException as exc:
-        raise LibraryError(f"Plex error ({type(exc).__name__})") from exc
+        raise LibraryUnavailable(f"Plex error ({type(exc).__name__})") from exc
     if getattr(section, "type", None) != "artist":
         raise LibraryError(f"Plex section {settings.plex_music_section!r} is not a music library")
     return server, section

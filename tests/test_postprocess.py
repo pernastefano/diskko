@@ -633,7 +633,10 @@ async def test_when_musicbrainz_does_not_answer_the_job_waits_and_nothing_change
     settings, factory, music, downloads = env
     seed(factory)
     root = put_download(downloads, good_files())
-    worker = JobWorker(settings.model_copy(update={"job_poll_interval": 0.02}), factory)
+    # no retries inside the client: it would sleep through its backoff (seconds) for nothing
+    worker = JobWorker(
+        settings.model_copy(update={"job_poll_interval": 0.02, "mb_max_retries": 0}), factory
+    )
     with respx.mock(assert_all_called=False) as mock:
         mock.get(f"{MB_BASE}/release").respond(503)
         await worker.start()
@@ -656,7 +659,7 @@ async def test_when_musicbrainz_does_not_answer_the_job_waits_and_nothing_change
 
 def with_plex(settings, **update):
     return settings.model_copy(
-        update={"plex_url": "http://plex.test:32400", "plex_token": "tok", **update}
+        update={"plex_url": "http://127.0.0.1:9", "plex_token": "tok", **update}
     )
 
 
@@ -927,3 +930,42 @@ async def test_an_upgrade_into_a_shared_folder_is_refused_and_nothing_moves(env)
     assert job.status == "failed" and "also holds other albums" in request_of(factory).error
     assert len(list(folder.glob("*.mp3"))) == 4  # the library is exactly as it was
     assert not (music / lib.REPLACED_DIR).exists()
+
+
+# ------------------------------------------------------------ jobs that cannot help a request
+
+
+async def test_a_retry_of_the_job_of_a_failed_request_says_so(env):
+    """Retrying the job cannot revive a request that failed: it must not look like a success."""
+    settings, factory, music, downloads = env
+    seed(factory)
+    with factory() as db:
+        db.get(DownloadRequest, 1).status = REQ_FAILED
+        db.commit()
+    _, job = await run_job(settings, factory)
+    assert job.status == "failed" and "search again from the Requests page" in job.error
+
+
+async def test_any_error_on_the_last_attempt_fails_the_request_instead_of_leaving_it_importing(
+    env, monkeypatch
+):
+    import app.jobs.handlers.postprocess as pp
+
+    def boom(*args, **kwargs):
+        raise ValueError("a bug, not a service")
+
+    monkeypatch.setattr(pp, "find_files", boom)
+    settings, factory, music, downloads = env
+    seed(factory)
+    put_download(downloads, good_files())
+    worker = JobWorker(settings.model_copy(update={"job_poll_interval": 0.02}), factory)
+    job_id = enqueue(factory, "postprocess", {"request_id": 1})
+    with factory() as db:  # this run is the last attempt
+        db.get(Job, job_id).attempts = pp.MAX_ATTEMPTS - 1
+        db.commit()
+    await worker.start()
+    worker.notify()
+    await wait_for_status(factory, job_id, "failed", timeout=15)
+    await worker.stop()
+    request = request_of(factory)
+    assert request.status == REQ_FAILED and "ValueError" in request.error

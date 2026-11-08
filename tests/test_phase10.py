@@ -600,7 +600,6 @@ def test_statuses_that_are_no_news_make_no_notification_and_news_is_told_once(db
         "downloaded",
         "postprocessing",
         "importing",
-        "cancelled",
     ):
         svc.set_status(db, req.id, status)
     db.commit()
@@ -758,3 +757,58 @@ def test_the_bell_loads_once_and_its_reply_does_not_load_again(two_users):
     assert 'hx-trigger="load, refreshBell' in bob.get("/dashboard").text
     reply = bob.get("/nav/notifications").text
     assert 'hx-trigger="refreshBell' in reply and "load, " not in reply.split("hx-trigger")[1][:40]
+
+
+# ------------------------------------------- a cancelled request stays cancelled
+
+
+def test_jobs_cannot_revive_a_cancelled_request(db, two_users):
+    from app.services.downloads import RequestError
+
+    req = new_request(db, user_id(db, "bob"), status="searching")
+    req.candidates_json = '[{"username": "u", "directory": "d", "files": [], "score": 1}]'
+    db.commit()
+    job_ids = svc.cancel_request(db, req)
+    db.commit()
+    assert req.status == "cancelled" and job_ids == []
+    svc.set_status(db, req.id, "downloading")  # a job that was still working
+    svc.set_status(db, req.id, "completed")
+    assert db.get(type(req), req.id).status == "cancelled"
+    with pytest.raises(RequestError):
+        svc.choose_candidate(db, req, 0)
+    assert svc.next_candidate(db, req.id, "gave up") is False
+    db.commit()
+    assert db.get(type(req), req.id).status == "cancelled"
+    assert db.query(Notification).count() == 0  # nobody is told about a cancelled request
+
+
+def test_cancelling_also_stops_a_running_import(db, two_users):
+    from app.jobs import engine
+    from app.models import Job
+
+    req = new_request(db, user_id(db, "bob"), status="importing")
+    for key, kind in (
+        (svc.search_dedupe_key(req.id), "slskd_search"),
+        (svc.monitor_dedupe_key(req.id), "download_monitor"),
+        (svc.postprocess_dedupe_key(req.id), "postprocess"),
+    ):
+        engine.enqueue(db, kind, {"request_id": req.id}, dedupe_key=key)
+    db.commit()
+    stopped = svc.cancel_request(db, req)
+    assert {db.get(Job, i).type for i in stopped} == {
+        "slskd_search",
+        "download_monitor",
+        "postprocess",
+    }
+
+
+def test_retrying_an_upgrade_stays_an_upgrade(two_users, db):
+    admin, bob, carol = two_users
+    req = new_request(db, user_id(db, "bob"), status="failed")
+    req.upgrade_from = "mp3_320"
+    db.commit()
+    r = post(bob, f"/requests/{req.id}/retry", {}, page="/requests")
+    assert r.status_code == 303, r.text
+    db.expire_all()
+    new = db.scalars(select(DownloadRequest).where(DownloadRequest.id != req.id)).one()
+    assert new.upgrade_from == "mp3_320" and new.release_group_id == req.release_group_id

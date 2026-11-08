@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Annotated
 from urllib.parse import urlparse
 
@@ -17,7 +18,7 @@ from app.auth.sessions import (
 from app.auth.throttle import THROTTLE, client_ip
 from app.auth.users import UserError, check_password, has_users
 from app.i18n import LANG_COOKIE, SUPPORTED
-from app.models import User
+from app.models import AuditLog, User, utcnow
 from app.services import audit
 from app.web.templating import render
 
@@ -56,14 +57,19 @@ def login_submit(
     ip = client_ip(request, settings)
     wait = THROTTLE.retry_after(settings, ip, username)
     if wait:  # paused: no password check, no new failure counted
-        audit.record(
-            db,
-            None,
-            "login.throttled",
-            actor_name=username.strip().lower()[:32],
-            details={"retry_after": wait},
+        name = username.strip().lower()[:32]
+        recent = db.scalar(
+            select(AuditLog.id).where(
+                AuditLog.action == "login.throttled",
+                AuditLog.actor_name == name,
+                AuditLog.at > utcnow() - timedelta(seconds=settings.login_window_seconds),
+            )
         )
-        db.commit()
+        if recent is None:  # one entry per pause: hammering a paused account adds no rows
+            audit.record(
+                db, None, "login.throttled", actor_name=name, details={"retry_after": wait}
+            )
+            db.commit()
         ctx = {"next": safe_next(next, ""), "username": username, "error": "error.too_many_logins"}
         response = render(request, "login.html", ctx, status_code=429)
         response.headers["Retry-After"] = str(wait)

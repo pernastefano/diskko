@@ -77,7 +77,8 @@ docs/              guides and assets
 ## Tests
 
 ```bash
-pytest -q                          # everything
+pytest -q                          # everything (about 5 minutes)
+pytest -q -n auto                  # everything in parallel (what CI does; about 3x faster)
 pytest tests/test_phase11.py -q    # one file
 pytest -k backup -q                # by name
 ```

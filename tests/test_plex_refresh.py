@@ -434,25 +434,42 @@ async def test_a_rejected_token_fails_the_job_once_and_keeps_the_folders(
 async def test_folders_that_arrive_during_a_run_get_their_own_scan(
     plex, psettings, session_factory, monkeypatch
 ):
+    """The job that is running still holds the "plex_refresh" key, so it cannot queue a second
+    one: it goes back in the queue itself and takes the folders that arrived."""
+    from app.jobs import engine
+
     library(plex)
     pending_in(session_factory, [ITEM])
     late = svc.Pending("/music/B/B (1999)", "B")
+    scanned = []
     original = svc.PlexScanner.scan_path
 
     def scan_and_import(self, local):
-        pending_in(session_factory, [late])  # an import ends while Plex is being asked
+        scanned.append(local)
+        if len(scanned) == 1:
+            pending_in(session_factory, [late])  # an import ends while Plex is being asked
         return original(self, local)
 
     monkeypatch.setattr(svc.PlexScanner, "scan_path", scan_and_import)
-    job_id, row = await run_refresh(psettings, session_factory)
+    settings = psettings.model_copy(update={"plex_refresh_debounce_seconds": 0})
+    worker = JobWorker(settings, session_factory)
+    await worker.start()
+    with session_factory() as db:  # queued the way an import queues it: with the job's own key
+        job_id = engine.enqueue(db, "plex_refresh", {}, dedupe_key=svc.JOB_KEY).id
+    worker.notify()
+    row = None
+    for _ in range(500):
+        row = await asyncio.to_thread(fetch, session_factory, job_id)
+        if row.status == "succeeded":
+            break
+        await asyncio.sleep(0.02)
+    await worker.stop()
     assert row.status == "succeeded", row.error
-    assert pending_of(session_factory) == [late]
+    assert pending_of(session_factory) == []  # both folders were taken
+    assert len(scanned) == 2 and scanned[1].endswith("B (1999)")
+    assert any("another scan follows" in m for m in logs(session_factory, job_id))
     with session_factory() as db:
-        follow_up = db.scalars(
-            select(Job).where(Job.type == "plex_refresh", Job.id != job_id)
-        ).all()
-        assert len(follow_up) == 1 and follow_up[0].parent_job_id == job_id
-    assert any("another scan was queued" in m for m in logs(session_factory, job_id))
+        assert [j.id for j in db.scalars(select(Job).where(Job.type == "plex_refresh"))] == [job_id]
 
 
 # ------------------------------------------------------------------------ rating keys

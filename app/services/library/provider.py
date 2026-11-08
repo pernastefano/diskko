@@ -15,6 +15,10 @@ class LibraryError(Exception):
     """A problem with the library itself (missing path, bad configuration, unsafe scan)."""
 
 
+class LibraryUnavailable(LibraryError):
+    """The library cannot be reached right now (Plex is down): trying again later may work."""
+
+
 @dataclass
 class ScannedTrack:
     path: str  # relative to the library root, POSIX style

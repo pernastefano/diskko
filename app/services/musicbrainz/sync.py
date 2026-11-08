@@ -23,6 +23,7 @@ from app.models import (
     AlbumMatchOverride,
     Artist,
     ArtistReview,
+    DownloadRequest,
     LibraryAlbum,
     ReleaseGroup,
     utcnow,
@@ -155,13 +156,15 @@ def store_release_groups(
         rg.synced_at = utcnow()
     # A release group someone chose by hand for an album (an override points at it) stays even
     # when the artist's discography does not list it (a compilation, another artist's album).
+    # So does one that has a download request: deleting it would delete the request, its files
+    # and its notifications while a job is still working on it.
     chosen = set(
         db.scalars(
             select(AlbumMatchOverride.release_group_id).where(
                 AlbumMatchOverride.release_group_id.is_not(None)
             )
         )
-    )
+    ) | set(db.scalars(select(DownloadRequest.release_group_id)))
     removed = 0
     for mbid, rg in existing.items():
         if prune and mbid not in seen and rg.id not in chosen:

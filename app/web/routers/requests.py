@@ -340,6 +340,7 @@ def request_retry(
         mode=mode or old.mode,
         quality_key=old.quality_key,
         query=query,
+        upgrade_from=old.upgrade_from,  # a retried upgrade is still an upgrade
     )
     if created:
         engine.enqueue(
