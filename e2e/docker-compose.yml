@@ -1,0 +1,73 @@
+# End-to-end test stack (used by .github/workflows/e2e.yml; runnable locally with Docker too):
+#   docker compose -f e2e/docker-compose.yml up -d --build --wait
+#   python e2e/run_e2e.py
+# DISKKO runs from the image built from this repository, next to a mock Plex and a mock SLSKD
+# (the same image running the scripts in e2e/mocks, so nothing else has to be installed).
+name: diskko-e2e
+
+services:
+  diskko:
+    build: ..
+    image: diskko:e2e
+    container_name: diskko-e2e
+    ports:
+      - "8000:8000"
+    environment:
+      PUID: "1234"
+      PGID: "1234"
+      SECRET_KEY: e2e-secret-key-not-for-production-0123456789
+      BASE_URL: http://localhost:8000
+      LOG_FORMAT: json
+      LIBRARY_SOURCE: plex
+      LIBRARY_SCAN_CRON: ""
+      PLEX_URL: http://plex:32400
+      PLEX_TOKEN: e2e-plex-token-0123456789
+      SLSKD_URL: http://slskd:5030
+      SLSKD_API_KEY: e2e-slskd-key-0123456789
+      STATUS_CHECK_MINUTES: "0"
+      LOGIN_MAX_ATTEMPTS: "5"
+    volumes:
+      - e2e-data:/data
+      - e2e-music:/music
+      - e2e-downloads:/downloads
+    mem_limit: 768m
+    depends_on:
+      plex:
+        condition: service_healthy
+      slskd:
+        condition: service_healthy
+
+  plex:
+    build: ..
+    image: diskko:e2e
+    entrypoint: []
+    command: ["python", "/e2e/mocks/mock_plex.py"]
+    volumes:
+      - ./mocks:/e2e/mocks:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:32400/__health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "32400:32400"
+
+  slskd:
+    build: ..
+    image: diskko:e2e
+    entrypoint: []
+    command: ["python", "/e2e/mocks/mock_slskd.py"]
+    volumes:
+      - ./mocks:/e2e/mocks:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5030/__health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5030:5030"
+
+volumes:
+  e2e-data:
+  e2e-music:
+  e2e-downloads:

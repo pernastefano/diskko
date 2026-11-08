@@ -17,6 +17,7 @@ ENV PYTHONUNBUFFERED=1 \
     PUID=1000 \
     PGID=1000 \
     PORT=8000 \
+    LOG_FORMAT=json \
     DATA_DIR=/data \
     MUSIC_DIR=/music \
     DOWNLOADS_DIR=/downloads

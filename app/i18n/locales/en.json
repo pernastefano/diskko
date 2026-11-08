@@ -744,5 +744,20 @@
   "flash.request_deleted": "The request was deleted.",
   "audit.action.request.deleted": "Deleted a request",
   "footer.made_by": "made by",
-  "footer.credits": "Music data and images from MusicBrainz, Cover Art Archive, Wikipedia, Last.fm, Deezer and iTunes. Downloads through Soulseek (SLSKD); Plex is a trademark of Plex, Inc."
+  "footer.credits": "Music data and images from MusicBrainz, Cover Art Archive, Wikipedia, Last.fm, Deezer and iTunes. Downloads through Soulseek (SLSKD); Plex is a trademark of Plex, Inc.",
+  "error.too_many_logins": "Too many failed attempts. Wait a few minutes and try again.",
+  "audit.action.login.throttled": "Sign-in paused (too many attempts)",
+  "audit.action.backup.created": "Database backup",
+  "backups.title": "Backups",
+  "backups.intro": "A consistent copy of the database is made every night and the newest {keep} are kept. Settings, users, requests and the library index are in it; your music files are not.",
+  "backups.scheduled": "Schedule: {cron}.",
+  "backups.not_scheduled": "The nightly backup is switched off (BACKUP_CRON is empty).",
+  "backups.now": "Back up now",
+  "backups.empty": "No backups yet.",
+  "backups.col.file": "File",
+  "backups.col.created": "Created",
+  "backups.col.size": "Size",
+  "backups.download": "Download",
+  "backups.warning": "A backup holds everything the database does, including the saved tokens and API keys: store it as carefully as the database itself. To restore, stop DISKKO and replace data/app.db with the copy.",
+  "settings.jobtype.backup_db": "Database backup"
 }

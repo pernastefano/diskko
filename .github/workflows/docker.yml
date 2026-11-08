@@ -24,8 +24,48 @@ jobs:
       - run: ruff format --check .
       - run: pytest -q
 
-  build:
+  # The whole product in containers: DISKKO next to a mock Plex and a mock SLSKD (e2e/).
+  e2e:
     needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx
+
+      - name: Start the stack
+        run: docker compose -f e2e/docker-compose.yml up -d --build --wait --wait-timeout 180
+
+      - name: Run the end-to-end checks
+        run: python e2e/run_e2e.py
+
+      - name: The container is healthy and runs as PUID/PGID, not root
+        run: |
+          test "$(docker inspect -f '{{.State.Health.Status}}' diskko-e2e)" = healthy
+          test "$(docker exec diskko-e2e stat -c '%u:%g' /data/app.db)" = "1234:1234"
+          docker top diskko-e2e -o user,pid,args | tee top.txt
+          grep -q uvicorn top.txt
+          ! awk '/uvicorn/ {print $1}' top.txt | grep -qx root
+
+      - name: No secret in the logs
+        run: |
+          docker compose -f e2e/docker-compose.yml logs --no-color > logs.txt
+          ! grep -E 'e2e-plex-token|e2e-slskd-key|e2e-secret-key' logs.txt
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f e2e/docker-compose.yml logs --no-color
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose -f e2e/docker-compose.yml down -v
+
+  build:
+    needs: [test, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: read

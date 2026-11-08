@@ -43,6 +43,9 @@ def schedules_for(settings: Settings) -> list[Schedule]:
     cron = settings.library_scan_cron.strip()
     if cron:
         result.append(Schedule("scan_library", cron))
+    backup_cron = settings.backup_cron.strip()
+    if backup_cron:
+        result.append(Schedule("backup_db", backup_cron))
     if settings.status_check_minutes > 0:
         result.append(
             Schedule("check_integrations", status_check_cron(settings.status_check_minutes))

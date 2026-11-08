@@ -3,7 +3,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from app import __version__
 from app.auth.csrf import csrf_protect
@@ -12,6 +14,7 @@ from app.config import DEFAULT_SECRET_KEY, Settings, get_settings
 from app.db import make_engine, make_session_factory, run_migrations
 from app.jobs.scheduler import JobScheduler
 from app.jobs.worker import JobWorker
+from app.logging_config import configure_logging
 from app.services.runtime_config import apply_runtime_config
 from app.web.errors import register_error_handlers
 from app.web.routers import (
@@ -20,6 +23,7 @@ from app.web.routers import (
     artists,
     audit,
     auth,
+    backups,
     covers,
     dashboard,
     discovery,
@@ -40,6 +44,7 @@ STATIC_DIR = Path(__file__).parent / "web" / "static"
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
+    configure_logging(settings)
     if settings.is_production and settings.secret_key == DEFAULT_SECRET_KEY:
         raise RuntimeError("SECRET_KEY must be set to a random value in production")
 
@@ -93,8 +98,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     @app.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok", "version": __version__}
+    async def health() -> JSONResponse:
+        """Liveness plus the database: 503 when it cannot be read (the container healthcheck)."""
+        try:
+            with app.state.session_factory() as db:
+                db.execute(text("SELECT 1"))
+        except Exception:  # noqa: BLE001 - any failure means "not healthy"
+            return JSONResponse({"status": "error", "version": __version__}, status_code=503)
+        return JSONResponse({"status": "ok", "version": __version__})
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     register_error_handlers(app)
@@ -113,6 +124,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         covers.router,
         discovery.router,
         audit.router,
+        backups.router,
         notifications.router,
         artist_profile.router,
         status.router,

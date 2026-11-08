@@ -14,6 +14,7 @@ from app.auth.sessions import (
     revoke_user_sessions,
     set_session_cookie,
 )
+from app.auth.throttle import THROTTLE, client_ip
 from app.auth.users import UserError, check_password, has_users
 from app.i18n import LANG_COOKIE, SUPPORTED
 from app.models import User
@@ -52,6 +53,21 @@ def login_submit(
     password: Annotated[str, Form()] = "",
     next: Annotated[str, Form()] = "",
 ):
+    ip = client_ip(request, settings)
+    wait = THROTTLE.retry_after(settings, ip, username)
+    if wait:  # paused: no password check, no new failure counted
+        audit.record(
+            db,
+            None,
+            "login.throttled",
+            actor_name=username.strip().lower()[:32],
+            details={"retry_after": wait},
+        )
+        db.commit()
+        ctx = {"next": safe_next(next, ""), "username": username, "error": "error.too_many_logins"}
+        response = render(request, "login.html", ctx, status_code=429)
+        response.headers["Retry-After"] = str(wait)
+        return response
     user = db.scalar(select(User).where(User.username == username.strip().lower()))
     error = None
     if user is None:
@@ -62,6 +78,7 @@ def login_submit(
     elif not user.is_active:
         error = "error.account_disabled"
     if error:
+        THROTTLE.failed(ip, username)
         audit.record(
             db,
             user if user is not None and error == "error.account_disabled" else None,
@@ -73,6 +90,7 @@ def login_submit(
         ctx = {"next": safe_next(next, ""), "username": username, "error": error}
         return render(request, "login.html", ctx, status_code=400)
 
+    THROTTLE.succeeded(username)
     if needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
         db.commit()

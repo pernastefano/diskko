@@ -23,6 +23,15 @@ def _fresh_rate_limiters():
 
 
 @pytest.fixture(autouse=True)
+def _fresh_login_throttle():
+    from app.auth.throttle import THROTTLE
+
+    THROTTLE.clear()
+    yield
+    THROTTLE.clear()
+
+
+@pytest.fixture(autouse=True)
 def _fresh_circuit_breakers():
     from app.integrations.breaker import BREAKERS
 

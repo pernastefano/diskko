@@ -4,6 +4,11 @@ services:
     image: ghcr.io/pernastefano/diskko:latest
     container_name: diskko
     restart: unless-stopped
+    mem_limit: 1g          # raise it for a very large library
+    init: true
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
     ports:
       - "8000:8000"
     env_file: .env
@@ -12,6 +17,10 @@ services:
       PGID: ${PGID:-1000}
       TZ: ${TZ:-Europe/Rome}
       PORT: "8000"
+      # container paths (they win over the dev values in .env)
+      DATA_DIR: /data
+      MUSIC_DIR: /music
+      DOWNLOADS_DIR: /downloads
       BASE_URL: ${BASE_URL:-http://localhost:8000}
       SLSKD_URL: http://slskd:5030
     volumes:

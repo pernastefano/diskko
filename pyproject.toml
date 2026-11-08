@@ -13,6 +13,7 @@ extend-exclude = [".venv", "data", "music-test", "downloads-test"]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
+"e2e/**" = ["E501"]
 "tests/*" = ["E501"]  # long XML/fixture strings
 
 [tool.pytest.ini_options]

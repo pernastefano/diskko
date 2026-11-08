@@ -744,5 +744,20 @@
   "flash.request_deleted": "La richiesta è stata eliminata.",
   "audit.action.request.deleted": "Ha eliminato una richiesta",
   "footer.made_by": "realizzato da",
-  "footer.credits": "Dati e immagini musicali da MusicBrainz, Cover Art Archive, Wikipedia, Last.fm, Deezer e iTunes. Download tramite Soulseek (SLSKD); Plex è un marchio di Plex, Inc."
+  "footer.credits": "Dati e immagini musicali da MusicBrainz, Cover Art Archive, Wikipedia, Last.fm, Deezer e iTunes. Download tramite Soulseek (SLSKD); Plex è un marchio di Plex, Inc.",
+  "error.too_many_logins": "Troppi tentativi falliti. Attendi qualche minuto e riprova.",
+  "audit.action.login.throttled": "Accesso sospeso (troppi tentativi)",
+  "audit.action.backup.created": "Backup del database",
+  "backups.title": "Backup",
+  "backups.intro": "Ogni notte viene fatta una copia coerente del database e si tengono le ultime {keep}. Contiene impostazioni, utenti, richieste e indice della libreria; i file musicali no.",
+  "backups.scheduled": "Pianificazione: {cron}.",
+  "backups.not_scheduled": "Il backup notturno è disattivato (BACKUP_CRON è vuoto).",
+  "backups.now": "Esegui backup ora",
+  "backups.empty": "Ancora nessun backup.",
+  "backups.col.file": "File",
+  "backups.col.created": "Creato",
+  "backups.col.size": "Dimensione",
+  "backups.download": "Scarica",
+  "backups.warning": "Un backup contiene tutto ciò che c'è nel database, anche i token e le chiavi API salvati: conservalo con la stessa cura del database. Per ripristinare, ferma DISKKO e sostituisci data/app.db con la copia.",
+  "settings.jobtype.backup_db": "Backup del database"
 }

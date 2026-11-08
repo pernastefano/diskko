@@ -1,6 +1,7 @@
 """Importing this package registers every job handler."""
 
 from app.jobs.handlers import (  # noqa: F401
+    backup_db,
     check_integrations,
     download_monitor,
     fetch_artist_images,

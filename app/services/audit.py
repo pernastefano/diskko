@@ -19,6 +19,8 @@ from app.models import AuditLog, User, utcnow
 ACTIONS = (
     "login.ok",
     "login.failed",
+    "login.throttled",
+    "backup.created",
     "request.created",
     "request.cancelled",
     "request.retried",

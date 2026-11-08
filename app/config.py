@@ -33,6 +33,20 @@ class Settings(BaseSettings):
     session_cookie_name: str = "diskko_session"
     session_ttl_hours: int = 24 * 14
     min_password_length: int = 8
+    # Login throttling: failed attempts in the window pause the account / the address (0: off)
+    login_max_attempts: int = 5  # per account name
+    login_max_attempts_ip: int = 20  # per address, across account names
+    login_window_seconds: int = 300
+    # Trust X-Forwarded-For (only behind a reverse proxy that sets it): the address that is counted
+    trust_proxy: bool = False
+
+    # Logs: text (readable) or json (one object per line, for a log collector)
+    log_format: str = "text"
+    log_level: str = "INFO"
+
+    # Database backups: a consistent copy of the SQLite file, kept in <data_dir>/backups
+    backup_cron: str = "15 3 * * *"  # crontab; empty disables the nightly backup
+    backup_keep: int = 7  # how many copies to keep (at least 1)
 
     # Job engine
     jobs_enabled: bool = True
@@ -138,6 +152,10 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         return f"sqlite:///{(self.data_dir / 'app.db').resolve()}"
+
+    @property
+    def backup_dir(self) -> Path:
+        return self.data_dir / "backups"
 
     @property
     def cookie_secure(self) -> bool:
