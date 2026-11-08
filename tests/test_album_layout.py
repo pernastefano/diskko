@@ -40,7 +40,7 @@ def test_admins_get_update_and_match_buttons_on_an_owned_album(admin_client, own
     _, group, album, _ = owned
     html = page(admin_client, f"/album/{group.id}")
     assert "data-album-refresh" in html and f'action="/album/{group.id}/refresh"' in html
-    assert f'href="/admin/artists/{album.artist_id}#album-{album.id}"' in html
+    assert f'href="/admin/albums/{album.id}/match"' in html
     assert "Refresh metadata" in html and "Manage matching" in html
 
 

@@ -1,0 +1,36 @@
+{# needs: album, params, state (idle|not_configured|searching|failed|results), rows, form_query #}
+<div id="match-results" {% if state == 'searching' %}hx-get="/admin/albums/{{ album.id }}/match/results?{{ form_query }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'idle' %}
+    <p class="text-sm text-slate-500" data-search-state="idle">{{ t('albummatch.search_hint') }}</p>
+  {% elif state == 'not_configured' %}
+    <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" data-search-state="not_configured">{{ t('error.mb_not_configured') }}</p>
+  {% elif state == 'searching' %}
+    <p class="text-sm text-slate-500" data-search-state="searching">{{ t('search.searching') }}</p>
+  {% elif state == 'failed' %}
+    <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-search-state="failed">{{ t('search.failed') }}</p>
+  {% elif not rows %}
+    <p class="text-sm text-slate-500" data-search-state="none">{{ t('search.none', q=params.q) }}</p>
+  {% else %}
+    <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm" data-search-state="results">
+      {% for r in rows %}{% set h = r.hit %}{% set g = h.data %}
+        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3" data-rg-mbid="{{ g.mbid }}">
+          <div class="min-w-0">
+            <div class="font-medium">{{ g.title }}{% if g.disambiguation %} <span class="font-normal text-slate-500">({{ g.disambiguation }})</span>{% endif %}
+              {% if r.known_id %}<span class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600" data-known>{{ t('albummatch.in_discography') }}</span>{% endif %}
+            </div>
+            <div class="text-xs text-slate-500">
+              {{ h.artist_name or '—' }} · {{ [g.year or '', t('category.' ~ g.category)]|select|join(' · ') }} · {{ t('albummatch.score', n=h.score) }}
+              · <a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ g.mbid }}">MusicBrainz ↗</a>
+            </div>
+          </div>
+          <form method="post" action="/admin/albums/{{ album.id }}/match">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="choice" value="mbid:{{ g.mbid }}">
+            <input type="hidden" name="q" value="{{ params.q }}"><input type="hidden" name="mode" value="{{ params.mode }}"><input type="hidden" name="scope" value="{{ params.scope }}">
+            <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700" data-use>{{ t('albummatch.use') }}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>

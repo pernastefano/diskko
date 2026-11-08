@@ -20,6 +20,7 @@ from app.jobs.handlers import (  # noqa: F401
     resolve_previews,
     scan_library,
     search_artists,
+    search_release_groups,
     slskd_search,
     sync_artist,
     sync_pending,

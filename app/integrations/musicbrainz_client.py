@@ -73,6 +73,16 @@ class ReleaseGroupData:
 
 
 @dataclass
+class ReleaseGroupHit:
+    """A release group found by a search, with the artist(s) it is credited to."""
+
+    data: ReleaseGroupData
+    artist_name: str = ""
+    artist_mbid: str | None = None
+    score: int = 0  # MusicBrainz search score, 0-100
+
+
+@dataclass
 class TrackData:
     disc: int
     position: int
@@ -104,6 +114,50 @@ def lucene_phrase(text: str) -> str:
 def cache_key(path: str, params: dict[str, Any]) -> str:
     canonical = path + "?" + "&".join(f"{k}={params[k]}" for k in sorted(params))
     return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+_LUCENE_SPECIAL = set('+-&|!(){}[]^"~*?:\\/')
+
+
+def lucene_terms(text: str) -> str:
+    """The words of a free text, safe inside a Lucene query (special characters become spaces)."""
+    return " ".join("".join(" " if c in _LUCENE_SPECIAL else c for c in text).split())
+
+
+def release_group_query(text: str, mode: str = "title", artist_mbid: str | None = None) -> str:
+    """The Lucene query of a release group search.
+
+    title:    the words as the album's title
+    anything: the words in the title or the artist's name; text with a `field:` in it is passed
+              on as typed (an advanced search such as `releasegroup:abbey AND artist:beatles`)
+    `artist_mbid` limits the search to one artist's release groups."""
+    text = text.strip()
+    if mode == "anything" and ":" in text:
+        core = f"({text})"
+    elif mode == "anything":
+        words = lucene_terms(text)
+        core = f"(releasegroup:({words}) OR artist:({words}))"
+    else:
+        core = f"releasegroup:{lucene_phrase(text)}"
+    return f"{core} AND arid:{artist_mbid}" if artist_mbid else core
+
+
+def release_group_search_key(query: str, limit: int) -> str:
+    """Cache key of a release group search (the same one `search_release_groups` writes)."""
+    return cache_key("release-group", {"query": query, "limit": limit, "fmt": "json"})
+
+
+def peek_release_group_search(
+    db: Session, query: str, limit: int, *, now: Callable[[], Any] = utcnow
+) -> list[ReleaseGroupHit] | None:
+    """The cached answer of a release group search, or None when missing or expired."""
+    row = db.get(ApiCache, release_group_search_key(query, limit))
+    if row is None or row.fetched_at + timedelta(seconds=row.ttl_seconds) <= now():
+        return None
+    if row.status == 404 or not row.response:
+        return []
+    data = json.loads(row.response)
+    return [hit for raw in data.get("release-groups", []) if (hit := _parse_release_group_hit(raw))]
 
 
 def search_cache_key(name: str, limit: int) -> str:
@@ -251,6 +305,17 @@ class MusicBrainzClient:
         )
         return [hit for raw in (data or {}).get("artists", []) if (hit := _parse_artist(raw))]
 
+    async def search_release_groups(
+        self, query: str, *, limit: int = 15, force: bool = False
+    ) -> list[ReleaseGroupHit]:
+        """Release groups matching a Lucene query (see `release_group_query`)."""
+        data = await self._get("release-group", {"query": query, "limit": limit}, force=force)
+        return [
+            hit
+            for raw in (data or {}).get("release-groups", [])
+            if (hit := _parse_release_group_hit(raw))
+        ]
+
     async def lookup_artist(self, mbid: str, *, force: bool = False) -> ArtistHit | None:
         data = await self._get(f"artist/{mbid}", {}, force=force)
         return _parse_artist(data) if data else None
@@ -393,6 +458,23 @@ def _parse_release(raw: dict[str, Any]) -> ReleaseData | None:
         tracks=tracks,
         title=str(raw.get("title") or ""),
         credits=_parse_credits(raw.get("artist-credit")),
+    )
+
+
+def _parse_release_group_hit(raw: dict[str, Any]) -> ReleaseGroupHit | None:
+    data = _parse_release_group(raw)
+    if data is None:
+        return None
+    credits = _parse_credits(raw.get("artist-credit"))
+    try:
+        score = int(raw.get("score", 0))
+    except (TypeError, ValueError):
+        score = 0
+    return ReleaseGroupHit(
+        data=data,
+        artist_name="".join(f"{name}{join}" for name, _, join in credits).strip(),
+        artist_mbid=next((mbid for _, mbid, _ in credits if mbid), None),
+        score=score,
     )
 
 

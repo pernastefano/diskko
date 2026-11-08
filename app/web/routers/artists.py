@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 
 from app.auth.deps import DB, AdminAuth, require_admin
 from app.i18n import has_key
@@ -18,22 +18,21 @@ from app.models import (
     MATCH_MANUAL,
     MATCH_NONE,
     MB_STATUSES,
-    AlbumMatchOverride,
     Artist,
     ArtistReview,
     LibraryAlbum,
     ReleaseGroup,
 )
+from app.services import album_match as album_match_svc
 from app.services import audit
 from app.services.library.tags import clean_mbid
 from app.services.musicbrainz import sync
-from app.services.musicbrainz.matching import candidates_for_review, match_artist_albums
+from app.services.musicbrainz.matching import candidates_for_review
 from app.services.musicbrainz.missing import (
     get_missing_types,
     missing_counts,
     missing_release_groups,
 )
-from app.services.musicbrainz.titles import album_key
 from app.web.routers.jobs import notify_worker
 from app.web.templating import render
 
@@ -307,37 +306,10 @@ def album_match(
     album = db.get(LibraryAlbum, album_id)
     if album is None or album.artist_id != artist.id:
         raise HTTPException(status_code=404, detail="not_found")
-    key = album_key(album.title)
-    existing = db.scalar(
-        select(AlbumMatchOverride).where(
-            and_(AlbumMatchOverride.artist_id == artist_id, AlbumMatchOverride.album_key == key)
-        )
-    )
-    if choice == "auto":
-        if existing is not None:
-            db.delete(existing)
-    else:
-        group_id = None
-        if choice != "none":
-            group = db.get(ReleaseGroup, int(choice)) if choice.isdigit() else None
-            if group is None or group.artist_id != artist_id:
-                raise HTTPException(status_code=400, detail="rg_invalid")
-            group_id = group.id
-        if existing is None:
-            existing = AlbumMatchOverride(artist_id=artist_id, album_key=key)
-            db.add(existing)
-        existing.release_group_id, existing.created_by = group_id, auth.user.id
-    db.flush()
-    match_artist_albums(db, artist_id)
-    audit.record(
-        db,
-        auth.user,
-        "album.match",
-        target_type="album",
-        target_id=album.id,
-        label=f"{artist.name} – {album.title}",
-        details={"choice": choice},
-    )
+    try:
+        album_match_svc.apply_choice(db, album, auth.user, choice, artist_name=artist.name)
+    except album_match_svc.MatchError as exc:
+        raise HTTPException(status_code=400, detail=exc.code) from exc
     db.commit()
     return RedirectResponse(f"/admin/artists/{artist_id}?flash=match_saved", status_code=303)
 

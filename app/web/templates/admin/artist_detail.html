@@ -68,6 +68,7 @@
               </select>
               <button type="submit" class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100">{{ t('action.save') }}</button>
             </form>
+            <a href="/admin/albums/{{ album.id }}/match" class="mt-1 inline-block text-xs text-indigo-700 hover:underline" data-find-on-mb>{{ t('albummatch.find') }}</a>
           </td>
         </tr>
       {% else %}

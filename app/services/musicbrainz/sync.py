@@ -20,6 +20,7 @@ from app.models import (
     REVIEW_PENDING,
     REVIEW_RESOLVED,
     SOURCE_MUSICBRAINZ,
+    AlbumMatchOverride,
     Artist,
     ArtistReview,
     LibraryAlbum,
@@ -152,9 +153,18 @@ def store_release_groups(
         rg.disambiguation, rg.category = data.disambiguation, data.category
         rg.source = source
         rg.synced_at = utcnow()
+    # A release group someone chose by hand for an album (an override points at it) stays even
+    # when the artist's discography does not list it (a compilation, another artist's album).
+    chosen = set(
+        db.scalars(
+            select(AlbumMatchOverride.release_group_id).where(
+                AlbumMatchOverride.release_group_id.is_not(None)
+            )
+        )
+    )
     removed = 0
     for mbid, rg in existing.items():
-        if prune and mbid not in seen:
+        if prune and mbid not in seen and rg.id not in chosen:
             db.delete(rg)
             removed += 1
     db.flush()

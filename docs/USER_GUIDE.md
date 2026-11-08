@@ -49,7 +49,11 @@ you open it.
 **An album's page** shows the track list with the quality of each file. If you own the album you
 can play it in the browser (FLAC, MP3, AAC/M4A, OGG/Opus, WAV, AIFF); if not, tracks have a
 30-second preview from iTunes or Deezer when one exists. Administrators can **refresh the metadata**
-or **manage the match** to MusicBrainz.
+or open **Manage matching**: a page for that album with the artist's release groups ranked by how
+well they fit, and a **search over MusicBrainz** (by title, by any words in the title or the artist's
+name, or with your own MusicBrainz query, in the artist's releases or in all of MusicBrainz) for
+compilations and albums credited to someone else. **Use this** keeps your choice for good; the page
+also has *Not on MusicBrainz* and *Back to automatic*.
 
 ### Quality
 

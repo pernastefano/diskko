@@ -18,6 +18,7 @@ from app.logging_config import configure_logging
 from app.services.runtime_config import apply_runtime_config
 from app.web.errors import register_error_handlers
 from app.web.routers import (
+    album_match,
     albums,
     artist_profile,
     artists,
@@ -124,6 +125,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         covers.router,
         discovery.router,
         audit.router,
+        album_match.router,
         backups.router,
         notifications.router,
         artist_profile.router,

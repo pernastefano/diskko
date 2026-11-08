@@ -45,7 +45,7 @@
           </form>
         {% endif %}
         {% if album %}
-          <a href="/admin/artists/{{ artist.id }}#album-{{ album.id }}" class="{{ btn('secondary') }}" data-album-match data-action="manage-matching">{{ icon('link', 'h-4 w-4') }}{{ t('action.manage_matching') }}</a>
+          <a href="/admin/albums/{{ album.id }}/match" class="{{ btn('secondary') }}" data-album-match data-action="manage-matching">{{ icon('link', 'h-4 w-4') }}{{ t('action.manage_matching') }}</a>
         {% endif %}
       </div>
     {% endif %}
