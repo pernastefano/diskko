@@ -161,7 +161,7 @@ def test_the_track_table_has_a_quality_column_instead_of_the_format(admin_client
     _, group, _, _ = owned
     html = page(admin_client, f"/album/{group.id}")
     heads = re.findall(r"<th[^>]*>([^<]*)</th>", html.split("data-track-table", 1)[1])
-    assert heads[:5] == ["#", "Title", "Quality", "Length", "Play"]
+    assert heads[:5] == ["#", "Title", "Quality", "Length", ""]  # the last one holds icon buttons
     assert "Format" not in heads
     cells = re.findall(r'data-quality="flac_standard"', html.split("data-track-table", 1)[1])
     assert len(cells) == 3
@@ -188,7 +188,7 @@ def test_the_table_has_fixed_columns_and_no_wrapping(admin_client, owned):
         "<col>",
         '<col class="w-56">',
         '<col class="w-16">',
-        '<col class="w-64">',
+        '<col class="w-28">',  # two icon buttons: play and info
     ]
     body = html.split("data-track-table", 1)[1]
     assert 'class="px-3 py-2 text-right tabular-nums text-slate-500"' in body  # the length

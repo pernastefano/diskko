@@ -92,6 +92,7 @@ class TrackRow:
     codec: str | None = None
     quality: str | None = None
     note: str | None = None  # not_playable | no_file | no_preview
+    track_id: int | None = None  # the library track (owned rows): what "info" opens
     artists: list[ArtistRef] = field(default_factory=list)  # empty: the album's artist
 
 
@@ -118,6 +119,7 @@ def owned_rows(db: Session, album: LibraryAlbum) -> list[TrackRow]:
         ext = extension_of(t.path)
         mime = PLAYABLE.get(ext)
         row = TrackRow(
+            track_id=t.id,
             disc=t.disc_no or 1,
             number=str(t.track_no or i),
             title=t.title,
@@ -134,6 +136,28 @@ def owned_rows(db: Session, album: LibraryAlbum) -> list[TrackRow]:
             row.source, row.url, row.mime = "file", f"/stream/{t.id}", mime
         rows.append(row)
     return rows
+
+
+def player_data(rows: list[TrackRow], *, album: str, artist: str, cover: str = "") -> dict:
+    """What the album page hands to the player: the tracks that can be played from a file, each
+    with the position of its row (the row's play button starts that track)."""
+    queue = []
+    for index, row in enumerate(rows, 1):
+        if row.source != "file":
+            continue
+        credit = "".join(f"{a.name}{a.join}" for a in row.artists).strip()
+        queue.append(
+            {
+                "row": index,
+                "id": row.track_id,
+                "title": row.title,
+                "artist": credit or artist,
+                "url": row.url,
+                "seconds": row.seconds or 0,
+                "number": row.number,
+            }
+        )
+    return {"album": album, "artist": artist, "cover": cover, "queue": queue}
 
 
 def _similar(a: str, b: str) -> float:

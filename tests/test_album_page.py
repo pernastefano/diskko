@@ -1,6 +1,7 @@
 """The album page: tracks, playing owned files, previews of albums not owned, streaming."""
 
 import os
+import re
 from datetime import timedelta
 
 import httpx
@@ -487,9 +488,13 @@ def test_an_owned_album_shows_its_tracks_and_plays_them_from_disk(admin_client, 
     text = album_page(admin_client, group.id)
     assert "Lady Soul" in text and 'data-ownership="owned"' in text
     assert f'href="/artist/{artist.id}"' in text and "3 tracks" in text
-    assert text.count('data-source="file"') == 3 and text.count("<audio") == 3
-    for t in tracks:
-        assert f'src="/stream/{t.id}"' in text
+    assert text.count('data-source="file"') == 3 and text.count("<audio") == 0
+    assert (
+        len(re.findall(r"data-play(?![\w-])", text)) == 3
+        and len(re.findall(r"data-info(?![\w-])", text)) == 3
+    )  # buttons, no player per row
+    for t in tracks:  # the player's queue has each file, and each row can show its details
+        assert f'"url": "/stream/{t.id}"' in text and f'hx-get="/track/{t.id}/info"' in text
     assert "FLAC Standard" in text and "3:20" in text
     assert "data-album-request" not in text and "Request download" not in text
     assert jobs_of(db, "fetch_tracklist") == [] and jobs_of(db, "resolve_previews") == []
@@ -508,7 +513,7 @@ def test_owned_tracks_that_cannot_be_played_are_listed_with_the_reason(admin_cli
     add_track(db, album, 5, path="plex:track:5")
     db.commit()
     text = album_page(admin_client, group.id)
-    assert text.count('data-track="') == 5 and text.count("<audio") == 3
+    assert text.count('data-track="') == 5 and len(re.findall(r"data-play(?![\w-])", text)) == 3
     assert 'data-source="none"' in text
 
 
@@ -612,7 +617,7 @@ def test_an_unmatched_library_album_has_a_local_page(admin_client, db, settings)
     r = admin_client.get(f"/album/local/{album.id}")
     assert r.status_code == 200
     assert "Home Recording" in r.text and 'data-ownership="owned"' in r.text
-    assert "not matched to MusicBrainz" in r.text and f'src="/stream/{t.id}"' in r.text
+    assert "not matched to MusicBrainz" in r.text and f'"url": "/stream/{t.id}"' in r.text
     assert "data-album-request" not in r.text and "musicbrainz.org/release-group" not in r.text
     assert db.scalars(select(Job)).all() == []
 

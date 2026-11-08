@@ -1,0 +1,26 @@
+{# The details of one track's file. Needs: track, details (TrackDetails), title #}
+<div data-track-info>
+  <h2 class="pr-8 text-lg font-semibold" data-track-info-title>{{ title }}</h2>
+  {% if not details.readable %}
+    <p class="mt-1 text-sm text-amber-700" data-unreadable>{{ t('trackinfo.unreadable') }}</p>
+  {% endif %}
+  {% for section, rows in details.sections %}
+    <h3 class="mb-1 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('trackinfo.section.' ~ section) }}</h3>
+    <dl class="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-1 text-sm" data-section="{{ section }}">
+      {% for key, value in rows %}
+        <dt class="text-slate-500">{{ t('trackinfo.label.' ~ key) }}</dt>
+        <dd class="min-w-0 break-words" data-field="{{ key }}">{% if key == 'lossless' %}{{ t('settings.yes') if value == 'yes' else t('settings.no') }}{% else %}{{ value }}{% endif %}</dd>
+      {% endfor %}
+    </dl>
+  {% endfor %}
+  {% if details.tags %}
+    <details class="mt-4 text-sm" data-all-tags>
+      <summary class="cursor-pointer text-slate-600">{{ t('trackinfo.all_tags', n=details.tags|length) }}</summary>
+      <dl class="mt-2 grid grid-cols-[9rem_1fr] gap-x-4 gap-y-1 text-xs">
+        {% for key, value in details.tags %}
+          <dt class="truncate text-slate-500" title="{{ key }}">{{ key }}</dt><dd class="min-w-0 break-words">{{ value }}</dd>
+        {% endfor %}
+      </dl>
+    </details>
+  {% endif %}
+</div>

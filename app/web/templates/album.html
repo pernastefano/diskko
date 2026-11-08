@@ -4,6 +4,7 @@
 {% from "_icons.html" import icon %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
+<div {% if player %}x-data="albumPlayer" data-album-player{% endif %}>
 <a href="/artist/{{ artist.id }}" class="text-sm text-indigo-600 hover:underline">← {{ artist.name }}</a>
 {% if page_error %}<p role="alert" class="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-error>{{ t(page_error) }}</p>{% endif %}
 <div class="mt-3 flex flex-col gap-5 md:flex-row md:items-start">
@@ -58,4 +59,13 @@
   {# asks for what is missing (the track list, the previews) once the page is open #}
   <div hx-post="/album/{{ group.id }}/tracks" hx-trigger="load" hx-target="#album-tracks" hx-swap="outerHTML" class="hidden"></div>
 {% endif %}
+{% if player %}
+  {% set _ = player.update({'labels': {
+    'play': t('player.play'), 'pause': t('player.pause'), 'repeat': t('player.repeat'),
+    'repeat_off': t('player.repeat_off'), 'repeat_all': t('player.repeat_all'), 'repeat_one': t('player.repeat_one')}}) %}
+  <script type="application/json" id="player-data">{{ player|tojson }}</script>
+  <script src="/static/player.js"></script>
+  {% include "_player_bar.html" %}
+{% endif %}
+</div>
 {% endblock %}

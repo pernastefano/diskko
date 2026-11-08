@@ -47,8 +47,13 @@ ones you miss, grouped by type. Biography and tracks are fetched in the backgrou
 you open it.
 
 **An album's page** shows the track list with the quality of each file. If you own the album you
-can play it in the browser (FLAC, MP3, AAC/M4A, OGG/Opus, WAV, AIFF); if not, tracks have a
-30-second preview from iTunes or Deezer when one exists. Administrators can **refresh the metadata**
+can play it in the browser (FLAC, MP3, AAC/M4A, OGG/Opus, WAV, AIFF) with the **player** stuck to
+the bottom of the page: play/pause, previous, next, a seek bar, volume, **shuffle** and **repeat**
+(off, all tracks, this track). Each track has a play button that starts that track in the player
+and an **info** button (the *i* icon) with everything readable from the file: size, type, format,
+bitrate and its mode, sample rate, bit depth, channels, duration, encoder, ReplayGain, embedded cover
+and all the tags. The player lives on the album page: going to another page stops it. If the album
+is not owned, tracks have a 30-second preview from iTunes or Deezer when one exists. Administrators can **refresh the metadata**
 or open **Manage matching**: a page for that album with the artist's release groups ranked by how
 well they fit, and a **search over MusicBrainz** (by title, by any words in the title or the artist's
 name, or with your own MusicBrainz query, in the artist's releases or in all of MusicBrainz) for

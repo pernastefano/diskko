@@ -33,12 +33,14 @@ from app.services.albums import (
     media_type_of,
     owned_album_for,
     owned_rows,
+    player_data,
     remote_rows,
     resolve_library_file,
     total_seconds,
 )
 from app.services.downloads import slskd_configured
 from app.services.previews import preview_state
+from app.services.track_info import describe as describe_track
 from app.services.tracklists import load_tracks, tracklist_state
 from app.web.routers.discovery import job_state, queue_job
 from app.web.routers.jobs import notify_worker
@@ -127,6 +129,12 @@ def _group_context(
         rows = owned_rows(db, owned)
         attach_artists(db, rows, artist)
         ctx.update(mode="owned", rows=rows, loading=False, lookup=None, tracks_known=True)
+        ctx["player"] = player_data(
+            rows,
+            album=group.title,
+            artist=artist.name,
+            cover=f"/covers/{group.cover_path}" if group.cover_path else "",
+        )
         ctx["upgrade"] = _upgrade_context(request, db, group, owned)
     else:
         remote = _remote_state(request, db, auth, group, enqueue=enqueue, refresh=refresh)
@@ -251,6 +259,7 @@ def local_album_page(request: Request, db: DB, auth: UserAuth, album_id: int):
     rows = owned_rows(db, album)
     attach_artists(db, rows, artist)
     ctx.update(mode="local", rows=rows, loading=False, lookup=None, tracks_known=True)
+    ctx["player"] = player_data(rows, album=album.title, artist=artist.name)
     ctx["summary"] = _summary(rows)
     return render(request, "album.html", ctx)
 
@@ -329,4 +338,23 @@ def stream_track(request: Request, db: DB, auth: UserAuth, track_id: int):
         raise HTTPException(status_code=404, detail="not_found")
     return FileResponse(
         path, media_type=media_type, headers={"Cache-Control": "private, max-age=3600"}
+    )
+
+
+@router.get("/track/{track_id}/info")
+def track_info(request: Request, db: DB, auth: UserAuth, track_id: int):
+    """The details of one track's file (a fragment for the album page): the file, the audio, the
+    tags. Everyone who can see the library sees them; only administrators see the folder."""
+    track = db.get(LibraryTrack, track_id)
+    if track is None:
+        raise HTTPException(status_code=404, detail="not_found")
+    settings = request.app.state.settings
+    details = describe_track(
+        track,
+        settings.music_dir,
+        quality_name=request.app.state.quality_profiles.name(track.quality_tier),
+        show_path=auth.user.is_admin,
+    )
+    return render(
+        request, "_track_info.html", {"track": track, "details": details, "title": track.title}
     )

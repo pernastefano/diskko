@@ -313,3 +313,4 @@ html.dark { color-scheme: dark; }
 .dark .hover\:bg-indigo-700:hover { background-color:#f6b74f; }
 .dark .focus\:border-indigo-500:focus { border-color:#f2a431; }
 .dark .focus\:ring-indigo-500:focus { --tw-ring-color:#f2a431; }
+.dark .accent-indigo-600 { accent-color:#f6b74f; }
