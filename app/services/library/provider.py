@@ -72,6 +72,8 @@ class ScannedArtist:
     sort_name: str
     mbid: str | None
     albums: list[ScannedAlbum] = field(default_factory=list)
+    # Set when a person decided which artist this is (a namesake must not be guessed by name)
+    artist_id: int | None = None
 
 
 @dataclass

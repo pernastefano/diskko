@@ -74,6 +74,55 @@ async def _find_all(scanner: svc.PlexScanner, items: list[svc.Pending]):
     return found
 
 
+async def _record_in_library(ctx: JobContext, present: dict) -> int:
+    """Add the albums Plex now has to DISKKO's library (artist, album, tracks, rating keys) and
+    match them with MusicBrainz. Returns how many were recorded; never raises."""
+    from app.services.library.plex_provider import PlexProvider
+    from app.services.library.scan import match_new_albums, save_artists
+    from app.services.quality_profiles import load_profiles
+
+    settings = ctx.settings
+    try:
+        profiles = await ctx.run_db(load_profiles)
+        provider = PlexProvider(settings, profiles)
+        built = []
+        for album in present.values():
+            artist = await asyncio.to_thread(provider.scanned_artist_of, album)
+            if artist is not None:
+                built.append(artist)
+        if not built:
+            return 0
+
+        def save(db):
+            ids = save_artists(db, provider.source, built)
+            resync = match_new_albums(db, ids)
+            db.commit()
+            return ids, resync
+
+        ids, resync = await ctx.run_db(save)
+        if settings.mb_user_agent.strip():
+            from app.jobs.handlers.sync_artist import sync_dedupe_key
+
+            def queue(db):
+                engine.enqueue(db, "sync_pending_artists", {}, dedupe_key="sync_pending_artists")
+                for artist_id in resync:
+                    engine.enqueue(
+                        db,
+                        "sync_artist_metadata",
+                        {"artist_id": artist_id},
+                        dedupe_key=sync_dedupe_key(artist_id),
+                        parent_job_id=ctx.job_id,
+                    )
+
+            await ctx.run_db(queue)
+        titles = ", ".join(a.albums[0].title for a in built)
+        await ctx.log(f"Added to the library: {titles}")
+        return len(built)
+    except Exception as exc:  # noqa: BLE001 - a scan of Plex is the fallback
+        await ctx.log(f"Could not add the album(s) directly ({type(exc).__name__})", "warning")
+        return 0
+
+
 @job_handler("plex_refresh", queue="default", max_attempts=3, backoff_base=60)
 async def plex_refresh(ctx: JobContext) -> None:
     settings = ctx.settings
@@ -139,13 +188,16 @@ async def plex_refresh(ctx: JobContext) -> None:
         await ctx.log(f"Plex was asked to refresh the metadata of {len(present)} album(s)")
 
     if settings.library_source.strip().lower() == "plex":
-        # the rows (and their rating keys) come from the scan of the Plex library
-        await ctx.run_db(
-            lambda db: engine.enqueue(
-                db, "scan_library", {}, dedupe_key="scan_library", parent_job_id=ctx.job_id
+        # The albums are in Plex now: put just them in the library (no scan of everything), with
+        # their rating keys. If that cannot be done, the next scan of Plex will.
+        recorded = await _record_in_library(ctx, present) if present else 0
+        if present and recorded < len(present):
+            await ctx.run_db(
+                lambda db: engine.enqueue(
+                    db, "scan_library", {}, dedupe_key="scan_library", parent_job_id=ctx.job_id
+                )
             )
-        )
-        await ctx.log("A library scan was queued to record the Plex rating keys")
+            await ctx.log("A library scan was queued to record what could not be added directly")
     elif present:
 
         def reconcile(db):

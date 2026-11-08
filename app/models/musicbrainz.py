@@ -119,7 +119,28 @@ class AlbumMatchOverride(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class AlbumArtistOverride(Base):
+    """ "This album belongs to that artist": a manual decision that survives rescans.
+
+    A scan names the artist of an album by what the tags (or Plex) say, so two artists with the
+    same or a similar name can end up as one. The album is told by where it is (its folder) and
+    its title, the same two things a scan identifies it by."""
+
+    __tablename__ = "album_artist_overrides"
+    __table_args__ = (UniqueConstraint("path", "title"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    path: Mapped[str] = mapped_column(String(1024))
+    title: Mapped[str] = mapped_column(String(512))
+    artist_id: Mapped[int] = mapped_column(ForeignKey("artists.id", ondelete="CASCADE"))
+    created_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 __all__ = [
+    "AlbumArtistOverride",
     "MATCH_MANUAL",
     "MATCH_MATCHED",
     "MATCH_NONE",

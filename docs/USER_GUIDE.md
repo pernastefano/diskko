@@ -55,6 +55,11 @@ name, or with your own MusicBrainz query, in the artist's releases or in all of 
 compilations and albums credited to someone else. **Use this** keeps your choice for good; the page
 also has *Not on MusicBrainz* and *Back to automatic*.
 
+The same page has an **Artist** section for an album filed under the wrong artist (a namesake, or a
+similar name): search the artists you have, or type the name of a new one, and **Move here**. The
+album is matched again under its new artist, and every later scan keeps it there whatever the tags
+or Plex say.
+
 ### Quality
 
 Every file gets the best **quality profile** it satisfies and an album is as good as its worst
@@ -85,7 +90,8 @@ page of an album you own, to get a better quality). The request appears under **
    hours is skipped for the next candidate.
 4. **Processing** and **Importing**: files are checked, tagged from MusicBrainz, given cover art, named from the
    template and moved into your library in one step. Plex is told to scan that folder (the whole music section if it has to).
-5. **In library**: the album is no longer missing.
+5. **In library**: the album is no longer missing. With Plex as the library source the album is added to DISKKO as soon as Plex has it
+   (no need to scan Plex again).
 
 If something cannot be imported (a damaged file, too low a quality, an album that cannot be
 matched), the request shows **Failed** with the reason and the files wait in a quarantine folder:

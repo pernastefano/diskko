@@ -518,7 +518,65 @@ def svc_root(settings):
     return Path("/music")
 
 
-async def test_a_plex_library_gets_a_scan_that_records_the_keys(plex, psettings, session_factory):
+async def test_a_plex_library_gets_the_album_at_once_without_a_scan(
+    plex, psettings, session_factory
+):
+    """The album Plex now has is added to the library by the job itself, with its rating keys:
+    nothing waits for the next scan of Plex."""
+    from app.models import Artist, LibraryAlbum, LibraryTrack
+
+    library(plex)
+    pending_in(session_factory, [ITEM])
+    s = psettings.model_copy(update={"library_source": "plex"})
+    job_id, row = await run_refresh(s, session_factory)
+    assert row.status == "succeeded", row.error
+    with session_factory() as db:
+        assert db.scalars(select(Job).where(Job.type == "scan_library")).all() == []
+        [album] = db.scalars(select(LibraryAlbum)).all()
+        assert (album.title, album.source, album.plex_rating_key) == ("Album Title", "plex", "10")
+        assert db.get(Artist, album.artist_id).name == "The Band"
+        assert db.get(Artist, album.artist_id).in_library is True
+        tracks = db.scalars(select(LibraryTrack).where(LibraryTrack.album_id == album.id)).all()
+        assert sorted(t.plex_rating_key for t in tracks) == ["101", "102"]
+    assert any("Added to the library: Album Title" in m for m in logs(session_factory, job_id))
+
+
+async def test_an_album_added_from_plex_goes_to_the_artist_it_was_given_to(
+    plex, psettings, session_factory
+):
+    """Plex names the artist "The Band"; a decision made by hand about this album still wins."""
+    from app.models import AlbumArtistOverride, LibraryAlbum
+
+    library(plex)
+    pending_in(session_factory, [ITEM])
+    with session_factory() as db:
+        other = make_artist(db, "The Band (the right one)")
+        mine = make_artist(db, "The Band")
+        # the album folder as the Plex scan records it (after the path map)
+        db.add(
+            AlbumArtistOverride(
+                path="/music/The Band/Album (2000)", title="Album Title", artist_id=other.id
+            )
+        )
+        db.commit()
+        other_id, mine_id = other.id, mine.id
+    s = psettings.model_copy(update={"library_source": "plex"})
+    _, row = await run_refresh(s, session_factory)
+    assert row.status == "succeeded", row.error
+    with session_factory() as db:
+        [album] = db.scalars(select(LibraryAlbum)).all()
+        assert album.artist_id == other_id != mine_id
+
+
+async def test_if_the_album_cannot_be_added_a_scan_is_queued_instead(
+    plex, psettings, session_factory, monkeypatch
+):
+    from app.services.library.plex_provider import PlexProvider
+
+    def broken(self, album):
+        raise RuntimeError("no")
+
+    monkeypatch.setattr(PlexProvider, "scanned_artist_of", broken)
     library(plex)
     pending_in(session_factory, [ITEM])
     s = psettings.model_copy(update={"library_source": "plex"})

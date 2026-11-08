@@ -86,7 +86,11 @@ def _roots(music_dir: Path) -> list[str]:
 
 
 def mbid_from_guids(item: Any) -> str | None:
-    for guid in getattr(item, "guids", None) or []:
+    try:
+        guids = getattr(item, "guids", None) or []  # an item listed without them is reloaded
+    except PlexApiException:
+        return None  # it cannot be: the MusicBrainz id is a hint, never a requirement
+    for guid in guids:
         value = str(getattr(guid, "id", "") or "")
         if value.startswith("mbid://"):
             mbid = clean_mbid(value.removeprefix("mbid://"))
@@ -282,6 +286,20 @@ class PlexProvider(LibraryProvider):
         result = [a for a in result if a.albums]
         result.sort(key=lambda a: name_key(a.sort_name))
         return ScanOutput(artists=result, stats=stats)
+
+    def scanned_artist_of(self, plex_album: Any) -> ScannedArtist | None:
+        """One Plex album (with its tracks) as the artist of the scan result it would be part of:
+        what an import needs to show an album in the library without scanning all of Plex. None
+        when the album has no usable track."""
+        members = [
+            scanned for track in plex_album.tracks() if (scanned := self._convert_track(track))
+        ]
+        if not members:
+            return None
+        # the tracks name the artist; asking the album for it could make plexapi reload it
+        title = next((m.artist for m in members if m.artist), None) or "Unknown Artist"
+        built = self._convert_album(plex_album, members, title)
+        return ScannedArtist(name=title, sort_name=sort_name_for(title), mbid=None, albums=[built])
 
     # -------------------------------------------------------------- conversion
 

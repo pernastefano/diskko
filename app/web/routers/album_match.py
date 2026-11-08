@@ -22,6 +22,7 @@ from app.integrations.musicbrainz_client import (
 from app.jobs import engine
 from app.jobs.handlers.search_release_groups import search_dedupe_key
 from app.models import Artist, LibraryAlbum, ReleaseGroup
+from app.services import album_artist
 from app.services import album_match as svc
 from app.web.routers.discovery import job_state
 from app.web.routers.jobs import notify_worker
@@ -85,7 +86,12 @@ def _annotate(db: DB, album: LibraryAlbum, hits: list[ReleaseGroupHit]) -> list[
 
 
 def _context(
-    request: Request, db: DB, album: LibraryAlbum, params: SearchParams, show_all: bool = False
+    request: Request,
+    db: DB,
+    album: LibraryAlbum,
+    params: SearchParams,
+    show_all: bool = False,
+    artist_q: str = "",
 ) -> dict:
     artist = db.get(Artist, album.artist_id)
     group = db.get(ReleaseGroup, album.release_group_id) if album.release_group_id else None
@@ -94,6 +100,10 @@ def _context(
     return {
         "album": album,
         "artist": artist,
+        "artist_q": artist_q,
+        "artist_choices": album_artist.find_artists(db, artist_q, exclude_id=album.artist_id)
+        if artist_q.strip()
+        else [],
         "group": group,
         "candidates": candidates if show_all else candidates[:LOCAL_SHOWN],
         "candidates_total": len(candidates),
@@ -126,12 +136,12 @@ def match_page(
     mode: str = "title",
     scope: str = "",
     all: str = "",
+    artist_q: str = "",
 ):
     album = _album_or_404(db, album_id)
     params = _page_params(db, album, q, mode, scope)
-    return render(
-        request, "admin/album_match.html", _context(request, db, album, params, all == "1")
-    )
+    ctx = _context(request, db, album, params, all == "1", artist_q.strip()[:100])
+    return render(request, "admin/album_match.html", ctx)
 
 
 @router.get("/{album_id}/match/results")
@@ -211,3 +221,38 @@ def match_save(
         return render(request, "admin/album_match.html", ctx, status_code=400)
     db.commit()
     return RedirectResponse(f"{_album_page(db, album)}?flash=match_saved", status_code=303)
+
+
+@router.post("/{album_id}/artist")
+def artist_save(
+    request: Request,
+    db: DB,
+    auth: AdminAuth,
+    album_id: int,
+    artist_id: Annotated[str, Form()] = "",
+    new_name: Annotated[str, Form()] = "",
+):
+    """Give the album to another artist: one that exists, or a new one by name."""
+    album = _album_or_404(db, album_id)
+    chosen = int(artist_id) if artist_id.isdigit() and artist_id.isascii() else None
+    try:
+        target = album_artist.reassign(
+            db, album, auth.user, artist_id=chosen, new_name="" if chosen else new_name
+        )
+    except album_artist.ArtistChoiceError as exc:
+        db.rollback()
+        params = _page_params(db, album, "", "title", "")
+        ctx = _context(request, db, album, params)
+        ctx["error"] = f"error.{exc.code}"
+        return render(request, "admin/album_match.html", ctx, status_code=400)
+    db.commit()
+    if request.app.state.settings.mb_user_agent.strip() and target.metadata_synced_at is None:
+        engine.enqueue(  # a new artist gets its MusicBrainz identity
+            db,
+            "sync_pending_artists",
+            {},
+            dedupe_key="sync_pending_artists",
+            created_by=auth.user.id,
+        )
+        notify_worker(request)
+    return RedirectResponse(f"/admin/albums/{album.id}/match?flash=artist_moved", status_code=303)

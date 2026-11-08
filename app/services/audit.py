@@ -40,6 +40,7 @@ ACTIONS = (
     "artist.reset",
     "artist.confirmed",
     "album.match",
+    "album.artist",
     "album.refresh",
     "library.scan",
 )

@@ -783,5 +783,19 @@
   "albummatch.score": "match {n}%",
   "error.search_expired": "The search result is no longer available: search again and pick it.",
   "settings.jobtype.search_release_groups": "Album search on MusicBrainz",
-  "search.busy": "Too many searches are running for you: wait for one to finish."
+  "search.busy": "Too many searches are running for you: wait for one to finish.",
+  "albummatch.artist.title": "Artist",
+  "albummatch.artist.intro": "This album is filed under {artist}. If that is the wrong artist (one with the same or a similar name), give it to the right one. The choice is kept: every later scan puts the album there, whatever the tags or Plex say.",
+  "albummatch.artist.find": "Find an artist",
+  "albummatch.artist.find_button": "Find",
+  "albummatch.artist.none": "No other artist has that name.",
+  "albummatch.artist.albums": "{n} album(s)",
+  "albummatch.artist.move": "Move here",
+  "albummatch.artist.new": "Or a new artist named",
+  "albummatch.artist.new_button": "Create and move",
+  "flash.artist_moved": "The album now belongs to the artist you chose.",
+  "error.artist_invalid": "That artist does not exist.",
+  "error.artist_name_empty": "Write the name of the artist.",
+  "error.artist_same": "The album already belongs to that artist.",
+  "audit.action.album.artist": "Gave an album to another artist"
 }

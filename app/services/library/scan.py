@@ -7,9 +7,17 @@ from dataclasses import asdict, dataclass, field
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import MATCH_UNMATCHED, MB_RESOLVED, Artist, LibraryAlbum, LibraryTrack, utcnow
+from app.models import (
+    MATCH_UNMATCHED,
+    MB_RESOLVED,
+    AlbumArtistOverride,
+    Artist,
+    LibraryAlbum,
+    LibraryTrack,
+    utcnow,
+)
 from app.services.app_settings import get_setting, set_setting
-from app.services.library.grouping import name_key
+from app.services.library.grouping import name_key, sort_name_for
 from app.services.library.provider import (
     LibraryError,
     LibraryProvider,
@@ -68,6 +76,10 @@ def load_known(db: Session, source: str) -> tuple[dict[str, ScannedTrack], dict[
 
 
 def _find_artist(db: Session, scanned: ScannedArtist) -> Artist | None:
+    if scanned.artist_id:
+        chosen = db.get(Artist, scanned.artist_id)
+        if chosen is not None:
+            return chosen
     if scanned.mbid:
         artist = db.scalar(select(Artist).where(Artist.mbid == scanned.mbid))
         if artist:
@@ -163,6 +175,10 @@ def _find_album(
 
 
 def _apply_album(row: LibraryAlbum, album: ScannedAlbum, artist_id: int) -> None:
+    if row.artist_id is not None and row.artist_id != artist_id:
+        # moved to another artist: what it was matched to was that artist's release group
+        row.release_group_id, row.matched_confidence = None, None
+        row.match_status = MATCH_UNMATCHED
     row.artist_id = artist_id
     row.path, row.title, row.year = album.path, album.title, album.year
     row.format, row.quality_tier, row.bitrate = album.format, album.quality_tier, album.bitrate
@@ -296,12 +312,47 @@ def match_new_albums(db: Session, changed: list[int]) -> list[int]:
     return resync
 
 
+def apply_artist_overrides(db: Session, artists: list[ScannedArtist]) -> list[ScannedArtist]:
+    """Put the albums a person gave to another artist under that artist, whatever the tags or
+    Plex say about it. Albums are told by their folder and title."""
+    rows = db.scalars(select(AlbumArtistOverride)).all()
+    if not rows:
+        return artists
+    wanted = {(r.path, r.title): r.artist_id for r in rows}
+    targets = {
+        a.id: a for a in db.scalars(select(Artist).where(Artist.id.in_(set(wanted.values()))))
+    }
+    kept: list[ScannedArtist] = []
+    moved: dict[int, ScannedArtist] = {}
+    for artist in artists:
+        stay = []
+        for album in artist.albums:
+            target = targets.get(wanted.get((album.path, album.title)))
+            if target is None:
+                stay.append(album)
+                continue
+            slot = moved.setdefault(
+                target.id,
+                ScannedArtist(
+                    name=target.name,
+                    sort_name=target.sort_name or sort_name_for(target.name),
+                    mbid=target.mbid,
+                    artist_id=target.id,
+                ),
+            )
+            slot.albums.append(album)
+        if stay:
+            artist.albums = stay
+            kept.append(artist)
+    return kept + list(moved.values())
+
+
 def save_artists(db: Session, source: str, artists: list[ScannedArtist]) -> list[int]:
     """Save scanned artists with their albums and tracks (the caller commits). Returns the ids of
     the artists. Used to record one imported album without scanning the whole library."""
     claimed: set[int] = set()
     ids = []
-    for scanned in artists:
+    for scanned in apply_artist_overrides(db, artists):
         _persist_artist(db, source, scanned, {}, claimed)
         ids.append(_find_artist(db, scanned).id)
     return ids
@@ -341,6 +392,8 @@ def run_scan(
         files_skipped=output.stats.files_skipped,
         errors=output.stats.errors,
     )
+    with factory() as db:
+        output.artists = apply_artist_overrides(db, output.artists)
     claimed: set[int] = set()
     changed: list[int] = []  # artists that got new tracks: their albums are matched again
     total = len(output.artists)
