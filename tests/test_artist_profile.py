@@ -23,7 +23,7 @@ from app.services.artist_profile import (
 )
 from tests.conftest import MB_BASE, post
 from tests.dbhelpers import make_artist
-from tests.test_jobs_worker import enqueue, fetch, logs, wait_for_status
+from tests.test_jobs_worker import enqueue, logs, wait_for_status
 
 MBID = "a74b1b7f-71a5-4011-9441-d0b5e4122711"
 DEEZER = "https://api.deezer.com"
@@ -388,7 +388,9 @@ async def test_the_profile_job_retries_when_nobody_answers(psettings, session_fa
 
             await asyncio.sleep(0.02)
         await worker.stop()
-    assert fetch(session_factory, job_id).status == "queued"
+    await wait_for_status(
+        session_factory, job_id, "queued"
+    )  # the write of the failure may still be in flight
     with session_factory() as db:
         assert db.get(Artist, artist_id).profile_checked_at is None  # will be asked again
 

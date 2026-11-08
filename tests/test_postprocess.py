@@ -29,7 +29,7 @@ from app.services.quality_profiles import load_profiles
 from tests.audio import make_flac, make_track
 from tests.conftest import MB_BASE
 from tests.dbhelpers import make_artist, make_rg
-from tests.test_jobs_worker import enqueue, fetch, logs
+from tests.test_jobs_worker import enqueue, fetch, logs, wait_for_status
 
 CAA = "https://coverartarchive.test"
 ARTIST_MBID = "33333333-3333-4333-8333-333333333333"
@@ -644,7 +644,9 @@ async def test_when_musicbrainz_does_not_answer_the_job_waits_and_nothing_change
                 break
             await asyncio.sleep(0.02)
         await worker.stop()
-    assert fetch(factory, job_id).status == "queued"  # to be retried
+    await wait_for_status(
+        factory, job_id, "queued"
+    )  # the write of the failure may still be in flight
     assert root.exists() and not (music / "The Band").exists()  # nothing moved, nothing lost
     assert request_of(factory).status != REQ_FAILED
 

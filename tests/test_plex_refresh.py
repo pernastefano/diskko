@@ -411,7 +411,9 @@ async def test_plex_unreachable_keeps_the_folders_and_retries(plex, psettings, s
             break
         await asyncio.sleep(0.02)
     await worker.stop()
-    assert fetch(session_factory, job_id).status == "queued"
+    await wait_for_status(
+        session_factory, job_id, "queued"
+    )  # the write of the failure may still be in flight
     assert pending_of(session_factory) == [ITEM]
     with session_factory() as db:
         assert get_setting(db, svc.LAST_KEY) is None

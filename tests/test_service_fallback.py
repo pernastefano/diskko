@@ -205,7 +205,9 @@ async def test_an_unanswered_cover_stays_unknown_to_be_retried(mbsettings, sessi
         await worker.stop()
     # Deezer answered "not this album" but the Cover Art Archive could not: not "missing" yet
     assert covers_of(session_factory, artist_id)["Studio Album"] == ("unknown", None)
-    assert fetch(session_factory, job_id).status == "queued"  # retried with backoff
+    await wait_for_status(
+        session_factory, job_id, "queued"
+    )  # the write of the failure may still be in flight
 
 
 async def wait_for_log(factory, job_id, text, timeout=5.0):
