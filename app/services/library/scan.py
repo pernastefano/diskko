@@ -247,6 +247,9 @@ def _purge_other_sources(
         return 0, 0
     tracks = db.execute(delete(LibraryTrack).where(LibraryTrack.source != source)).rowcount
     albums = db.execute(delete(LibraryAlbum).where(LibraryAlbum.source != source)).rowcount
+    # Commit before logging: the reporter writes the job log through its own connection, which
+    # would wait for the write lock held here ("database is locked") and undo the whole purge.
+    db.commit()
     reporter.log(f"Removed {albums} album(s) and {tracks} track(s) left by another library source")
     return albums, tracks
 

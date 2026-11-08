@@ -674,3 +674,38 @@ def test_a_provider_that_repeats_an_album_key_does_not_break_the_scan(session_fa
     with session_factory() as db:
         (row,) = db.scalars(select(LibraryAlbum)).all()
         assert (row.track_count, row.total_size) == (5, 50)
+
+
+class DbLogReporter(RecordingReporter):
+    """Logs like the real ScanReporter: through its own connection to the database."""
+
+    def __init__(self, factory, job_id):
+        super().__init__()
+        self._factory, self._job_id = factory, job_id
+
+    def log(self, message, level="info"):
+        from app.jobs import engine
+
+        super().log(message, level)
+        with self._factory() as db:
+            engine.add_log(db, self._job_id, level, message)
+
+
+def test_the_purge_survives_the_job_log_being_written_during_it(
+    plex, psettings, session_factory, tmp_path
+):
+    """The log line about the removed rows is written while the scan still holds the deletes:
+    it must not wait for its own lock (that rolled the whole purge back, leaving duplicates)."""
+    from app.jobs import engine
+
+    run_scan(session_factory, local_album(tmp_path), RecordingReporter())
+    basic_library(plex)
+    with session_factory() as db:
+        job_id = engine.enqueue(db, "scan_library").id
+    reporter = DbLogReporter(session_factory, job_id)
+    summary = run_scan(session_factory, PlexProvider(psettings), reporter)
+    assert summary.other_source_albums_removed == 1
+    with session_factory() as db:
+        assert {a.source for a in db.scalars(select(LibraryAlbum))} == {"plex"}
+        titles = [a.title for a in db.scalars(select(LibraryAlbum))]
+        assert len(titles) == len(set(titles))
