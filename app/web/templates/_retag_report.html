@@ -2,7 +2,7 @@
 <div id="retag-report" data-retag-state="{{ state }}" {% if state == 'running' %}hx-get="/album/{{ group.id }}/retag/report" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
 {% if state == 'running' %}
   <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600" data-retag-running>
-    {{ t('retag.running') }}{% if job and job.step %} — {{ job.step }}{% endif %}
+    {% if job and job.status == 'queued' %}{{ t('retag.queued') }}{% else %}{{ t('retag.running') }}{% endif %}{% if job and job.step %} — {{ job.step }}{% endif %}
     {% if job %}<a href="/admin/jobs/{{ job.id }}" class="ml-2 text-indigo-600 hover:underline">{{ t('retag.job') }}</a>{% endif %}
   </p>
 {% elif state == 'failed' %}

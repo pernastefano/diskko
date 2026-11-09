@@ -57,7 +57,9 @@ class Settings(BaseSettings):
 
     # Job engine
     jobs_enabled: bool = True
-    job_queue_concurrency: str = "default:2,musicbrainz:1,slskd:6,library:1,coverart:2,discovery:2"
+    job_queue_concurrency: str = (
+        "default:2,musicbrainz:1,slskd:6,library:1,coverart:2,discovery:2,interactive:2"
+    )
     job_poll_interval: float = 1.0
     # How many days finished jobs and their logs are kept (at least 1). The jobs that run all day
     # (service checks, the cleanup) go quickly; failures stay longer, they explain what went wrong.

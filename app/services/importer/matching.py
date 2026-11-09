@@ -54,8 +54,20 @@ def facts_of(files: list[DownloadedFile]) -> list[FileFacts]:
     return result
 
 
+_FEATURING = re.compile(
+    r"\s*[(\[]\s*(?:feat|ft|featuring)\b[^)\]]*[)\]]|\s+(?:feat|ft|featuring)\.?\s.*$",
+    re.IGNORECASE,
+)
+
+
+def without_guests(title: str) -> str:
+    """The title without its "(feat. ...)" part: files and MusicBrainz do not always agree on
+    whether the guests belong to the title, and a long list of them drowns a short title."""
+    return _FEATURING.sub("", title).strip() or title
+
+
 def _similar(a: str, b: str) -> float:
-    ka, kb = album_key(a), album_key(b)
+    ka, kb = album_key(without_guests(a)), album_key(without_guests(b))
     if not ka or not kb:
         return 0.0
     return max(fuzz.ratio(ka, kb), fuzz.token_sort_ratio(ka, kb)) / 100

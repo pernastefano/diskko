@@ -686,3 +686,59 @@ def test_only_an_admin_can_use_the_retag_pages(admin_client, user_client, owned)
         == 403
     )
     assert admin_client.get("/album/999999/retag").status_code == 404
+
+
+def test_the_job_has_its_own_queue_so_a_library_scan_never_holds_it_up(settings):
+    from app.jobs import registry
+
+    assert registry.get_spec("retag_album").queue == "interactive"
+    assert registry.get_spec("scan_library").queue == "library"
+    assert settings.queue_concurrency["interactive"] == 2
+
+
+def test_guests_in_a_title_do_not_stop_a_file_from_pairing(tmp_path):
+    names = {
+        "The Uppercut (feat. E.D.I. Mean & Young Noble)": "The Uppercut",
+        "Black Cotton (feat. Eminem, Kastro & Young Noble)": "Black Cotton",
+        "Hennessey (feat. Obie Trice)": "Hennessey",
+        "Soldier Like Me (Return of the Soulja) (feat. Eminem)": "Soldier Like Me (Return of the Soulja)",
+        "Song [ft. Someone]": "Song",
+        "Song feat. Someone Else": "Song",
+    }
+    for file_title, track_title in names.items():
+        assert matching.without_guests(file_title) == matching.without_guests(track_title)
+        assert matching._similar(file_title, track_title) == 1.0, file_title
+    # only the guests go: a remix or a different song with the same start is not the same track
+    assert matching._similar("Hennessey (Red Spyda remix)", "Hennessey") < 0.8
+    assert matching.without_guests("Feat Me") == "Feat Me"
+
+
+def test_a_real_album_with_long_guest_lists_pairs_all_its_files(tmp_path):
+    files = {
+        1: "Soldier Like Me (Return of the Soulja) (feat. Eminem)",
+        2: "The Uppercut (feat. E.D.I. Mean & Young Noble)",
+        3: "Out on Bail",
+        5: "Black Cotton (feat. Eminem, Kastro & Young Noble)",
+        12: "Hennessey (feat. Obie Trice)",
+    }
+    from app.services.importer.integrity import DownloadedFile
+    from app.services.library.tags import read_audio_file
+
+    downloaded = []
+    for number, title in files.items():
+        path = make_track(tmp_path / f"{number:02d}.flac", title=title, track=number)
+        downloaded.append(DownloadedFile(path, path.name, read_audio_file(path), 1))
+    tracks = [
+        TrackData(1, n, str(n), t, 1000, f"rec-{n}", [])
+        for n, t in {
+            1: "Soldier Like Me (Return of the Soulja)",
+            2: "The Uppercut",
+            3: "Out on Bail",
+            4: "Ghetto Gospel",
+            5: "Black Cotton",
+            12: "Hennessey",
+        }.items()
+    ]
+    rel = ReleaseData("e" * 36, "2004", "US", "Official", tracks, "Loyal to the Game")
+    ranked = matching.rank_releases([rel], matching.facts_of(downloaded), "Loyal to the Game")
+    assert len(ranked[0].pairs) == 5 and ranked[0].missing == 1  # only Ghetto Gospel has no file

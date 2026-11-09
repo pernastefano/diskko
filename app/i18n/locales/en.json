@@ -934,5 +934,6 @@
   "retag.field.mb_artist": "MusicBrainz artist id",
   "retag.field.mb_albumartist": "MusicBrainz album artist id",
   "retag.field.mb_recording": "MusicBrainz recording id",
-  "settings.jobtype.retag_album": "Album tags update"
+  "settings.jobtype.retag_album": "Album tags update",
+  "retag.queued": "Waiting for a free worker…"
 }

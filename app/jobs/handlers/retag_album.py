@@ -69,7 +69,7 @@ def eligible_error(album: LibraryAlbum | None, group: ReleaseGroup | None) -> st
     return None
 
 
-@job_handler("retag_album", queue="library", max_attempts=2, backoff_base=60)
+@job_handler("retag_album", queue="interactive", max_attempts=2, backoff_base=60)
 async def retag_album(ctx: JobContext) -> None:
     album_id = int(ctx.payload["album_id"])
     apply = bool(ctx.payload.get("apply"))

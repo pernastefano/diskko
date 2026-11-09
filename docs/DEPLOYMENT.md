@@ -322,7 +322,7 @@ all and are read only from the environment: `ENV`, `SECRET_KEY`, `BASE_URL`, `PO
 | `MB_USER_AGENT` | | Required by MusicBrainz (app, version, a contact). |
 | `LASTFM_API_KEY` | | Optional. |
 | `PROVIDERS_COVERS`, `PROVIDERS_PREVIEWS`, `PROVIDERS_SIMILAR`, `PROVIDERS_TOPTRACKS`, `PROVIDERS_BIO`, `PROVIDERS_METADATA` | see Settings → Services | First is the default, the rest are fallbacks. |
-| `JOB_QUEUE_CONCURRENCY` | `default:2,musicbrainz:1,slskd:6,...` | Jobs running at once per queue (MusicBrainz is always 1). |
+| `JOB_QUEUE_CONCURRENCY` | `default:2,musicbrainz:1,slskd:6,...,interactive:2` | Jobs running at once per queue (MusicBrainz is always 1). |
 | `JOB_RETENTION_*_DAYS`, `AUDIT_RETENTION_DAYS` | `1`/`14`/`60`, `365` | How long finished jobs and the audit log are kept. |
 | `STATUS_CHECK_MINUTES` | `5` | How often services are checked (0 turns it off). |
 
