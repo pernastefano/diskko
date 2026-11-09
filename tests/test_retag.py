@@ -742,3 +742,34 @@ def test_a_real_album_with_long_guest_lists_pairs_all_its_files(tmp_path):
     rel = ReleaseData("e" * 36, "2004", "US", "Official", tracks, "Loyal to the Game")
     ranked = matching.rank_releases([rel], matching.facts_of(downloaded), "Loyal to the Game")
     assert len(ranked[0].pairs) == 5 and ranked[0].missing == 1  # only Ghetto Gospel has no file
+
+
+def test_the_polled_report_renders_on_its_own_in_every_state(admin_client, db, owned):
+    """The page asks for this fragment by itself while the job runs: it must not depend on
+    anything the full page imports (it did: the Apply button's macro)."""
+    group, album = owned
+    url = f"/album/{group.id}/retag/report"
+    assert admin_client.get(url).status_code == 200  # nothing yet
+    report = {
+        "release": None,
+        "candidates": [],
+        "files": [],
+        "missing": [],
+        "extra": [],
+        "cover": {},
+        "folder": None,
+        "notes": [],
+        "summary": {"files": 1, "to_change": 1, "same": 0, "unmatched": 0, "cover_to_embed": 0},
+    }
+    row = RetagReport(
+        album_id=album.id, mode="preview", status="ready", options_json="{}",
+        report_json=json.dumps(report),
+    )  # fmt: skip
+    db.add(row)
+    db.commit()
+    page = admin_client.get(url)
+    assert page.status_code == 200 and "data-retag-apply" in page.text
+    for mode, status in (("applied", "ready"), ("preview", "error"), ("preview", "running")):
+        row.mode, row.status = mode, status
+        db.commit()
+        assert admin_client.get(url).status_code == 200, (mode, status)
