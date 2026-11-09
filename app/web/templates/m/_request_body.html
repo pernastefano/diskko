@@ -5,6 +5,10 @@
     <span class="text-slate-500">{{ quality_profiles.name(r.quality_key) }}</span>
     {% if r.upgrade_from %}<span class="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800" data-upgrade>{{ t('requests.upgrade_tag') }}</span>{% endif %}
   </div>
+  {% if r.status == 'no_results' %}
+    {% if r.query_used %}<p class="mb-2 text-xs text-slate-500" data-searched>{{ t('requests.tried', list=r.query_used.split(' | ')|join(' · ')) }}</p>{% endif %}
+    <p class="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" data-no-results-hint>{{ t('requests.no_results_hint') }}</p>
+  {% endif %}
   {% if r.error %}<p class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-request-error>{{ r.error }}</p>{% endif %}
   {% if r.status == 'downloading' %}
     <div class="mb-3 h-2 w-full overflow-hidden rounded bg-slate-200"><div class="h-full bg-indigo-600" style="width: {{ r.progress|round|int }}%"></div></div>
@@ -68,8 +72,13 @@
       </form>
     {% endif %}
     {% if can_retry %}
-      <form method="post" action="/m/requests/{{ r.id }}/retry">
+      <form method="post" action="/m/requests/{{ r.id }}/retry" class="space-y-2">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if r.status == 'no_results' %}
+          <label for="retry-query" class="block text-xs text-slate-500">{{ t('requests.retry_text') }}</label>
+          <input id="retry-query" name="query" maxlength="255" placeholder="{{ t('requests.retry_placeholder') }}" autocomplete="off"
+                 class="m-tap block w-full rounded-md border border-slate-300 px-3 text-sm">
+        {% endif %}
         <button class="m-tap w-full rounded-lg bg-indigo-600 text-sm font-medium text-white" data-retry>{{ t('requests.retry') }}</button>
       </form>
     {% endif %}

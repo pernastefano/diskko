@@ -240,7 +240,7 @@ types counted as "missing" are the same for everyone and set by an administrator
 | An artist badge says *no data yet* | Its MusicBrainz sync has not run. Check **Jobs**, and that the MusicBrainz contact is set in Settings → Integrations. |
 | An artist is matched to the wrong namesake | **Artist management** → the artist → **Manage matching**, pick the right one or paste its MBID. |
 | "Too many failed attempts" at sign-in | Wait a few minutes; an administrator can also reset your password. |
-| A request says *No results* | Search again with another text, or choose manually (set the mode to manual in Settings → Integrations). |
+| A request says *No results* | The page lists the texts tried (the artist and album, the album alone, the artist's last name with the album, and the last name alone, which asks for many answers and keeps only the folders that are the album). Search again with a shorter text of your own (the artist's last name, or only the album title), or choose manually (set the mode to manual in Settings → Integrations). |
 | A request failed and files are in quarantine | Open the request: the reason and the folder are shown. Fix the cause (or accept a lower quality) and **Search again**. |
 | Plex does not show the new album | Check Plex under **Status**; if Plex sees the files at another path, set the path map in Settings → Integrations → Plex. |
 | The status icon is red | Click it, then **Check all now**: the failing service shows what went wrong. |

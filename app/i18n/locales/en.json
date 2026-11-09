@@ -1000,5 +1000,7 @@
   "requests.release.reject": "Do not import",
   "requests.release.reject_confirm": "Move the download to the quarantine folder?",
   "error.request_bad_release": "That release is not one of those offered.",
-  "audit.action.request.release_chosen": "Chose the release of a download"
+  "audit.action.request.release_chosen": "Chose the release of a download",
+  "requests.tried": "Searched for: {list}",
+  "requests.no_results_hint": "Nothing on the network matched. Soulseek can hide some artist and album names, so try again with a shorter text: the artist's last name alone (for example “Adams”) or only the album title. The folders that are not this album are discarded for you."
 }

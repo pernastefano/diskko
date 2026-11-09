@@ -298,8 +298,14 @@ async def test_no_results_when_nothing_matches(jsettings, session_factory, fake)
     request_id = make_request(session_factory)
     request = await run(jsettings, session_factory, fake, request_id)
     assert request.status == REQ_NO_RESULTS and request.finished_at is not None
-    assert len(posts(fake, "/searches")) == 2  # the written text, then the album alone
-    assert request.query_used == "lady soul" and svc.candidates_of(request) == []
+    assert (
+        len(posts(fake, "/searches")) == 4
+    )  # the text, the album alone, last name + album, last name
+    # what was tried is kept for the request page
+    assert request.query_used == (
+        "Aretha Franklin Lady Soul | lady soul | franklin lady soul | franklin"
+    )
+    assert svc.candidates_of(request) == []
     assert posts(fake, "/batches") == []
 
 
@@ -317,6 +323,26 @@ async def test_later_search_variants_are_tried_until_one_works(jsettings, sessio
     request = await run(jsettings, session_factory, fake, request_id)
     assert request.status == REQ_DOWNLOADED and request.query_used == "lady soul"
     assert len(posts(fake, "/searches")) == 2
+
+
+async def test_the_last_name_alone_finds_what_the_specific_searches_do_not(
+    jsettings, session_factory, fake
+):
+    other = flac_album("bob", "Somebody Else\\Another Record")
+    fake.searches_by_text = {"franklin": [other, flac_album("alice", GOOD)]}  # a broad answer
+    request_id = make_request(session_factory)
+    request = await run(jsettings, session_factory, fake, request_id)
+    assert request.status == REQ_DOWNLOADED and request.query_used == "franklin"
+    assert [c.username for c in svc.candidates_of(request)] == ["alice"]  # the other folder is out
+    limits = [b["responseLimit"] for b in fake.search_bodies]
+    assert limits == [100, 100, 100, 300]  # only the broad search asks for many answers
+
+
+async def test_a_manual_text_is_never_widened(jsettings, session_factory, fake):
+    request_id = make_request(session_factory, query="franklin")
+    request = await run(jsettings, session_factory, fake, request_id)
+    assert request.status == REQ_NO_RESULTS and len(posts(fake, "/searches")) == 1
+    assert request.query_used == "franklin"
 
 
 async def test_the_minimum_quality_decides_what_is_a_candidate(jsettings, session_factory, fake):

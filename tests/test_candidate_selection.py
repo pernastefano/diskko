@@ -13,6 +13,7 @@ from app.services.candidate_selection import (
     group_by_subdir,
     group_files,
     query_variants,
+    search_plan,
     select_candidates,
 )
 
@@ -276,12 +277,32 @@ def test_query_variants():
     assert query_variants("Aretha Franklin", "Lady Soul") == [
         "Aretha Franklin Lady Soul",
         "lady soul",
+        "franklin lady soul",  # the last name with the album
+        "franklin",  # the last name alone, a broad search
     ]
     v = query_variants("Beyoncé", "Lemonade (Deluxe Edition)")
     assert v[0] == "Beyoncé Lemonade (Deluxe Edition)"
     assert v[1] == "beyonce lemonade" and v[2] == "lemonade"
+    assert len(v) == 3  # one word: no last name to search for
     assert query_variants("X", "X") == ["X X", "x"]
     assert len(query_variants("A", "B")) == len({q.lower() for q in query_variants("A", "B")})
+
+
+def test_the_plan_ends_with_a_broad_search_of_the_last_name():
+    plan = search_plan("Bryan Adams", "Reckless")
+    assert [(s.text, s.broad) for s in plan] == [
+        ("Bryan Adams Reckless", False),
+        ("reckless", False),
+        ("adams reckless", False),
+        ("adams", True),
+    ]
+
+
+@pytest.mark.parametrize(
+    "artist", ["Various Artists", "AC/DC", "Radiohead", "Sigur Rós Band", "The Jimi Hendrix Band"]
+)
+def test_no_broad_search_when_the_last_word_says_nothing_about_the_artist(artist):
+    assert not any(s.broad for s in search_plan(artist, "Some Album"))
 
 
 @pytest.mark.parametrize("path", ["a\\b\\c.flac", "a/b/c.flac", "c.flac"])

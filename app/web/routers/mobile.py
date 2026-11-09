@@ -376,8 +376,10 @@ def request_cancel(request: Request, db: DB, auth: UserAuth, request_id: int):
 
 
 @router.post("/requests/{request_id}/retry")
-def request_retry(request: Request, db: DB, auth: UserAuth, request_id: int):
-    return to_mobile(requests_web.request_retry(request, db, auth, request_id, "", "", ""))
+def request_retry(
+    request: Request, db: DB, auth: UserAuth, request_id: int, query: Annotated[str, Form()] = ""
+):
+    return to_mobile(requests_web.request_retry(request, db, auth, request_id, query, "", ""))
 
 
 @router.post("/requests/{request_id}/delete")

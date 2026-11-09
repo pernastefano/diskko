@@ -6,7 +6,7 @@
     {% if r.upgrade_from %}<span class="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800" data-upgrade>{{ t('requests.upgrade_from', quality=quality_profiles.name(r.upgrade_from)) }}</span>{% endif %}
     <span class="text-slate-500">{{ t('request.mode.' ~ r.mode) }}</span>
     {% if owner %}<span class="text-slate-500">{{ t('requests.col.user') }}: {{ owner }}</span>{% endif %}
-    {% if r.query_used %}<span class="text-slate-500">{{ t('requests.searched', q=r.query_used) }}</span>{% endif %}
+    {% if r.query_used %}<span class="text-slate-500" data-searched>{% if r.status == 'no_results' %}{{ t('requests.tried', list=r.query_used.split(' | ')|join(' · ')) }}{% else %}{{ t('requests.searched', q=r.query_used) }}{% endif %}</span>{% endif %}
     {% if job %}<a href="/admin/jobs/{{ job.id }}" class="text-indigo-700 underline">{{ t('requests.job') }}</a>{% endif %}
   </div>
   {% if r.error %}<p class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-request-error>{{ r.error }}</p>{% endif %}
@@ -28,6 +28,7 @@
     </form>
   {% endif %}
 
+  {% if r.status == 'no_results' %}<p class="mb-3 max-w-3xl rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" data-no-results-hint>{{ t('requests.no_results_hint') }}</p>{% endif %}
   {% if can_retry %}
     <form method="post" action="/requests/{{ r.id }}/retry" class="mb-6 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-retry>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

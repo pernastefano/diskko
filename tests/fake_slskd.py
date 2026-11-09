@@ -85,6 +85,7 @@ class FakeSlskd:
         self.calls: list[tuple[str, str]] = []
         self.deleted_transfers: list[str] = []
         self.searches_by_text: dict[str, list[dict]] = {}
+        self.search_bodies: list[dict] = []  # what every created search asked for
         self.auth = KEY
 
     # ------------------------------------------------------------------- helpers
@@ -121,6 +122,7 @@ class FakeSlskd:
             self.busy -= 1
             return httpx.Response(429)
         body = json.loads(request.content)
+        self.search_bodies.append(body)
         self.searches[body["id"]] = {"body": body, "polls": 0}
         return httpx.Response(200, json={"id": body["id"], "state": "Requested, InProgress"})
 

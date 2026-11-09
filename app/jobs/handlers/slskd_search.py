@@ -21,11 +21,14 @@ from app.models import (
     DownloadRequest,
 )
 from app.services import downloads as svc
-from app.services.candidate_selection import query_variants, select_candidates
+from app.services.candidate_selection import SearchStep, search_plan, select_candidates
 from app.services.quality_profiles import load_profiles
 
 MAX_ATTEMPTS = 2
 PAUSE_BETWEEN_SEARCHES = 3.0  # the Soulseek server does not like a search storm
+BROAD_RESPONSE_LIMIT = 300  # a broad search ("Adams") has many answers; the name check picks
+BROAD_FILE_LIMIT = 30000
+TRIED_SEPARATOR = " | "  # the texts tried, kept in the request when nothing was found
 
 
 def _load(request_id: int):
@@ -77,23 +80,31 @@ async def slskd_search(ctx: JobContext) -> None:
 
     await ctx.run_db(mark_searching)
     wanted, artist, album = data["wanted"], data["artist"], data["album"]
-    variants = [data["override"]] if data["override"] else query_variants(artist, album)
+    plan = [SearchStep(data["override"])] if data["override"] else search_plan(artist, album)
     profiles = await ctx.run_db(load_profiles)
     settings = ctx.settings
     timeout = settings.slskd_search_timeout
 
     candidates = []
-    used = variants[-1]
+    used = plan[-1].text
+    tried: list[str] = []
     try:
         async with client:
             state = await client.server_state()
             if not (state["connected"] and state["logged_in"]):
                 raise SlskdError("SLSKD is not connected to the Soulseek network")
-            for i, query in enumerate(variants):
+            for i, step in enumerate(plan):
+                query = step.text
+                tried.append(query)
                 await ctx.checkpoint(force=True)
-                await ctx.progress(100 * i / len(variants), f"Searching: {query}")
-                await ctx.log(f"Searching for {query!r}")
-                search_id = await client.create_search(query, timeout_s=timeout)
+                await ctx.progress(100 * i / len(plan), f"Searching: {query}")
+                await ctx.log(f"Searching for {query!r}" + (" (broad)" if step.broad else ""))
+                limits = (
+                    {"response_limit": BROAD_RESPONSE_LIMIT, "file_limit": BROAD_FILE_LIMIT}
+                    if step.broad
+                    else {}
+                )
+                search_id = await client.create_search(query, timeout_s=timeout, **limits)
                 try:
                     info = await client.wait_for_search(search_id, hard_timeout=timeout * 3 + 20)
                     responses = await client.get_responses(search_id)
@@ -109,7 +120,7 @@ async def slskd_search(ctx: JobContext) -> None:
                 if candidates:
                     break
                 await ctx.log("No suitable folder in the answers")
-                if i < len(variants) - 1:
+                if i < len(plan) - 1:
                     await asyncio.sleep(PAUSE_BETWEEN_SEARCHES)
     except SlskdAuthError as exc:
         await ctx.run_db(fail(str(exc)))
@@ -128,7 +139,7 @@ async def slskd_search(ctx: JobContext) -> None:
     if not candidates:
 
         def none(db):
-            svc.no_results(db, request_id, used)
+            svc.no_results(db, request_id, TRIED_SEPARATOR.join(tried)[:255])
             db.commit()
 
         await ctx.run_db(none)

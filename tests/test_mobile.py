@@ -494,3 +494,41 @@ def test_the_pages_define_the_idle_check_the_polling_asks(user_client, world):
     for path in ("/m/artists", "/dashboard"):
         html = user_client.get(path).text
         assert "window.dkIdle = function" in html and "!a.paused && !a.ended" in html
+
+
+# ------------------------------------------------- a search that found nothing
+
+
+def no_results_request(db, world):
+    from app.services import downloads as svc_
+
+    req = requests_in(db)[0] if requests_in(db) else None
+    assert req is not None
+    svc_.no_results(db, req.id, "Aretha Franklin Aretha Now | aretha now | franklin")
+    db.commit()
+    return req
+
+
+def test_a_search_with_no_results_lists_what_was_tried_and_suggests_a_shorter_text(
+    user_client, world, db
+):
+    req = mobile_request(user_client, world, db)
+    no_results_request(db, world)
+    for page in (f"/requests/{req.id}", f"/m/requests/{req.id}"):
+        html = user_client.get(page).text
+        assert "Searched for: Aretha Franklin Aretha Now · aretha now · franklin" in html, page
+        assert "data-no-results-hint" in html and "last name alone" in html
+    assert 'name="query"' in user_client.get(f"/m/requests/{req.id}").text  # a text to try
+
+
+def test_the_phone_can_search_again_with_another_text(user_client, world, db):
+    req = mobile_request(user_client, world, db)
+    no_results_request(db, world)
+    r = post(
+        user_client,
+        f"/m/requests/{req.id}/retry",
+        {"query": "franklin"},
+        page=f"/m/requests/{req.id}",
+    )
+    assert r.status_code == 303 and r.headers["location"].startswith("/m/requests/")
+    assert requests_in(db)[-1].query_override == "franklin"

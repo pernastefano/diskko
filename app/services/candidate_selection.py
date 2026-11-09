@@ -145,20 +145,51 @@ def clean_title(text: str) -> str:
     return name_key(_NOISE.sub(" ", text))
 
 
-def query_variants(artist: str, album: str) -> list[str]:
+_NOT_A_SURNAME = {"band", "orchestra", "group", "trio", "quartet", "ensemble", "project", "and"}
+
+
+@dataclass(frozen=True)
+class SearchStep:
+    """One search to try: its text, and whether it is a broad one (many answers are expected and
+    the name check of the engine does the choosing)."""
+
+    text: str
+    broad: bool = False
+
+
+def search_plan(artist: str, album: str) -> list[SearchStep]:
     """What to search for, most specific first; the caller stops at the first that works.
 
     The text as written, then without punctuation and edition words ("Deluxe Edition"), then the
-    album alone (the name check of the engine keeps that one safe).
+    album alone, then the artist's last name with the album ("Adams Reckless") and finally the last
+    name alone ("Adams"). The last ones are for the albums the specific searches do not find (the
+    Soulseek network may drop some phrases, a folder may be named "adams, bryan - reckless"): they
+    bring many answers, and the name check of the engine keeps only the folders that are the album.
     """
     plain_album = " ".join(clean_title(album).split())
-    plain_artist = " ".join(name_key(artist).split())
-    variants: list[str] = []
-    for text in (f"{artist} {album}", f"{plain_artist} {plain_album}", plain_album):
+    words = name_key(artist).split()
+    plain_artist = " ".join(words)
+    texts = [(f"{artist} {album}", False), (f"{plain_artist} {plain_album}", False)]
+    texts.append((plain_album, False))
+    surname = words[-1] if len(words) >= 2 and not _is_various(artist) else ""
+    if len(surname) >= 3 and surname not in _NOT_A_SURNAME:
+        texts.append((f"{surname} {plain_album}", False))
+        texts.append((surname, True))
+    plan: list[SearchStep] = []
+    for text, broad in texts:
         text = " ".join(text.split())
-        if text and text.lower() not in {v.lower() for v in variants}:
-            variants.append(text)
-    return variants
+        if text and text.lower() not in {s.text.lower() for s in plan}:
+            plan.append(SearchStep(text, broad))
+    return plan
+
+
+def _is_various(artist: str) -> bool:
+    return name_key(artist) in {"various artists", "various", "va"}
+
+
+def query_variants(artist: str, album: str) -> list[str]:
+    """The texts of `search_plan`."""
+    return [step.text for step in search_plan(artist, album)]
 
 
 def _classify(f: RemoteFile, profiles: ProfileSet) -> str:
