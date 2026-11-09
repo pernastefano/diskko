@@ -57,17 +57,27 @@ def unmap_path(local: str, rules: list[tuple[str, str]]) -> str:
 class Pending:
     path: str  # the album folder, absolute, as this app sees it
     title: str  # the album title, to look for it in Plex afterwards
+    check: bool = True  # False: only have Plex scan it (a folder an old copy was removed from)
 
 
 def read_pending(db: Session) -> list[Pending]:
     items = get_setting(db, PENDING_KEY, []) or []
     return [
-        Pending(i["path"], i.get("title", "")) for i in items if isinstance(i, dict) and "path" in i
+        Pending(i["path"], i.get("title", ""), i.get("check", True))
+        for i in items
+        if isinstance(i, dict) and "path" in i
     ]
 
 
 def _write_pending(db: Session, items: list[Pending]) -> None:
-    set_setting(db, PENDING_KEY, [{"path": i.path, "title": i.title} for i in items])
+    set_setting(
+        db,
+        PENDING_KEY,
+        [
+            {"path": i.path, "title": i.title, **({} if i.check else {"check": False})}
+            for i in items
+        ],
+    )
 
 
 def add_pending(db: Session, items: list[Pending]) -> None:

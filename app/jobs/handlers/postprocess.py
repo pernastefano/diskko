@@ -363,62 +363,55 @@ async def postprocess(ctx: JobContext) -> None:
         await ctx.progress(80, "Tagged")
         await ctx.checkpoint(force=True)
 
-        # ---- into the library: never over something that is there
+        # ---- into the library: what is there is overwritten, what is another album's is not
         old = await ctx.run_db(
-            lambda db: lib.owned_folders(db, music, group["id"]) if info["upgrade_from"] else []
+            lambda db: lib.owned_albums(db, music, group["id"]) if info["upgrade_from"] else []
         )
-        old_dirs = [folder for _, folder in old]
-        shared = await ctx.run_db(lambda db: lib.shared_folders(db, music, old))
-        if final in shared:
-            raise ImportRejected(
-                f"the folder {final.relative_to(music)} also holds other albums: "
-                "an upgrade needs a folder of its own"
+        old_ids = [o.id for o in old]
+        # the files of the new copy, by the names they get in the folder: what an old copy in the
+        # same folder must not lose when it is removed
+        keep = {(final / p.name).resolve() for p in staging.iterdir() if p.is_file()}
+        if final.exists() and not await asyncio.to_thread(
+            _already_imported, final, group, len(paths), request_id, bool(info["upgrade_from"])
+        ):
+            # the folder is there already: its files with the same names are overwritten, the
+            # files of other albums of the folder are not (the import is refused then)
+            protected = await ctx.run_db(
+                lambda db: lib.other_albums_files(db, music, final, old_ids)
             )
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        replaced_root = music / lib.REPLACED_DIR
-        if final.exists():
-            if await asyncio.to_thread(
-                _already_imported, final, group, len(paths), request_id, bool(info["upgrade_from"])
-            ):
-                await ctx.log("The album is already in place (an earlier run): not copying again")
-                await asyncio.to_thread(lib.clean_staging, music, request_id)
-                old_dirs = [d for d in old_dirs if d != final]  # it holds the new copy now
-            elif info["upgrade_from"] and final in old_dirs:
-                aside = await asyncio.to_thread(
-                    lib.set_aside, final, replaced_root, request_id, stamp
-                )
-                try:
-                    await asyncio.to_thread(lib.commit, staging, final)
-                except Exception:
-                    await asyncio.to_thread(shutil.move, str(aside), str(final))  # put it back
-                    raise
-                await ctx.log(f"The old copy was set aside in {aside}")
-                old_dirs = [d for d in old_dirs if d != final]
-            else:
-                raise ImportRejected(
-                    f"the folder {final.relative_to(music)} already exists in the library"
-                )
+            overwritten = await asyncio.to_thread(lib.merge_into, staging, final, protected)
+            await ctx.log(
+                f"The folder {final.relative_to(music)} exists: its files were overwritten "
+                f"({overwritten} file(s) replaced)"
+            )
+        elif final.exists():
+            await ctx.log("The album is already in place (an earlier run): not copying again")
         else:
             await asyncio.to_thread(lib.commit, staging, final)
         await asyncio.to_thread(lib.clean_staging, music, request_id)
-        for folder in old_dirs:
-            if not folder.exists():
-                continue
-            if folder in shared:  # other albums live there: only this album's files move
-                aside = await asyncio.to_thread(
-                    lib.set_aside_files, shared[folder], folder, replaced_root, request_id, stamp
-                )
-            else:
-                aside = await asyncio.to_thread(
-                    lib.set_aside, folder, replaced_root, request_id, stamp
-                )
-            await ctx.log(f"The old copy was set aside in {aside}")
         await ctx.log(f"Imported into {final.relative_to(music)}")
+        await ctx.progress(88, "In place")
+
+        # ---- the old copies go: the files of the new one are in place, so nothing is lost
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        aside = None
+        if settings.keep_replaced:
+            replaced_root = music / lib.REPLACED_DIR
+
+            def aside(path: Path) -> None:
+                lib.set_aside_files([path], path.parent, replaced_root, request_id, stamp)
+
+        for copy in old:
+            left = await asyncio.to_thread(lib.retire_album, copy, music, keep, final, aside=aside)
+            where = f" (moved to {lib.REPLACED_DIR})" if settings.keep_replaced else ""
+            await ctx.log(f"The old copy in {copy.folder.relative_to(music)} was removed{where}")
+            if left:
+                await ctx.log(f"Left in place there: {', '.join(left[:5])}", "warning")
         await ctx.progress(90, "Moved")
 
         # ---- the database
         if settings.library_source.strip().lower() == "filesystem":
-            drop = [album_id for album_id, _ in old]  # only an upgrade has old albums
+            drop = old_ids  # only an upgrade has old albums
             await asyncio.to_thread(
                 lib.register,
                 ctx.session_factory,
@@ -429,17 +422,23 @@ async def postprocess(ctx: JobContext) -> None:
                 match_artist_ids=[group["artist_id"]],
             )
         else:
-            await ctx.log("Plex library: its rows come from the next scan of Plex")
+            if old_ids:  # the replaced copies are gone from disk: forget their rows now
+                await asyncio.to_thread(lib.drop_albums, ctx.session_factory, old_ids)
+            await ctx.log("Plex library: the new rows come from Plex, as soon as it has the album")
 
         await asyncio.to_thread(lib.unmark, final, request_id)
 
         # Plex is told about the new folder; whatever goes wrong there never fails the import
         try:
             if plex_svc.refresh_enabled(settings):
-                item = plex_svc.Pending(str(final), folder_values.album)
+                items = [plex_svc.Pending(str(final), folder_values.album)]
+                for copy in old:  # Plex must also look where an old copy was, to drop it
+                    gone = copy.folder.parent if copy.folder != final else None
+                    if gone is not None and gone.is_dir() and gone != music:
+                        items.append(plex_svc.Pending(str(gone), "", check=False))
                 await ctx.run_db(
                     lambda db: plex_svc.request_refresh(
-                        db, settings, [item], parent_job_id=ctx.job_id
+                        db, settings, items, parent_job_id=ctx.job_id
                     )
                 )
                 await ctx.log(

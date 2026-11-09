@@ -852,5 +852,11 @@
   "trackinfo.label.musicbrainz_release": "MusicBrainz release",
   "trackinfo.label.musicbrainz_release_group": "MusicBrainz release group",
   "trackinfo.label.musicbrainz_artist": "MusicBrainz artist",
-  "action.close": "Close"
+  "action.close": "Close",
+  "copies.title": "This album is in your library {n} times",
+  "copies.intro": "Choose the copy to keep: the files of the others (and their cover and empty folders) are deleted from the disk. This cannot be undone.",
+  "copies.keep": "Keep this one, delete the others",
+  "copies.confirm": "Delete the other copies of this album from the disk? This cannot be undone.",
+  "flash.copies_removed": "The other copies were deleted.",
+  "audit.action.album.dedupe": "Removed the duplicate copies of an album"
 }

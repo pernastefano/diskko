@@ -41,6 +41,7 @@ ACTIONS = (
     "artist.confirmed",
     "album.match",
     "album.artist",
+    "album.dedupe",
     "album.refresh",
     "library.scan",
 )

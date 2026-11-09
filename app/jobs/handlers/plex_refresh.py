@@ -70,7 +70,8 @@ async def _find_all(scanner: svc.PlexScanner, items: list[svc.Pending]):
     """{folder: Plex album or None} for the imported folders."""
     found = {}
     for item in items:
-        found[item.path] = await asyncio.to_thread(scanner.find_album, item)
+        if item.check:
+            found[item.path] = await asyncio.to_thread(scanner.find_album, item)
     return found
 
 
@@ -151,7 +152,7 @@ async def plex_refresh(ctx: JobContext) -> None:
                 full = True
                 outcome = await _scan_and_wait(ctx, scanner, full=True)
             found = await _find_all(scanner, pending) if outcome == "done" else {}
-            missing = [p for p in pending if found.get(p.path) is None]
+            missing = [p for p in pending if p.check and found.get(p.path) is None]
             if outcome == "done" and missing and not full:
                 await ctx.log(
                     f"{len(missing)} album(s) not in Plex after the partial scan: "
@@ -173,6 +174,8 @@ async def plex_refresh(ctx: JobContext) -> None:
         )
     present = {path: album for path, album in found.items() if album is not None}
     for item in pending:
+        if not item.check:
+            continue
         if outcome == "done" and found.get(item.path) is None:
             await ctx.log(
                 f"{item.title or item.path}: not found in Plex after a full scan", "warning"

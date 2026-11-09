@@ -852,5 +852,11 @@
   "trackinfo.label.musicbrainz_release": "Release MusicBrainz",
   "trackinfo.label.musicbrainz_release_group": "Release group MusicBrainz",
   "trackinfo.label.musicbrainz_artist": "Artista MusicBrainz",
-  "action.close": "Chiudi"
+  "action.close": "Chiudi",
+  "copies.title": "Questo album è nella libreria {n} volte",
+  "copies.intro": "Scegli la copia da tenere: i file delle altre (con copertina e cartelle rimaste vuote) vengono cancellati dal disco. L'operazione non si può annullare.",
+  "copies.keep": "Tieni questa, cancella le altre",
+  "copies.confirm": "Cancellare dal disco le altre copie di questo album? L'operazione non si può annullare.",
+  "flash.copies_removed": "Le altre copie sono state cancellate.",
+  "audit.action.album.dedupe": "Ha tolto le copie doppie di un album"
 }

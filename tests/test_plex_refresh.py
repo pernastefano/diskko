@@ -679,3 +679,25 @@ def test_the_albums_the_import_names_are_the_ones_plex_is_asked_about(psettings)
     assert not svc.refresh_enabled(psettings.model_copy(update={"plex_token": ""}))
     assert requests  # the fake speaks plexapi's HTTP
     assert quoteattr("x") == '"x"'
+
+
+async def test_a_folder_listed_only_to_be_scanned_is_scanned_but_not_looked_for(
+    plex, psettings, session_factory
+):
+    """After an upgrade Plex must also look where the old copy was; there is nothing to find."""
+    library(plex)
+    gone = svc.Pending("/data/music/The Band", "", check=False)
+    pending_in(session_factory, [ITEM, gone])
+    job_id, row = await run_refresh(psettings, session_factory)
+    assert row.status == "succeeded", row.error
+    assert plex.scans and all(kind != "full" for kind, _ in plex.scans)  # no full scan "to find" it
+    assert len(plex.scans) == 2  # the album and the folder the old copy left
+    assert not any("not found in Plex" in m for m in logs(session_factory, job_id))
+    assert pending_of(session_factory) == []
+
+
+def test_the_scan_only_flag_survives_the_list(session_factory):
+    with session_factory() as db:
+        svc.add_pending(db, [svc.Pending("/a", "A"), svc.Pending("/b", "", check=False)])
+        db.commit()
+        assert svc.read_pending(db) == [svc.Pending("/a", "A"), svc.Pending("/b", "", False)]

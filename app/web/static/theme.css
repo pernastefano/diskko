@@ -314,3 +314,4 @@ html.dark { color-scheme: dark; }
 .dark .focus\:border-indigo-500:focus { border-color:#f2a431; }
 .dark .focus\:ring-indigo-500:focus { --tw-ring-color:#f2a431; }
 .dark .accent-indigo-600 { accent-color:#f6b74f; }
+.dark .divide-amber-200 > :not([hidden]) ~ :not([hidden]) { border-color:rgba(245,158,11,.30); }

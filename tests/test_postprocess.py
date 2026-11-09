@@ -406,24 +406,61 @@ async def test_files_that_are_other_tracks_are_refused(env):
     await assert_rejected(env, "no MusicBrainz release matches", files=files)
 
 
-async def test_an_existing_folder_is_never_overwritten(env):
+async def test_an_existing_folder_is_overwritten_file_by_file(env):
+    """The folder is there already: the files with the same names are replaced, the others stay."""
     settings, factory, music, downloads = env
     seed(factory)
     existing = album_folder(music)
     existing.mkdir(parents=True)
     (existing / "mine.txt").write_text("keep me")
+    (existing / "cover.jpg").write_bytes(b"old cover")
+    put_download(downloads, good_files())
+    with respx.mock(assert_all_called=False) as mock:
+        mock_music(mock)
+        job_id, job = await run_job(settings, factory)
+    assert job.status == "succeeded", job.error
+    names = sorted(p.name for p in existing.iterdir())
+    assert "mine.txt" in names and len([n for n in names if n.endswith(".flac")]) == 3
+    assert (existing / "cover.jpg").read_bytes() != b"old cover"  # overwritten
+    assert any("1 file(s) replaced" in m for m in logs(factory, job_id))
+    assert request_of(factory).status == REQ_COMPLETED
+    assert not (music / lib.STAGING_DIR).exists()
+
+
+async def test_a_file_of_another_album_in_the_folder_is_never_overwritten(env):
+    settings, factory, music, downloads = env
+    seed(factory)
+    existing = album_folder(music)
+    other = existing / "01 - Opening.flac"  # the name the first new file gets
+    make_track(other, title="Other", album="Another Album", artist="The Band", track=1)
+    from app.models import LibraryAlbum as LA
+    from app.models import LibraryTrack as LT
+
+    with factory() as db:
+        album = LA(
+            source="filesystem",
+            path="The Band/Album Title (2000)",
+            title="Another Album",
+            artist_id=1,
+        )
+        db.add(album)
+        db.flush()
+        db.add(
+            LT(
+                album_id=album.id,
+                source="filesystem",
+                path="The Band/Album Title (2000)/01 - Opening.flac",
+                title="Other",
+            )
+        )
+        db.commit()
+    before = other.read_bytes()
     put_download(downloads, good_files())
     with respx.mock(assert_all_called=False) as mock:
         mock_music(mock)
         _, job = await run_job(settings, factory)
-    assert job.status == "failed"
-    row = request_of(factory)
-    assert "already exists in the library" in row.error and row.status == REQ_FAILED
-    assert [p.name for p in existing.iterdir()] == ["mine.txt"]
-    assert (quarantined(downloads) / "0.flac").exists() or list(
-        quarantined(downloads).glob("*.flac")
-    )
-    assert not (music / lib.STAGING_DIR).exists()
+    assert job.status == "failed" and "belongs to another album" in request_of(factory).error
+    assert other.read_bytes() == before  # untouched
 
 
 async def test_a_download_with_too_few_tracks_for_a_release_less_album_is_refused(env):
@@ -496,7 +533,7 @@ def existing_mp3_album(env, quality="mp3_320"):
     return folder
 
 
-async def test_an_upgrade_replaces_the_album_and_keeps_the_old_copy_aside(env):
+async def test_an_upgrade_replaces_the_album_and_removes_the_old_files(env):
     settings, factory, music, downloads = env
     seed(factory, quality="flac_standard", upgrade_from="mp3_320")
     existing_mp3_album(env)
@@ -509,14 +546,91 @@ async def test_an_upgrade_replaces_the_album_and_keeps_the_old_copy_aside(env):
         job_id, job = await run_job(settings, factory)
     assert job.status == "succeeded", job.error
     assert sorted(p.suffix for p in album_folder(music).glob("*.*")) == [".flac"] * 3 + [".jpg"]
-    aside = list((music / lib.REPLACED_DIR).glob("1-*/*"))
-    assert len(aside) == 1 and sorted(p.suffix for p in aside[0].iterdir()) == [".mp3"] * 3
+    assert not (music / lib.REPLACED_DIR).exists()  # nothing kept: the old files are gone
     with factory() as db:
         albums = db.scalars(select(LibraryAlbum)).all()
         assert [(a.quality_tier, a.match_status) for a in albums] == [("flac_standard", "matched")]
         assert {t.codec for t in db.scalars(select(LibraryTrack))} == {"flac"}  # old tracks gone
-    assert any("set aside" in m for m in logs(factory, job_id))
+    assert any("old copy" in m and "removed" in m for m in logs(factory, job_id))
     assert request_of(factory).status == REQ_COMPLETED
+
+
+async def test_with_keep_replaced_the_old_files_are_moved_aside_instead(env):
+    settings, factory, music, downloads = env
+    seed(factory, quality="flac_standard", upgrade_from="mp3_320")
+    existing_mp3_album(env)
+    put_download(downloads, good_files())
+    with respx.mock(assert_all_called=False) as mock:
+        mock_music(mock)
+        _, job = await run_job(settings.model_copy(update={"keep_replaced": True}), factory)
+    assert job.status == "succeeded", job.error
+    assert not list(album_folder(music).glob("*.mp3"))
+    aside = list((music / lib.REPLACED_DIR).glob("1-*/*/*.mp3"))
+    assert len(aside) == 3
+
+
+async def test_an_upgrade_into_a_new_folder_removes_the_old_folder_and_its_cover(env):
+    """The new copy goes to a folder of its own: the old one disappears with its cover."""
+    settings, factory, music, downloads = env
+    seed(factory, quality="flac_standard", upgrade_from="mp3_320")
+    old = music / "The Band" / "Album Title [remaster]"
+    tagged_old_album(env, folder=old)
+    (old / "cover.jpg").write_bytes(b"old")
+    (old / "scan.log").write_text("rip log")
+    with factory() as db:
+        profiles = load_profiles(db)
+    lib.register(factory, music, old, profiles, match_artist_ids=[1])
+    put_download(downloads, good_files())
+    with respx.mock(assert_all_called=False) as mock:
+        mock_music(mock)
+        _, job = await run_job(settings, factory)
+    assert job.status == "succeeded", job.error
+    assert not old.exists()  # the old folder is gone, sidecars included
+    assert len(list(album_folder(music).glob("*.flac"))) == 3
+    with factory() as db:
+        assert [a.path for a in db.scalars(select(LibraryAlbum))] == ["The Band/Album Title (2000)"]
+
+
+async def test_an_upgrade_removes_the_copy_a_plex_scan_listed(env):
+    """With Plex as the library source the old copy has Plex rows, not folder rows."""
+    settings, factory, music, downloads = env
+    seed(factory, quality="flac_standard", upgrade_from="mp3_320")
+    old = music / "The Band" / "Album Title (old)"
+    tagged_old_album(env, folder=old)
+    with factory() as db:
+        album = LibraryAlbum(
+            source="plex",
+            path="The Band/Album Title (old)",
+            title="Album Title",
+            artist_id=1,
+            release_group_id=1,
+            match_status="matched",
+        )
+        db.add(album)
+        db.flush()
+        for i in (1, 2, 3):
+            db.add(
+                LibraryTrack(
+                    album_id=album.id,
+                    source="plex",
+                    path=f"The Band/Album Title (old)/0{i} - "
+                    + TITLES[i - 1].replace("Opening", "Opening")
+                    + ".mp3",
+                    title=TITLES[i - 1],
+                )
+            )
+        db.commit()
+    put_download(downloads, good_files())
+    s = settings.model_copy(update={"library_source": "plex", "plex_refresh_enabled": False})
+    with respx.mock(assert_all_called=False) as mock:
+        mock_music(mock)
+        _, job = await run_job(s, factory)
+    assert job.status == "succeeded", job.error
+    assert not old.exists() and len(list(album_folder(music).glob("*.flac"))) == 3
+    with factory() as db:
+        assert (
+            db.query(LibraryAlbum).filter(LibraryAlbum.source == "plex").count() == 0
+        )  # forgotten
 
 
 async def test_an_upgrade_that_is_not_better_is_refused_and_the_library_is_kept(env):
@@ -828,7 +942,7 @@ def tagged_old_album(env, folder=None, title="Album Title", tracks=TITLES):
 
 async def test_an_upgrade_into_the_folder_of_a_tagged_old_copy_still_replaces_it(env):
     """The old copy has the same release group tag and track count as the new files: it must not
-    be taken for "already imported" (which skipped the copy and set the old album aside)."""
+    be taken for "already imported" (which skipped the copy and removed the old album)."""
     settings, factory, music, downloads = env
     seed(factory, quality="flac_standard", upgrade_from="mp3_320")
     folder = tagged_old_album(env)
@@ -842,8 +956,7 @@ async def test_an_upgrade_into_the_folder_of_a_tagged_old_copy_still_replaces_it
     assert job.status == "succeeded", job.error
     assert not any("already in place" in m for m in logs(factory, job_id))
     assert len(list(folder.glob("*.flac"))) == 3 and not list(folder.glob("*.mp3"))  # the new files
-    aside = list((music / lib.REPLACED_DIR).glob("1-*/*"))
-    assert len(aside) == 1 and len(list(aside[0].glob("*.mp3"))) == 3  # the old ones, kept
+    assert not (music / lib.REPLACED_DIR).exists()  # the old ones are gone, not kept
     assert not list(folder.glob(".diskko-import-*"))  # the marker is gone when it is done
     assert request_of(factory).status == REQ_COMPLETED
 
@@ -870,7 +983,7 @@ def add_other_album_group(factory, artist_id):
 
 
 async def test_an_upgrade_never_moves_a_folder_it_shares_with_other_albums(env):
-    """Flat layouts keep several albums in one folder: only the album's own files go aside."""
+    """Flat layouts keep several albums in one folder: only the album's own files are removed."""
     settings, factory, music, downloads = env
     _, _, artist_id = seed(factory, quality="flac_standard", upgrade_from="mp3_320")
     add_other_album_group(factory, artist_id)
@@ -899,14 +1012,13 @@ async def test_an_upgrade_never_moves_a_folder_it_shares_with_other_albums(env):
     assert len(list(album_folder(music).glob("*.flac"))) == 3  # the new album, in its own folder
     assert sorted(p.name for p in flat.glob("x*.mp3")) == ["x0.mp3", "x1.mp3"]  # untouched
     assert not list(flat.glob("0*.mp3"))  # the replaced album's files left the shared folder
-    aside = list((music / lib.REPLACED_DIR).glob("1-*/Flat/*.mp3"))
-    assert len(aside) == 3
+    assert not (music / lib.REPLACED_DIR).exists()  # removed, not kept
     with factory() as db:
         titles = {a.title for a in db.scalars(select(LibraryAlbum))}
     assert "Other Album" in titles  # still in the library
 
 
-async def test_an_upgrade_into_a_shared_folder_is_refused_and_nothing_moves(env):
+async def test_an_upgrade_into_a_shared_folder_replaces_only_its_own_files(env):
     settings, factory, music, downloads = env
     _, _, artist_id = seed(factory, quality="flac_standard", upgrade_from="mp3_320")
     add_other_album_group(factory, artist_id)
@@ -927,8 +1039,9 @@ async def test_an_upgrade_into_a_shared_folder_is_refused_and_nothing_moves(env)
     with respx.mock(assert_all_called=False) as mock:
         mock_music(mock)
         _, job = await run_job(settings, factory)
-    assert job.status == "failed" and "also holds other albums" in request_of(factory).error
-    assert len(list(folder.glob("*.mp3"))) == 4  # the library is exactly as it was
+    assert job.status == "succeeded", job.error
+    assert [p.name for p in folder.glob("*.mp3")] == ["x.mp3"]  # the other album is untouched
+    assert len(list(folder.glob("*.flac"))) == 3  # the new copy is there, the old mp3 are gone
     assert not (music / lib.REPLACED_DIR).exists()
 
 

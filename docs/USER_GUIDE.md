@@ -99,9 +99,12 @@ page of an album you own, to get a better quality). The request appears under **
    (no need to scan Plex again).
 
 If something cannot be imported (a damaged file, too low a quality, an album that cannot be
-matched), the request shows **Failed** with the reason and the files wait in a quarantine folder:
-nothing is lost and nothing in your library is overwritten. When an upgrade replaces an album, the
-old copy is kept in `.diskko-replaced` inside your music folder until you delete it.
+matched), the request shows **Failed** with the reason and the files wait in a quarantine folder.
+When the album's folder already exists, files with the same names are overwritten (a file that
+belongs to another album is never touched). When an **upgrade** replaces an album, the old files, their
+cover and the folders left empty are deleted once the new copy is in place; set `KEEP_REPLACED=true`
+to move the old files to `.diskko-replaced` in your music folder instead. If an album is in your
+library more than once, its page shows the copies (administrators): keep one and the others are deleted.
 
 ### The Requests page
 

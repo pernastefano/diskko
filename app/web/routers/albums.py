@@ -4,6 +4,7 @@ Slow things (the MusicBrainz track list, the preview lookup) are jobs: the page 
 shows what it has and polls until they are done.
 """
 
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -24,7 +25,7 @@ from app.models import (
     PreviewLookup,
     ReleaseGroup,
 )
-from app.services import audit
+from app.services import album_copies, audit
 from app.services import downloads as downloads_svc
 from app.services.albums import (
     TrackRow,
@@ -135,6 +136,9 @@ def _group_context(
             artist=artist.name,
             cover=f"/covers/{group.cover_path}" if group.cover_path else "",
         )
+        if auth.user.is_admin:  # the same album in the library more than once
+            found = album_copies.copies_of(db, request.app.state.settings.music_dir, group.id)
+            ctx["copies"] = found if len(found) > 1 else []
         ctx["upgrade"] = _upgrade_context(request, db, group, owned)
     else:
         remote = _remote_state(request, db, auth, group, enqueue=enqueue, refresh=refresh)
@@ -358,3 +362,36 @@ def track_info(request: Request, db: DB, auth: UserAuth, track_id: int):
     return render(
         request, "_track_info.html", {"track": track, "details": details, "title": track.title}
     )
+
+
+@router.post("/album/{group_id}/copies/keep")
+def keep_one_copy(
+    request: Request,
+    db: DB,
+    auth: AdminAuth,
+    group_id: int,
+    album_id: Annotated[str, Form()] = "",
+):
+    """Keep one copy of an album that is in the library more than once and delete the others
+    (their files too). Administrators only."""
+    group = db.get(ReleaseGroup, group_id)
+    if group is None or not album_id.isdigit() or not album_id.isascii():
+        raise HTTPException(status_code=404, detail="not_found")
+    settings = request.app.state.settings
+    removed, paths = album_copies.keep_one(
+        db, settings.music_dir, group_id, int(album_id), auth.user
+    )
+    db.commit()
+    if removed and paths:
+        from app.services import plex_refresh as plex_svc
+
+        if plex_svc.refresh_enabled(settings):
+            items = [
+                plex_svc.Pending(str(p), "", check=False)
+                for p in dict.fromkeys(paths)
+                if p.is_dir() and p != Path(settings.music_dir).resolve()
+            ]
+            if items:
+                plex_svc.request_refresh(db, settings, items)
+                notify_worker(request)
+    return RedirectResponse(f"/album/{group_id}?flash=copies_removed", status_code=303)

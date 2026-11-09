@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     import_file_template: str = "{track:02d} - {title}"
     # Downloads that cannot be imported wait here; empty: <downloads_dir>/diskko/quarantine
     quarantine_dir: str = ""
+    # An upgrade removes the old copy of the album once the new one is in place. With this set
+    # the old files are moved to <music>/.diskko-replaced instead, until you delete them.
+    keep_replaced: bool = False
 
     # Sessions / auth
     session_cookie_name: str = "diskko_session"

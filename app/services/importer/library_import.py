@@ -2,18 +2,20 @@
 
 Nothing is changed in the download until the album is safely in the library: the files are
 copied (and tagged) in a hidden folder inside the library, which is on the same file system as
-the final place, so the last step is a single rename. A folder that is already there is never
-overwritten: an upgrade sets the old copy aside, anything else goes to the quarantine.
+the final place, so the last step is a single rename. When the folder already exists the staged
+files overwrite the ones with the same name (one atomic replace each; a file that belongs to
+another album is never touched). After an upgrade the old copy is removed, or moved aside when
+KEEP_REPLACED is set.
 """
 
 import contextlib
 import os
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
@@ -29,7 +31,7 @@ from app.services.importer.tagging import Cover, TrackTags, write_tags
 from app.services.library.filesystem import to_scanned_track
 from app.services.library.grouping import group_tracks
 from app.services.library.scan import save_artists
-from app.services.library.tags import UnreadableAudio, read_audio_file
+from app.services.library.tags import AUDIO_EXTENSIONS, UnreadableAudio, read_audio_file
 from app.services.musicbrainz.matching import match_artist_albums
 
 STAGING_DIR = ".diskko-import"  # hidden folders are not scanned
@@ -161,46 +163,160 @@ def verify_staged(paths: list[Path]) -> None:
 # --------------------------------------------------------------------------- move
 
 
-def owned_folders(db: Session, music_dir: Path, release_group_id: int) -> list[tuple[int, Path]]:
-    """(album id, folder) of the library albums that are this release group."""
+@dataclass
+class OldAlbum:
+    """A copy of the album that is in the library now and is being replaced by the import."""
+
+    id: int
+    folder: Path  # where it lives (inside the library)
+    files: list[Path] = field(default_factory=list)  # its tracks that are there on disk
+
+
+def local_path(music_dir: Path, stored: str) -> Path | None:
+    """The file or folder a stored library path stands for, only if it is inside the library.
+    The library keeps paths relative to its root (Plex ones may be absolute: they are accepted
+    when they point inside the root too); links that lead out of it are refused."""
+    if not stored or stored.startswith("plex:"):
+        return None
+    root = Path(music_dir).resolve()
+    candidate = Path(stored)
+    candidate = candidate if candidate.is_absolute() else root / candidate
+    try:
+        real = candidate.resolve()
+    except OSError:
+        return None
+    return real if real.is_relative_to(root) and real != root else None
+
+
+def owned_albums(db: Session, music_dir: Path, release_group_id: int) -> list[OldAlbum]:
+    """The library albums that are this release group, whichever source listed them (a library
+    read from Plex has its own rows): the copies an upgrade replaces."""
     rows = db.scalars(
         select(LibraryAlbum).where(
             LibraryAlbum.release_group_id == release_group_id,
-            LibraryAlbum.source == SOURCE_FILESYSTEM,
             LibraryAlbum.match_status.in_(("matched", "tentative", "manual")),
         )
     )
-    return [(a.id, Path(music_dir) / a.path) for a in rows if a.path]
-
-
-def shared_folders(
-    db: Session, music_dir: Path, owned: list[tuple[int, Path]]
-) -> dict[Path, list[Path]]:
-    """Of the folders of `owned` albums, those that hold other library albums too (flat layouts,
-    discs merged into the parent folder), with the files of the owned albums inside each: a
-    shared folder must never be moved as a whole, only the files of the album itself."""
-    music = Path(music_dir)
-    ids = [album_id for album_id, _ in owned]
-    shared: dict[Path, list[Path]] = {}
-    for album_id, folder in owned:
-        relative = folder.relative_to(music).as_posix() if folder.is_relative_to(music) else None
-        if relative is None:
+    found = []
+    for album in rows:
+        folder = local_path(music_dir, album.path)
+        if folder is None:
             continue
-        others = db.scalar(
-            select(func.count(LibraryAlbum.id)).where(
-                LibraryAlbum.source == SOURCE_FILESYSTEM,
-                LibraryAlbum.path == relative,
-                LibraryAlbum.id.not_in(ids),
+        tracks = db.scalars(select(LibraryTrack.path).where(LibraryTrack.album_id == album.id))
+        files = [p for stored in tracks if (p := local_path(music_dir, stored)) and p.is_file()]
+        found.append(OldAlbum(album.id, folder, files))
+    return found
+
+
+def other_albums_files(
+    db: Session, music_dir: Path, folder: Path, own_album_ids: list[int]
+) -> set[Path]:
+    """The tracked files inside `folder` that belong to other albums of the library: an import
+    into a folder shared with them may overwrite its own files, never these."""
+    music = Path(music_dir).resolve()
+    prefixes = {f"{folder.resolve().relative_to(music).as_posix()}/", f"{folder.resolve()}/"}
+    found: set[Path] = set()
+    for prefix in prefixes:
+        escaped = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        rows = db.scalars(
+            select(LibraryTrack.path).where(
+                LibraryTrack.path.like(escaped + "%", escape="\\"),
+                LibraryTrack.album_id.not_in(own_album_ids or [0]),
             )
         )
-        if others:
-            tracks = db.scalars(
-                select(LibraryTrack.path).where(
-                    LibraryTrack.album_id == album_id, LibraryTrack.source == SOURCE_FILESYSTEM
-                )
-            )
-            shared.setdefault(folder, []).extend(music / p for p in tracks)
-    return shared
+        found.update(p for stored in rows if (p := local_path(music_dir, stored)) is not None)
+    return found
+
+
+def merge_into(staging: Path, final: Path, protected: set[Path]) -> int:
+    """Put the staged files in a folder that already exists, overwriting the files that are
+    there with the same name (the marker goes last: its presence means the copy is complete).
+    A file that belongs to another album of the folder is never overwritten. Returns how many
+    files were overwritten."""
+    final.mkdir(parents=True, exist_ok=True)
+    staged = sorted(
+        (p for p in staging.iterdir() if p.is_file()),
+        key=lambda p: (p.name.startswith(MARKER_PREFIX), p.name),
+    )
+    for source in staged:
+        target = final / source.name
+        if target.resolve() in protected:
+            raise ImportRejected(f"{target.name} in {final.name} belongs to another album")
+        if target.is_dir():
+            raise ImportRejected(f"{target.name} in {final.name} is a folder")
+    overwritten = 0
+    for source in staged:
+        target = final / source.name
+        overwritten += target.exists()
+        os.replace(source, target)
+    shutil.rmtree(staging, ignore_errors=True)
+    return overwritten
+
+
+_IMAGE_SIDECARS = {"cover", "folder", "front", "back", "albumart", "albumartsmall"}
+_SIDECAR_SUFFIXES = {".cue", ".log", ".m3u", ".m3u8", ".nfo", ".accurip"}
+_JUNK = {".ds_store", "thumbs.db", "desktop.ini"}
+
+
+def _is_sidecar(path: Path) -> bool:
+    name = path.name.lower()
+    if name in _JUNK or path.suffix.lower() in _SIDECAR_SUFFIXES:
+        return True
+    return path.suffix.lower() in (".jpg", ".jpeg", ".png") and path.stem.lower() in _IMAGE_SIDECARS
+
+
+def _has_audio(folder: Path) -> bool:
+    return any(p.suffix.lower() in AUDIO_EXTENSIONS for p in folder.rglob("*") if p.is_file())
+
+
+def _prune_empty(folder: Path, music_dir: Path) -> None:
+    """Remove `folder` and its parents while they are empty (never the library root)."""
+    root = Path(music_dir).resolve()
+    for sub in sorted((d for d in folder.rglob("*") if d.is_dir()), reverse=True):
+        with contextlib.suppress(OSError):
+            sub.rmdir()
+    current = folder
+    while current != root and current.is_relative_to(root):
+        try:
+            current.rmdir()
+        except OSError:
+            break
+        current = current.parent
+
+
+def retire_album(
+    old: OldAlbum, music_dir: Path, keep: set[Path], final: Path, *, aside=None
+) -> list[str]:
+    """Take an old copy out of the library after its replacement is in place: its tracks go
+    (except the files that are the new copy), and then, when its folder holds no audio any more
+    and is not where the new copy lives, the cover and the other sidecars and the empty folders.
+    `aside(path)` moves a file somewhere instead of deleting it. Returns what was left alone."""
+    for path in old.files:
+        if path.resolve() in keep or not path.is_file():
+            continue
+        if aside is not None:
+            aside(path)
+        else:
+            path.unlink()
+    folder = old.folder
+    if not folder.is_dir() or folder == final or final.is_relative_to(folder):
+        return []
+    if _has_audio(folder):  # another album lives here: the folder stays as it is
+        return []
+    for path in [p for p in folder.rglob("*") if p.is_file() and _is_sidecar(p)]:
+        path.unlink()
+    left = [p.name for p in folder.rglob("*") if p.is_file()]
+    _prune_empty(folder, music_dir)
+    return left
+
+
+def drop_albums(factory: sessionmaker[Session], album_ids: list[int]) -> None:
+    """Forget library albums (and their tracks): the copies an upgrade replaced."""
+    with factory() as db:
+        for album_id in album_ids:
+            if (row := db.get(LibraryAlbum, album_id)) is not None:
+                db.delete(row)
+        db.commit()
 
 
 def set_aside_files(

@@ -53,6 +53,31 @@
   </aside>
 </div>
 
+{% if copies %}
+  <section class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-copies>
+    <h2 class="font-semibold">{{ t('copies.title', n=copies|length) }}</h2>
+    <p class="mt-1">{{ t('copies.intro') }}</p>
+    <ul class="mt-3 divide-y divide-amber-200 rounded border border-amber-200 bg-white">
+      {% for c in copies %}
+        <li class="flex flex-wrap items-center justify-between gap-3 px-3 py-2" data-copy="{{ c.album.id }}">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              {% set tier = c.album.quality_tier %}{% include "_quality_badge.html" %}
+              <span class="text-slate-600">{{ t('lib.tracks_count', n=c.tracks) }} · {{ '%.0f'|format(c.size / 1048576) }} MB · {{ c.album.source }}</span>
+            </div>
+            <div class="break-all text-xs text-slate-500">{{ c.album.path }}</div>
+          </div>
+          <form method="post" action="/album/{{ group.id }}/copies/keep"
+                onsubmit="return confirm({{ t('copies.confirm')|tojson }})">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="album_id" value="{{ c.album.id }}">
+            <button type="submit" class="rounded-md border border-amber-400 px-3 py-1.5 font-medium hover:bg-amber-100" data-keep-copy>{{ t('copies.keep') }}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
 <h2 class="mb-3 mt-8 text-xl font-semibold">{{ t('album.tracks') }}</h2>
 {% include "_album_tracks.html" %}
 {% if mode == 'remote' and group %}
