@@ -27,7 +27,10 @@ _QID = re.compile(r"^Q\d{1,12}$")
 
 class WikidataClient(CachedJsonClient):
     service = "wikidata"
-    min_interval = 0.5
+    limiter_name = "wikimedia"  # Wikimedia limits per identity across all its sites together
+    min_interval = 0.5  # 120 a minute: under the 200 a minute of a client with a proper User-Agent
+    BACKOFF_BASE = 5.0  # after a 429 without Retry-After they ask for at least five seconds
+    RATE_LIMIT_PAUSE = 5.0
 
     def interpret(self, status: int, data: Any) -> str:
         if isinstance(data, dict) and data.get("error"):
@@ -60,7 +63,10 @@ class WikidataClient(CachedJsonClient):
 
 class WikipediaClient(CachedJsonClient):
     service = "wikipedia"
+    limiter_name = "wikimedia"
     min_interval = 0.5
+    BACKOFF_BASE = 5.0
+    RATE_LIMIT_PAUSE = 5.0
 
     def interpret(self, status: int, data: Any) -> str:
         if status == 404:

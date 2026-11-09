@@ -32,7 +32,9 @@ _TEMPORARY = {8, 11, 16, 17, 29}
 
 class LastFmClient(CachedJsonClient):
     service = "lastfm"
-    min_interval = 0.5  # the terms say "reasonable"; two per second at most
+    # No number is published; Last.fm warns that "several calls per second" continuously can get
+    # an account suspended. One a second is safe and plenty for a few lookups per artist.
+    min_interval = 1.0
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

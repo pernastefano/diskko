@@ -108,7 +108,11 @@ def picture_url(value: Any) -> str | None:
 
 class ItunesClient(CachedJsonClient):
     service = "itunes"
-    min_interval = 3.2  # documented: about 20 calls per minute
+    min_interval = 3.2  # documented: "approximately 20 calls per minute" (subject to change)
+    # Past the limit Apple does not document the answer (in practice a 403): treat it, and 429,
+    # as "too many requests" and leave the service alone for the rest of the minute.
+    rate_limit_statuses = (403, 429)
+    RATE_LIMIT_PAUSE = 60.0
 
     async def search_albums(self, artist: str, title: str, *, force=False) -> list[AlbumCandidate]:
         data = await self.get_json(
@@ -201,7 +205,8 @@ class ItunesClient(CachedJsonClient):
 
 class DeezerClient(CachedJsonClient):
     service = "deezer"
-    min_interval = 0.25  # no published limit: stay well below any plausible one
+    min_interval = 0.25  # no limit is readable in the public docs: 4 a second, well below any
+    # limit that is reported (50 requests in 5 seconds); the quota error is handled in `interpret`
 
     def interpret(self, status: int, data: Any) -> str:
         error = data.get("error") if isinstance(data, dict) else None

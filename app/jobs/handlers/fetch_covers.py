@@ -24,6 +24,7 @@ from app.jobs.registry import job_handler
 from app.models import Artist, ReleaseGroup
 from app.services.musicbrainz.missing import get_missing_types, owned_release_group_ids
 
+MAX_ATTEMPTS = 4  # with the 5, 10 and 20 minutes between them, longer than a service's pause
 MAX_CONSECUTIVE_ERRORS = 3
 DEFAULT_PAUSE = 120.0  # seconds, when no service says how long it will be paused
 
@@ -50,7 +51,7 @@ def write_atomic(directory: Path, name: str, data: bytes) -> None:
         raise
 
 
-@job_handler("fetch_covers", queue="coverart", max_attempts=2, backoff_base=120)
+@job_handler("fetch_covers", queue="coverart", max_attempts=MAX_ATTEMPTS, backoff_base=300)
 async def fetch_covers(ctx: JobContext) -> None:
     artist_id = int(ctx.payload["artist_id"])
     force = bool(ctx.payload.get("force", False))
@@ -95,6 +96,7 @@ async def fetch_covers(ctx: JobContext) -> None:
     )
     directory = covers_dir(ctx.settings.data_dir)
     saved = missing = errors = consecutive = 0
+    unavailable = 0  # lookups that failed only because a provider is paused (nothing was asked)
     paused: set[str] = set()  # providers already reported as paused in this job's log
     pause = 0.0  # the longest pause reported by a paused provider
     async with AsyncExitStack() as stack:
@@ -107,6 +109,7 @@ async def fetch_covers(ctx: JobContext) -> None:
             await ctx.progress(100 * (i - 1) / len(todo), f"{title} ({i}/{len(todo)})")
             found: tuple[bytes, str, str] | None = None
             answered = failed = 0  # providers that gave a definite answer / could not answer
+            broken = 0  # ... of those that could not, the ones that really failed
             for source in sources:
                 label = LABELS[source.name]
                 try:
@@ -124,12 +127,15 @@ async def fetch_covers(ctx: JobContext) -> None:
                     continue
                 except ServiceError as exc:
                     failed += 1
+                    broken += 1
                     await ctx.log(f"{artist_name} – {title}: {label} failed ({exc})", "warning")
                     continue
                 answered += 1
                 if result is not None:
                     found = (*result, label)
                     break
+                if failed:  # the fallback was asked and has nothing either: say so
+                    await ctx.log(f"{artist_name} – {title}: {label} has no such cover")
             if found is not None:
                 consecutive = 0
                 data, extension, label = found
@@ -142,6 +148,7 @@ async def fetch_covers(ctx: JobContext) -> None:
                 )
             elif failed:  # somebody could not answer: do not conclude "no cover"
                 errors += 1
+                unavailable += 0 if broken else 1
                 consecutive = consecutive + 1 if not answered else 0
                 if consecutive >= MAX_CONSECUTIVE_ERRORS:
                     await ctx.log(
@@ -158,8 +165,18 @@ async def fetch_covers(ctx: JobContext) -> None:
     await ctx.log(
         f"{artist_name}: {saved} cover(s) saved, {missing} without cover, {errors} error(s)"
     )
-    if errors and not saved and not missing:  # nothing could be looked up: retry with backoff
-        raise ServiceError(f"{artist_name}: no cover could be looked up ({errors} error(s))")
+    if errors and not saved and not missing:  # nothing could be looked up
+        if unavailable == errors:  # only because a provider is paused: wait for it, free of charge
+            raise RetryLater("Cover providers are paused", pause or DEFAULT_PAUSE)
+        if ctx.attempt < MAX_ATTEMPTS:  # a real failure: try again later with a longer wait
+            raise ServiceError(f"{artist_name}: no cover could be looked up ({errors} error(s))")
+        # Out of attempts: the covers stay "unknown" and are looked up again by the nightly pass
+        # and when the artist is opened. A provider being down is no reason for a failed job.
+        await ctx.log(
+            f"{artist_name}: the providers did not answer after {MAX_ATTEMPTS} attempts: "
+            "the covers will be looked up again later",
+            "warning",
+        )
     await ctx.progress(100, "Done")
 
 

@@ -40,9 +40,16 @@ class TransientError(Exception):
 
 
 class CachedJsonClient:
-    service = ""  # name of the rate limiter and prefix of the cache keys
+    service = ""  # prefix of the cache keys, name of the circuit breaker
+    limiter_name = ""  # services that share one limit share a limiter (default: the service)
     min_interval = 1.0  # seconds between requests
     BACKOFF_BASE = 2.0  # first retry delay in seconds; it doubles at every attempt
+    # Statuses that mean "too many requests" (the service says so, or is known to), and how long
+    # to leave it alone then when it does not say. A pause longer than INLINE_WAIT is not waited
+    # for inside the request: the limiter is held back for everybody and the caller is told.
+    rate_limit_statuses: tuple[int, ...] = (429,)
+    RATE_LIMIT_PAUSE = 5.0
+    INLINE_WAIT = 10.0
 
     def __init__(
         self,
@@ -59,7 +66,7 @@ class CachedJsonClient:
         self._factory = session_factory
         self._http = http
         self._own_http = http is None
-        self._limiter = limiter or get_limiter(self.service, self.min_interval)
+        self._limiter = limiter or get_limiter(self.limiter_name or self.service, self.min_interval)
         self._sleep = sleep
         self._now = now
         self._max_retries = max_retries
@@ -144,7 +151,16 @@ class CachedJsonClient:
                 last = type(exc).__name__  # never the message: it can contain the URL
                 await self._backoff(attempt, None)
                 continue
-            if resp.status_code == 429 or resp.status_code >= 500:
+            self._note_limits(resp)
+            if resp.status_code in self.rate_limit_statuses:
+                wait = self._rate_limit_wait(resp.headers.get("Retry-After"))
+                self._limiter.penalize(wait)  # nobody asks this service until it is over
+                last = f"HTTP {resp.status_code}"
+                if wait > self.INLINE_WAIT:  # a long pause is for the next job, not this request
+                    breaker.record_failure(self.settings, self.service)
+                    raise ServiceError(f"{self.service} is limiting requests ({last}), retry later")
+                continue
+            if resp.status_code >= 500:
                 last = f"HTTP {resp.status_code}"
                 await self._backoff(attempt, resp.headers.get("Retry-After"))
                 continue
@@ -170,6 +186,22 @@ class CachedJsonClient:
             return data
         breaker.record_failure(self.settings, self.service)
         raise ServiceError(f"{self.service} is not answering ({last}) after retries")
+
+    def _rate_limit_wait(self, retry_after: str | None) -> float:
+        """Seconds to leave the service alone after a "too many requests"."""
+        wait = self.RATE_LIMIT_PAUSE
+        if retry_after:
+            with contextlib.suppress(ValueError):
+                wait = max(wait, min(float(retry_after), RETRY_AFTER_CAP))
+        return wait
+
+    def _note_limits(self, resp: httpx.Response) -> None:
+        """Services that tell how many requests are left (X-RateLimit-*, ListenBrainz): when
+        none is left, wait for the window to end instead of finding out with a refusal."""
+        if resp.headers.get("X-RateLimit-Remaining") == "0":
+            with contextlib.suppress(ValueError):
+                reset = float(resp.headers.get("X-RateLimit-Reset-In", ""))
+                self._limiter.penalize(min(max(reset, 0.0), RETRY_AFTER_CAP))
 
     async def _backoff(self, attempt: int, retry_after: str | None) -> None:
         delay = self.BACKOFF_BASE * (2**attempt)

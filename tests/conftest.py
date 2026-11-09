@@ -38,6 +38,8 @@ def _no_real_backoff(monkeypatch):
 
     monkeypatch.setattr(CachedJsonClient, "BACKOFF_BASE", 0.0)
     monkeypatch.setattr(MusicBrainzClient, "BACKOFF_BASE", 0.0)
+    monkeypatch.setattr("app.integrations.coverart.RETRY_PAUSE", 0.0)
+    monkeypatch.setattr(CachedJsonClient, "RATE_LIMIT_PAUSE", 0.0)
 
 
 @pytest.fixture(scope="session")

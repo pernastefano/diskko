@@ -194,6 +194,26 @@ server {
 Run **one** Uvicorn process (the image does). The job worker and the scheduler live inside it, and
 extra workers would run every scheduled job several times.
 
+## Limits of the services DISKKO asks
+
+Every service gets its own limiter, shared by all jobs, and a circuit breaker that pauses it after
+repeated failures (5 in a row: ten minutes). A "too many requests" answer holds the service back for
+everybody, and `Retry-After` is obeyed.
+
+| Service | What it publishes | What DISKKO does |
+|---------|-------------------|------------------|
+| MusicBrainz | About 1 request per second per IP, a User-Agent with a contact (`MB_USER_AGENT`), 503 above it | One request every 1.1 s, always |
+| Cover Art Archive | "No rate limiting rules" for now, but a 503 is documented | A request every 0.5 s; a timeout or 503 is tried once more |
+| iTunes Search | About 20 calls a minute | One every 3.2 s; a refusal (403/429) pauses it for a minute |
+| Last.fm | No number; "several calls per second" can suspend a key | One a second |
+| ListenBrainz | One call per second, `X-RateLimit-*` headers, 429 | One every 1.1 s, and waits when the headers say none is left |
+| Wikipedia and Wikidata | 200 a minute with a proper User-Agent (10 without), 429 with `Retry-After` | 120 a minute together; at least 5 s after a 429 |
+| Deezer | No limit readable in the public pages (50 requests in 5 s is reported) | Four a second at most; the quota error is handled |
+
+Covers that cannot be looked up because a service is down stay *unknown*; the nightly pass (04:50)
+and opening the artist look them up again. A cover job that waits for a paused service does not use
+its attempts.
+
 ## Health check
 
 `GET /health` answers `200 {"status": "ok", "version": "..."}` when the app is up and its database

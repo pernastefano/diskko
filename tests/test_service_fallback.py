@@ -313,7 +313,8 @@ async def test_a_paused_service_is_skipped_by_the_next_jobs(mbsettings, session_
             worker.notify()
             await wait_for_status(session_factory, jobs[-1], "succeeded")
         await worker.stop()
-    assert sum(r.call_count for r in caa) == 2  # then the breaker paused the service
+    # each lookup tried twice (a pause in between), then the breaker paused the service
+    assert sum(r.call_count for r in caa) == 4
     assert not any("paused" in m for m in logs(session_factory, jobs[1]))
     assert any("paused after repeated failures" in m for m in logs(session_factory, jobs[2]))
     for artist_id in ids:  # every artist still got its cover, from the fallback
