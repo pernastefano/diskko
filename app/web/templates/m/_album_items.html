@@ -1,0 +1,21 @@
+{# needs: rows (AlbumRow), q, next_url #}
+{% for r in rows %}{% set al = r.album %}
+  <li><a href="{{ '/m/album/' ~ r.group.id if r.group and al.match_status in ('matched', 'tentative', 'manual') else '/m/album/local/' ~ al.id }}"
+         class="m-tap flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm hover:bg-slate-100" data-album="{{ al.id }}">
+    {% if r.cover %}
+      <img src="/covers/{{ r.cover }}" alt="" loading="lazy" class="h-12 w-12 shrink-0 rounded object-cover">
+    {% else %}
+      <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-slate-200 text-lg font-semibold text-slate-500" aria-hidden="true">{{ (al.title[:1] or '?')|upper }}</div>
+    {% endif %}
+    <span class="min-w-0 flex-1">
+      <span class="block truncate font-medium">{{ al.title }}</span>
+      <span class="block truncate text-xs text-slate-500">{{ r.artist.name }}{% if al.year %} · {{ al.year }}{% endif %}</span>
+    </span>
+    <span class="flex min-w-0 shrink-0 justify-end">{% set tier = al.quality_tier %}{% set truncate_badge = true %}{% include "_quality_badge.html" %}</span>
+  </a></li>
+{% else %}
+  {% if not next_url %}<li class="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500" data-empty>{{ t('albums.empty_filtered') if q else t('albums.empty') }}</li>{% endif %}
+{% endfor %}
+{% if next_url %}
+  <li><button type="button" class="m-tap w-full rounded-lg border border-slate-300 text-sm" hx-get="{{ next_url }}" hx-target="closest li" hx-swap="outerHTML" data-more>{{ t('m.more') }}</button></li>
+{% endif %}

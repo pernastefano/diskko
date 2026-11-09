@@ -1,0 +1,32 @@
+{% extends "m/base.html" %}
+{% block title %}{{ t('nav.search') }}{% endblock %}
+{% block content %}
+<form method="get" action="/m/search" class="mb-3 flex gap-2" role="search">
+  <label for="mq" class="sr-only">{{ t('search.label') }}</label>
+  <input id="mq" name="q" type="search" value="{{ q }}" placeholder="{{ t('search.placeholder') }}" autocomplete="off" maxlength="100"
+         class="m-tap w-full rounded-lg border border-slate-300 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+  <button class="m-tap shrink-0 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white">{{ t('search.button') }}</button>
+</form>
+{% if q and (local_artists or local_albums) %}
+<section class="mb-5" data-library-results>
+  <h2 class="mb-2 text-lg font-semibold">{{ t('search.library') }}</h2>
+  {% if local_artists %}
+    <ul class="mb-2 space-y-2" data-library-artists>
+      {% for r in local_artists %}
+        <li><a href="/m/artist/{{ r.artist.id }}" class="m-tap flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 shadow-sm"><span class="min-w-0 flex-1 truncate font-medium">{{ r.artist.name }}</span><span class="shrink-0 text-xs">{% include "_missing_chip.html" %}</span></a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if local_albums %}
+    <ul class="space-y-2" data-library-albums>
+      {% for r in local_albums %}{% set al = r.album %}
+        <li><a href="{{ '/m/album/' ~ r.group.id if r.group and al.match_status in ('matched', 'tentative', 'manual') else '/m/album/local/' ~ al.id }}" class="m-tap flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-1.5 shadow-sm" data-album="{{ al.id }}">
+          <span class="min-w-0 flex-1"><span class="block truncate font-medium">{{ al.title }}</span><span class="block truncate text-xs text-slate-500">{{ r.artist.name }}{% if al.year %} · {{ al.year }}{% endif %}</span></span></a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>
+{% endif %}
+{% if q|length >= 2 %}<h2 class="mb-2 text-lg font-semibold">{{ t('search.musicbrainz') }}</h2>{% endif %}
+{% include "m/_search_results.html" %}
+{% endblock %}

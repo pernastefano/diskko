@@ -166,6 +166,32 @@ their discography, so you can request albums. Artists you open but never add are
 90 days. Artist pages also show **similar artists** (Last.fm, or ListenBrainz when Last.fm is not
 set up), with an *In library* badge on those you have.
 
+## The mobile version
+
+Open `/m/` (or **Mobile version** in the footer) on a phone for a simplified DISKKO with four
+tabs: **Artists**, **Albums**, **Search** and **Requests**.
+
+- An artist shows the top 10 tracks with their preview, the albums you own, the ones you miss
+  (with **Request download**) and similar artists.
+- An album shows its tracks: the ones you own play from your library in a player stuck above
+  the tabs (play/pause, previous, next, seek, shuffle, repeat) that goes through the whole album
+  and keeps playing with the screen locked; the others have the 30-second preview.
+- **Search** looks in your library and on MusicBrainz for artists you do not have.
+- **Requests** follows each request: progress, cancel, search again, delete, and, when a request
+  waits for your choice, the list of sources with **Download this**.
+
+**Preferences** (menu under your name) has the language, the theme (Light, Dark or Automatic),
+the password change and the credits with the link to DISKKO's home page.
+
+Jobs, status, settings, matching, re-tagging and the other administration stay on the desktop
+site (**Desktop version** in the menu under your name).
+
+It is a PWA: **Add to Home Screen** installs it as an app with its own icon. Browsers only
+install it as a full app, and only run its service worker (the offline page and faster start),
+over **HTTPS** (or `localhost`); over plain `http://` on the local network the pages still work
+and the home-screen shortcut opens them without the browser bars on iPhone, but Chrome on
+Android offers only a shortcut. Put DISKKO behind an HTTPS reverse proxy to get the full app.
+
 ## Your preferences
 
 Open your name in the top bar → **Preferences**: language (English or Italian), theme (**Light** is

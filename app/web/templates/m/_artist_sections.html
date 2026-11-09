@@ -1,0 +1,64 @@
+{% from "_covers.html" import cover %}
+{# needs the artist context. Polls itself while covers are downloading or the artist is syncing. #}
+<div id="artist-sections"
+     {% if covers_active or syncing %}hx-get="/m/artist/{{ artist.id }}/sections{{ '?all=1' if show_all else '' }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+
+  <h2 class="mb-2 mt-6 text-lg font-semibold">{{ t('artist.owned') }} <span class="text-sm font-normal text-slate-500">({{ sections.owned_total }})</span></h2>
+  {% for category, items in sections.owned %}
+    <section class="mb-3" x-data="{ open: true }" data-group="owned-{{ category }}">
+      <button type="button" @click="open = !open" :aria-expanded="open" class="m-tap flex w-full items-center gap-2 text-left text-sm font-medium text-slate-700">
+        <span class="text-xs text-slate-400" x-text="open ? '▾' : '▸'"></span>
+        {{ t('category.' ~ category) if category != 'unmatched' else t('artist.unmatched_group') }}
+        <span class="font-normal text-slate-500">({{ items|length }})</span>
+      </button>
+      <ul x-show="open" class="space-y-2">
+        {% for item in items %}{% set al = item.album %}{% set g = item.group %}
+          <li><a href="{{ '/m/album/' ~ g.id if g else '/m/album/local/' ~ al.id }}" class="m-tap flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-2 shadow-sm hover:bg-slate-100" data-album-link>
+            {{ cover(g, 'h-12 w-12 shrink-0', al.title) }}
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium">{{ al.title }}</span>
+              <span class="block truncate text-xs text-slate-500">{{ al.year or '—' }} · {{ t('lib.tracks_count', n=al.track_count) }}</span>
+            </span>
+            <span class="flex min-w-0 shrink-0 justify-end">{% set tier = al.quality_tier %}{% set truncate_badge = true %}{% include "_quality_badge.html" %}</span>
+          </a></li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% else %}
+    <p class="rounded-lg border border-slate-200 bg-white px-3 py-5 text-center text-sm text-slate-500">{{ t('artist.no_owned') }}</p>
+  {% endfor %}
+
+  <h2 class="mb-1 mt-6 text-lg font-semibold">{{ t('artist.missing') }} <span class="text-sm font-normal text-slate-500">({{ sections.missing_total }})</span></h2>
+  <p class="mb-2 text-xs text-slate-500">
+    {% if sections.hidden_missing %}
+      <a class="text-indigo-600 underline" href="/m/artist/{{ artist.id }}?all=1">{{ t('artist.hidden_missing', n=sections.hidden_missing) }}</a>
+    {% elif show_all %}
+      <a class="text-indigo-600 underline" href="/m/artist/{{ artist.id }}">{{ t('artist.show_selected') }}</a>
+    {% endif %}
+  </p>
+  {% for category, groups in sections.missing %}
+    <section class="mb-3" x-data="{ open: true }" data-group="missing-{{ category }}">
+      <button type="button" @click="open = !open" :aria-expanded="open" class="m-tap flex w-full items-center gap-2 text-left text-sm font-medium text-slate-700">
+        <span class="text-xs text-slate-400" x-text="open ? '▾' : '▸'"></span>
+        {{ t('category.' ~ category) }} <span class="font-normal text-slate-500">({{ groups|length }})</span>
+      </button>
+      <ul x-show="open" class="space-y-2">
+        {% for g in groups %}
+          {% set status = statuses.get(g.id) %}{% set info = infos.get(g.id) %}
+          <li class="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+            <a href="/m/album/{{ g.id }}" class="flex min-w-0 flex-1 items-center gap-3" data-album-link>
+              {{ cover(g, 'h-12 w-12 shrink-0', g.title) }}
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium">{{ g.title }}</span>
+                <span class="block truncate text-xs text-slate-500">{{ g.year or '—' }}{% if g.disambiguation %} · {{ g.disambiguation }}{% endif %}</span>
+              </span>
+            </a>
+            <div class="shrink-0">{% include "m/_request_button.html" %}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% else %}
+    <p class="rounded-lg border border-slate-200 bg-white px-3 py-5 text-center text-sm text-slate-500">{{ t('artist.nothing_missing') }}</p>
+  {% endfor %}
+</div>

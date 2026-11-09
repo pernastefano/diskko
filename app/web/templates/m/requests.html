@@ -1,0 +1,41 @@
+{% extends "m/base.html" %}
+{% block title %}{{ t('requests.title') }}{% endblock %}
+{% block content %}
+<div class="mb-3 flex gap-1 overflow-x-auto" role="group" aria-label="{{ t('requests.filter.status') }}" data-requests-filters>
+  {% for f in filters %}
+    <a href="/m/requests{{ '?status=' ~ f if f != 'all' }}" data-filter="{{ f }}" {% if f == status %}aria-current="true"{% endif %}
+       class="m-tap inline-flex shrink-0 items-center rounded-lg px-3 text-sm {{ 'bg-indigo-600 text-white' if f == status else 'border border-slate-300' }}">{{ t('requests.filter.' ~ f) }}</a>
+  {% endfor %}
+</div>
+<div id="m-requests" {% if polling %}hx-get="{{ here }}" hx-trigger="every 5s" hx-select="#m-requests" hx-swap="outerHTML"{% endif %}>
+  {% if not rows %}
+    <p class="rounded-lg border border-slate-200 bg-white px-3 py-6 text-center text-sm text-slate-500" data-empty>{{ t('requests.empty') }}</p>
+  {% else %}
+    <ul class="space-y-2">
+      {% for row in rows %}{% set r = row.r %}
+        <li><a href="/m/requests/{{ r.id }}" class="block rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm hover:bg-slate-100" data-request="{{ r.id }}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="truncate font-medium">{{ row.group.title }}</div>
+              <div class="truncate text-xs text-slate-500">{{ row.artist.name }}{% if row.group.year %} · {{ row.group.year }}{% endif %}{% if all_users and row.owner %} · {{ row.owner }}{% endif %}</div>
+            </div>
+            <div class="shrink-0">{% include "_request_badge.html" %}</div>
+          </div>
+          {% if r.status == 'downloading' %}
+            <div class="mt-2 h-1.5 w-full overflow-hidden rounded bg-slate-200"><div class="h-full bg-indigo-600" style="width: {{ r.progress|round|int }}%"></div></div>
+          {% endif %}
+          {% if r.status == 'awaiting_choice' %}<div class="mt-1 text-xs font-medium text-amber-800">{{ t('m.choose_needed') }}</div>{% endif %}
+          {% if r.error %}<div class="mt-1 truncate text-xs text-red-700">{{ r.error }}</div>{% endif %}
+        </a></li>
+      {% endfor %}
+    </ul>
+    {% if pages > 1 %}
+      <nav class="mt-3 flex items-center justify-between text-sm" data-pages>
+        {% if page_no > 1 %}<a class="m-tap inline-flex items-center text-indigo-600" href="{{ prev_url }}">← {{ t('action.previous') }}</a>{% else %}<span></span>{% endif %}
+        <span class="text-slate-500">{{ t('requests.page_of', page=page_no, pages=pages) }}</span>
+        {% if page_no < pages %}<a class="m-tap inline-flex items-center text-indigo-600" href="{{ next_url }}">{{ t('action.next') }} →</a>{% else %}<span></span>{% endif %}
+      </nav>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

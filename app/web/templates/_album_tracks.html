@@ -1,6 +1,6 @@
 {% from "_icons.html" import icon %}
 {# needs: rows, mode, group, loading, lookup, tracks_known, tracks_failed (remote only) #}
-<div id="album-tracks" {% if loading and group %}hx-get="/album/{{ group.id }}/tracks" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+<div id="album-tracks" {% if loading and group %}hx-get="/album/{{ group.id }}/tracks" hx-trigger="every 2s [dkIdle()]" hx-swap="outerHTML"{% endif %}>
   {% if rows %}
     {% set ns = namespace(disc=none) %}
     <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">

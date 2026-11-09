@@ -552,7 +552,7 @@ def test_opening_the_page_queues_the_tracklist_and_the_previews_once(admin_clien
     _, group = remote
     first = post(admin_client, f"/album/{group.id}/tracks", page="/dashboard")
     post(admin_client, f"/album/{group.id}/tracks", page="/dashboard")
-    assert "data-loading" in first.text and 'hx-trigger="every 2s"' in first.text
+    assert "data-loading" in first.text and 'hx-trigger="every 2s [dkIdle()]"' in first.text
     assert len(jobs_of(db, "fetch_tracklist")) == 1 and len(jobs_of(db, "resolve_previews")) == 1
     assert jobs_of(db, "fetch_tracklist")[0].queue == "musicbrainz"
     poll = admin_client.get(f"/album/{group.id}/tracks")

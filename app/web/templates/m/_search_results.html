@@ -1,0 +1,41 @@
+{# needs: q, state (empty|not_configured|starting|busy|searching|failed|results), rows #}
+<div id="search-results" {% if state == 'searching' %}hx-get="/m/search/results?q={{ q|urlencode }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'empty' %}
+    <p class="text-sm text-slate-500">{{ t('search.hint') }}</p>
+  {% elif state == 'not_configured' %}
+    <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800" data-search-state="not_configured">{{ t('error.mb_not_configured') }}</p>
+  {% elif state == 'starting' %}
+    <p class="text-sm text-slate-500" data-search-state="starting"
+       hx-post="/m/search/start?q={{ q|urlencode }}{{ '&retry=1' if retry }}" hx-trigger="load" hx-target="#search-results" hx-swap="outerHTML">{{ t('search.searching') }}</p>
+  {% elif state == 'busy' %}
+    <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800" data-search-state="busy">{{ t('search.busy') }}</p>
+  {% elif state == 'searching' %}
+    <p class="text-sm text-slate-500" data-search-state="searching">{{ t('search.searching') }}</p>
+  {% elif state == 'failed' %}
+    <p class="rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800" data-search-state="failed">{{ t('search.failed') }} <a class="underline" href="/m/search?q={{ q|urlencode }}&retry=1">{{ t('action.retry') }}</a></p>
+  {% elif not rows %}
+    <p class="text-sm text-slate-500" data-search-state="none">{{ t('search.none', q=q) }}</p>
+  {% else %}
+    <ul class="space-y-2" data-search-state="results">
+      {% for r in rows %}{% set h = r.hit %}
+        <li data-artist-mbid="{{ h.mbid }}">
+          {% set body %}
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-medium">{{ h.name }}</span>
+              <span class="block truncate text-xs text-slate-500">{{ [h.type, h.country, h.disambiguation]|select|join(' · ') }}</span>
+            </span>
+            {% if r.in_library %}<span class="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800" data-in-library>{{ t('badge.in_library') }}</span>{% endif %}
+          {% endset %}
+          {% if r.artist %}
+            <a href="/m/artist/{{ r.artist.id }}" class="m-tap flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 shadow-sm">{{ body }}</a>
+          {% else %}
+            <form method="post" action="/m/search/open">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="mbid" value="{{ h.mbid }}">
+              <button class="m-tap flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-left shadow-sm">{{ body }}</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>

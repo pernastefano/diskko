@@ -3,13 +3,13 @@
 <html lang="{{ lang }}" class="h-full bg-slate-50{{ ' dark' if theme == 'dark' }}" data-theme="{{ theme }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block viewport %}<meta name="viewport" content="width=device-width, initial-scale=1">{% endblock %}
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="theme-color" content="#f6f1e6">
   <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/static/icons/icon-192.png" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-  <link rel="manifest" href="/static/manifest.webmanifest">
+  {% block manifest %}<link rel="manifest" href="/static/manifest.webmanifest">{% endblock %}
   {# Apply the theme before the first paint (no flash). "auto" follows the operating system.
      Dark is Graphite and light is Sand (after TRAKKO); the browser's own bar follows the page. #}
   <script>
@@ -44,8 +44,10 @@
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <link rel="stylesheet" href="/static/theme.css">
+  {% block head_extra %}{% endblock %}
 </head>
 <body class="min-h-full text-slate-800" hx-headers='{{ {"X-CSRF-Token": csrf_token}|tojson }}'>
+  {% block header %}
   <header class="border-b border-slate-200 bg-white">
     <nav class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3" x-data="{ open: false }">
       <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
@@ -98,6 +100,8 @@
       </div>
     </nav>
   </header>
+  {% endblock %}
+  {% block main %}
   <main class="mx-auto max-w-5xl px-4 py-8">
     {% if flash %}
       <div role="status" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">{{ t(flash) }}</div>
@@ -107,6 +111,8 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  {% endblock %}
+  {% block footer %}
   <footer class="mx-auto max-w-5xl px-4 pb-8 pt-4 text-center text-xs text-slate-500" data-footer>
     <p>
       <a href="https://github.com/pernastefano/diskko" target="_blank" rel="noopener noreferrer" class="font-medium underline hover:text-slate-900">DISKKO</a>
@@ -114,7 +120,9 @@
       <a href="https://github.com/pernastefano" target="_blank" rel="noopener noreferrer" class="underline hover:text-slate-900">pernastefano</a>
     </p>
     <p class="mt-1">{{ t('footer.credits') }}</p>
+    {% if user %}<p class="mt-1"><a href="/m/" class="underline hover:text-slate-900" data-mobile-link>{{ t('m.open_mobile') }}</a></p>{% endif %}
   </footer>
+  {% endblock %}
   {# The bell hears about every action: after any request that changes something, and when the tab
      comes back into view, it asks the server again instead of waiting for its 30 second tick. #}
   <script>
@@ -127,6 +135,14 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) { htmx.trigger(document.body, 'refreshBell'); }
     });
+  </script>
+  {# A section that refreshes itself (the previews being renewed, the tracks being loaded) must not
+     replace an audio element that is playing: the player would be lost and the sound could not
+     be paused. Its polling asks `dkIdle()` first and waits for the music to stop. #}
+  <script>
+    window.dkIdle = function () {
+      return !Array.prototype.some.call(document.querySelectorAll('audio'), function (a) { return !a.paused && !a.ended; });
+    };
   </script>
   {# One preview at a time: starting an audio element pauses every other one #}
   <script>

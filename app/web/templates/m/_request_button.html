@@ -1,0 +1,16 @@
+{# The request button of an album. Needs: artist, g (release group), status, info, unavailable.
+   Polls itself while the request runs. #}
+{% set running = status in ('queued', 'searching', 'candidate_found', 'downloading', 'downloaded', 'postprocessing', 'importing') %}
+<div id="request-{{ g.id }}" class="text-right" {% if running and info %}hx-get="/m/requests/{{ info.id }}/control" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if status %}
+    {% set r = info %}
+    {% if info %}<a href="/m/requests/{{ info.id }}" class="m-tap inline-flex items-center no-underline">{% endif %}{% include "_request_badge.html" %}{% if info %}</a>{% endif %}
+    {% if status in ('failed', 'no_results') %}
+      <button type="button" class="m-tap block w-full text-xs text-indigo-700 underline" hx-post="/m/request/{{ artist.id }}/{{ g.id }}" hx-target="#request-{{ g.id }}" hx-swap="outerHTML" data-request-again>{{ t('requests.try_again') }}</button>
+    {% endif %}
+  {% else %}
+    <button type="button" class="m-tap rounded-lg border border-indigo-300 px-2.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+            hx-post="/m/request/{{ artist.id }}/{{ g.id }}" hx-target="#request-{{ g.id }}" hx-swap="outerHTML" data-action="request-download">{{ t('action.request_download') }}</button>
+    {% if unavailable %}<p class="mt-1 text-xs text-amber-700" role="status">{{ t('artist.request_unavailable') }}</p>{% endif %}
+  {% endif %}
+</div>

@@ -1,0 +1,32 @@
+{% extends "m/base.html" %}
+{% from "_covers.html" import cover %}
+{% block title %}{{ artist.name }}{% endblock %}
+{% block content %}
+<a href="/m/artists" class="m-tap inline-flex items-center text-sm text-indigo-600">← {{ t('nav.artists') }}</a>
+<div class="mt-1 flex gap-3">
+  {% include "_artist_image.html" %}
+  <div class="min-w-0 flex-1">
+    <h1 class="text-2xl font-semibold leading-tight">{{ artist.name }}</h1>
+    <div class="mt-2">
+      {% if artist.in_library %}
+        <span class="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800" data-ownership="in-library">{{ t('badge.in_library') }}</span>
+      {% else %}
+        <span class="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" data-ownership="external">{{ t('artist.not_in_library') }}</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<div class="mt-3" id="artist-bio" hx-post="/artist/{{ artist.id }}/bio" hx-trigger="load" hx-swap="outerHTML"></div>
+{% if not artist.metadata_synced_at and artist.mb_status not in ('unmatched', 'provider') %}
+  <p class="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600" role="note">{{ t('artist.notice.not_synced') }}</p>
+{% endif %}
+
+<div id="artist-top" hx-post="/m/artist/{{ artist.id }}/top" hx-trigger="load" hx-swap="outerHTML"></div>
+
+{% include "m/_artist_sections.html" %}
+
+<h2 class="mb-2 mt-6 text-lg font-semibold">{{ t('artist.similar') }}</h2>
+<div id="similar" hx-post="/m/artist/{{ artist.id }}/similar" hx-trigger="load" hx-swap="outerHTML">
+  <p class="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-5 text-center text-sm text-slate-500">{{ t('similar.loading') }}</p>
+</div>
+{% endblock %}

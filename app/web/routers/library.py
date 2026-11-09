@@ -356,26 +356,16 @@ def artist_sections(request: Request, db: DB, auth: UserAuth, artist_id: int, al
     )
 
 
-@router.post("/artist/{artist_id}/request/{group_id}")
-def request_download(request: Request, db: DB, auth: UserAuth, artist_id: int, group_id: int):
-    """Ask for an album: a search job finds it on Soulseek and downloads the best candidate."""
-    _artist_or_404(db, artist_id)
-    group = db.get(ReleaseGroup, group_id)
-    if group is None or group.artist_id != artist_id:
-        raise HTTPException(status_code=404, detail="not_found")
+def queue_download(
+    request: Request, db: DB, auth: UserAuth, artist: Artist, group: ReleaseGroup
+) -> bool:
+    """Ask for an album: the request and the job that searches it on Soulseek. False when SLSKD
+    is not configured. Asking again for an album already requested changes nothing."""
     settings = request.app.state.settings
     if not slskd_configured(settings):
-        if is_htmx(request):
-            ctx = {
-                "artist": db.get(Artist, artist_id),
-                "g": group,
-                "status": None,
-                "unavailable": True,
-            }
-            return render(request, "_request_control.html", ctx)
-        return RedirectResponse(f"/artist/{artist_id}?flash=request_unavailable", status_code=303)
+        return False
     created_request, created = svc.create_request(
-        db, auth.user.id, group_id, default_mode=settings.slskd_mode
+        db, auth.user.id, group.id, default_mode=settings.slskd_mode
     )
     if created:
         engine.enqueue(
@@ -385,7 +375,6 @@ def request_download(request: Request, db: DB, auth: UserAuth, artist_id: int, g
             dedupe_key=svc.search_dedupe_key(created_request.id),
             created_by=auth.user.id,
         )
-        artist = db.get(Artist, artist_id)
         audit.record(
             db,
             auth.user,
@@ -397,6 +386,26 @@ def request_download(request: Request, db: DB, auth: UserAuth, artist_id: int, g
         )
         db.commit()
         notify_worker(request)
+    return True
+
+
+@router.post("/artist/{artist_id}/request/{group_id}")
+def request_download(request: Request, db: DB, auth: UserAuth, artist_id: int, group_id: int):
+    """Ask for an album: a search job finds it on Soulseek and downloads the best candidate."""
+    _artist_or_404(db, artist_id)
+    group = db.get(ReleaseGroup, group_id)
+    if group is None or group.artist_id != artist_id:
+        raise HTTPException(status_code=404, detail="not_found")
+    if not queue_download(request, db, auth, db.get(Artist, artist_id), group):
+        if is_htmx(request):
+            ctx = {
+                "artist": db.get(Artist, artist_id),
+                "g": group,
+                "status": None,
+                "unavailable": True,
+            }
+            return render(request, "_request_control.html", ctx)
+        return RedirectResponse(f"/artist/{artist_id}?flash=request_unavailable", status_code=303)
     if is_htmx(request):
         info = svc.request_infos(db, [group_id]).get(group_id)
         ctx = {

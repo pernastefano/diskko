@@ -1,0 +1,50 @@
+{% extends "m/base.html" %}
+{% block title %}{{ t('nav.preferences') }}{% endblock %}
+{% block content %}
+<h1 class="mb-3 text-xl font-semibold">{{ t('nav.preferences') }}</h1>
+
+<form method="post" action="/m/preferences" class="mb-4 space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-preferences>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="!mt-0">
+    <label for="language" class="block text-sm font-medium">{{ t('preferences.language') }}</label>
+    <select id="language" name="language" class="m-tap mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 text-sm">
+      {% for code, name in languages.items() %}<option value="{{ code }}" {% if code == current_language %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+  </div>
+  <fieldset>
+    <legend class="text-sm font-medium">{{ t('preferences.theme') }}</legend>
+    <div class="mt-1 grid grid-cols-3 gap-2" role="radiogroup" x-data="{ theme: '{{ current_theme }}' }" data-theme-choice>
+      {% for th in themes %}
+        <label class="m-tap flex cursor-pointer items-center justify-center rounded-lg px-2 text-center text-sm"
+               :class="theme === '{{ th }}' ? 'bg-indigo-600 font-medium text-white' : 'border border-slate-300'">
+          <input type="radio" name="theme" value="{{ th }}" x-model="theme" {% if th == current_theme %}checked{% endif %} class="sr-only">{{ t('preferences.theme.' ~ th) }}
+        </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <button type="submit" class="m-tap w-full rounded-lg bg-indigo-600 text-sm font-medium text-white">{{ t('action.save') }}</button>
+</form>
+
+<form method="post" action="/m/preferences/password" class="mb-4 space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-password>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2 class="!mt-0 text-sm font-medium">{{ t('nav.change_password') }}</h2>
+  {% for name, label, auto in (('current_password', t('field.current_password'), 'current-password'), ('new_password', t('field.new_password'), 'new-password'), ('new_password_confirm', t('field.new_password_confirm'), 'new-password')) %}
+    <div>
+      <label for="{{ name }}" class="block text-xs text-slate-500">{{ label }}</label>
+      <input id="{{ name }}" name="{{ name }}" type="password" autocomplete="{{ auto }}" required
+             class="m-tap mt-1 block w-full rounded-md border border-slate-300 px-3 text-sm">
+    </div>
+  {% endfor %}
+  <button type="submit" class="m-tap w-full rounded-lg border border-slate-300 text-sm font-medium">{{ t('action.save') }}</button>
+</form>
+
+<section class="rounded-lg border border-slate-200 bg-white p-4 text-center text-xs text-slate-500 shadow-sm" data-credits>
+  <p class="text-sm">
+    <a href="{{ homepage }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-indigo-700 underline" data-homepage>DISKKO</a>
+    v{{ app_version }}
+  </p>
+  <p class="mt-1">{{ t('footer.made_by') }}
+    <a href="https://github.com/pernastefano" target="_blank" rel="noopener noreferrer" class="underline">pernastefano</a></p>
+  <p class="mt-2">{{ t('footer.credits') }}</p>
+</section>
+{% endblock %}

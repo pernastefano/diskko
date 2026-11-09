@@ -1,0 +1,11 @@
+{% extends "m/base.html" %}
+{% block title %}{{ t('nav.artists') }}{% endblock %}
+{% block content %}
+<form method="get" action="/m/artists" class="mb-3" role="search" id="m-filter">
+  <label for="mq" class="sr-only">{{ t('lib.search') }}</label>
+  <input id="mq" name="q" type="search" value="{{ q }}" placeholder="{{ t('lib.search') }}" autocomplete="off"
+         class="m-tap w-full rounded-lg border border-slate-300 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+         hx-get="/m/artists/items" hx-trigger="input changed delay:300ms, search" hx-target="#m-items" hx-swap="innerHTML" hx-include="#m-filter" hx-sync="this:replace">
+</form>
+<ul id="m-items" class="space-y-2" data-list="artists">{% include "m/_artist_items.html" %}</ul>
+{% endblock %}

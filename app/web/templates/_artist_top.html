@@ -1,5 +1,5 @@
 {# needs: artist, state (ready|loading|unavailable|failed), tracks, alive (ids with a playable preview) #}
-<section id="artist-top" class="mt-8" {% if state == 'loading' %}hx-get="/artist/{{ artist.id }}/top" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+<section id="artist-top" class="mt-8" {% if state == 'loading' %}hx-get="/artist/{{ artist.id }}/top" hx-trigger="every 3s [dkIdle()]" hx-swap="outerHTML"{% endif %}>
   {% if state == 'unavailable' or (state == 'ready' and not tracks) %}
     {# nothing to show: no section at all #}
   {% else %}

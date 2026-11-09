@@ -1,0 +1,12 @@
+{% extends "m/base.html" %}
+{% block title %}{{ group.title }}{% endblock %}
+{% block content %}
+<a href="/m/requests" class="m-tap inline-flex items-center text-sm text-indigo-600">← {{ t('requests.title') }}</a>
+<h1 class="mt-1 text-xl font-semibold leading-tight">{{ group.title }}</h1>
+<p class="mb-3 text-sm text-slate-500"><a href="/m/artist/{{ artist.id }}">{{ artist.name }}</a>{% if group.year %} · {{ group.year }}{% endif %}</p>
+{% if request.query_params.get('error') %}
+  <p role="alert" class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-error>{{ t('error.' ~ request.query_params.get('error')) }}</p>
+{% endif %}
+{% include "m/_request_body.html" %}
+<p class="mt-4 text-center text-sm"><a class="text-indigo-600 underline" href="/m/album/{{ group.id }}">{{ t('m.open_album') }}</a></p>
+{% endblock %}

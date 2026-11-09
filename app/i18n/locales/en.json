@@ -980,5 +980,12 @@
   "search.albums_title": "Albums on MusicBrainz",
   "search.albums_hint": "Albums whose title or artist contains your words. For anything else use MusicBrainz fields, for example tag:dance or tag:rock for a genre.",
   "search.albums_none": "No album found for “{q}”.",
-  "search.open_artist": "Open the artist"
+  "search.open_artist": "Open the artist",
+  "m.open_mobile": "Mobile version",
+  "m.open_desktop": "Desktop version",
+  "m.more": "Show more",
+  "m.tracks": "Tracks",
+  "m.choose_needed": "Choose which one to download",
+  "m.choose_hint": "Pick the source to download. The score weighs the name, the number of tracks, the quality and how available the user is.",
+  "m.open_album": "Open the album"
 }

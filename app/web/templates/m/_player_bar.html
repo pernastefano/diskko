@@ -1,0 +1,36 @@
+{% from "_icons.html" import icon %}
+{# The album player of the phone: stuck to the bottom of the page, just above the tab bar. Lives
+   inside the element with x-data="albumPlayer" (static/player.js, the desktop player's code). #}
+{% set btn = "flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 focus:outline-none" %}
+<div x-show="current" x-cloak class="h-28" aria-hidden="true"></div>
+<div x-show="current" x-cloak data-player role="region" aria-label="{{ t('player.title') }}"
+     class="fixed inset-x-0 z-30 border-t border-slate-200 bg-white shadow-[0_-4px_12px_rgba(0,0,0,.12)]"
+     style="bottom: calc(3.5rem + env(safe-area-inset-bottom))">
+  <div class="mx-auto max-w-xl px-3 py-2">
+    <div class="flex items-center gap-2">
+      <template x-if="data.cover"><img :src="data.cover" alt="" class="h-10 w-10 shrink-0 rounded object-cover"></template>
+      <div class="min-w-0 flex-1">
+        <div class="truncate text-sm font-medium" x-text="current && current.title" data-now-title></div>
+        <div class="truncate text-xs text-slate-500" x-text="current && (current.artist + ' · ' + data.album)"></div>
+        <div x-show="failed" x-cloak class="truncate text-xs text-amber-700">{{ t('player.error') }}</div>
+      </div>
+      <button type="button" @click="prev()" class="{{ btn }}" aria-label="{{ t('player.previous') }}" data-prev>{{ icon('prev', 'h-5 w-5') }}</button>
+      <button type="button" @click="toggle()" class="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none"
+              :aria-label="playing ? data.labels.pause : data.labels.play" data-toggle>
+        <span x-show="!playing">{{ icon('play', 'h-6 w-6') }}</span><span x-show="playing" x-cloak>{{ icon('pause', 'h-6 w-6') }}</span>
+      </button>
+      <button type="button" @click="next()" class="{{ btn }}" aria-label="{{ t('player.next') }}" data-next>{{ icon('next', 'h-5 w-5') }}</button>
+    </div>
+    <div class="mt-1 flex items-center gap-2 text-xs tabular-nums text-slate-500">
+      <span class="w-9 text-right" x-text="fmt(time)"></span>
+      <input type="range" min="0" max="1000" :value="progress" @input="seek($event)" class="min-w-0 flex-1 accent-indigo-600" aria-label="{{ t('player.seek') }}" data-seek>
+      <span class="w-9" x-text="fmt(duration)"></span>
+      <button type="button" @click="toggleShuffle()" :aria-pressed="shuffle" :class="shuffle ? 'text-indigo-700 bg-indigo-50' : ''" class="flex h-8 w-8 items-center justify-center rounded-full"
+              aria-label="{{ t('player.shuffle') }}" data-shuffle>{{ icon('shuffle', 'h-4 w-4') }}</button>
+      <button type="button" @click="cycleRepeat()" :class="repeat !== 'off' ? 'text-indigo-700 bg-indigo-50' : ''" class="flex h-8 w-8 items-center justify-center rounded-full" data-repeat :data-mode="repeat"
+              :aria-label="data.labels.repeat + ': ' + data.labels['repeat_' + repeat]">
+        <span x-show="repeat !== 'one'">{{ icon('repeat', 'h-4 w-4') }}</span><span x-show="repeat === 'one'" x-cloak>{{ icon('repeat-one', 'h-4 w-4') }}</span>
+      </button>
+    </div>
+  </div>
+</div>

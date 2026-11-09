@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block viewport %}<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">{% endblock %}
+{% block manifest %}<link rel="manifest" href="/static/m/manifest.webmanifest">{% endblock %}
+{% block head_extra %}
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="DISKKO">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <style>
+    html { -webkit-tap-highlight-color: transparent; }
+    body { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); overscroll-behavior-y: contain; }
+    .m-tabbar { padding-bottom: env(safe-area-inset-bottom); }
+    audio { width: 100%; height: 2.25rem; }
+    .m-tap { min-height: 2.75rem; }
+  </style>
+{% endblock %}
+{% block header %}
+  <header class="sticky top-0 z-20 border-b border-slate-200 bg-white" style="padding-top: env(safe-area-inset-top)">
+    <div class="mx-auto flex max-w-xl items-center justify-between px-3 py-2" x-data="{ open: false }">
+      <a href="/m/" class="flex items-center gap-2 text-lg font-bold tracking-tight text-indigo-600" data-logo>
+        <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>DISKKO</a>
+      {% if user %}
+        <div class="relative">
+          <button type="button" @click="open = !open" @click.outside="open = false" :aria-expanded="open" aria-haspopup="menu"
+                  class="m-tap rounded px-3 text-sm font-medium text-slate-700 hover:bg-slate-100" data-m-menu>{{ user.username }}</button>
+          <div x-show="open" x-cloak role="menu" class="absolute right-0 z-30 mt-1 w-52 rounded-md border border-slate-200 bg-white py-1 shadow">
+            <a href="/m/preferences" role="menuitem" class="m-tap flex items-center px-3 hover:bg-slate-100" data-preferences-link>{{ t('nav.preferences') }}</a>
+            <a href="/dashboard" role="menuitem" class="m-tap flex items-center px-3 hover:bg-slate-100" data-desktop-link>{{ t('m.open_desktop') }}</a>
+            <form method="post" action="/logout">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" role="menuitem" class="m-tap block w-full px-3 text-left hover:bg-slate-100">{{ t('nav.logout') }}</button>
+            </form>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </header>
+{% endblock %}
+{% block main %}
+  <main class="mx-auto max-w-xl px-3 pb-6 pt-3">
+    {% if flash %}
+      <div role="status" class="mb-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">{{ t(flash) }}</div>
+    {% endif %}
+    {% if error %}
+      <div role="alert" class="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{{ t(error) }}</div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <nav class="m-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white" aria-label="DISKKO" data-m-tabbar>
+    <ul class="mx-auto grid max-w-xl grid-cols-4">
+      {% for key, href, ico, label in (('artists', '/m/artists', 'artist', t('nav.artists')), ('albums', '/m/albums', 'disc', t('nav.albums')), ('search', '/m/search', 'search', t('nav.search')), ('requests', '/m/requests', 'download', t('nav.requests'))) %}
+        <li><a href="{{ href }}" data-tab="{{ key }}" {% if tab == key %}aria-current="page"{% endif %}
+               class="flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 text-xs {{ 'font-semibold text-indigo-700' if tab == key else 'text-slate-500' }}">
+          {{ icon(ico, 'h-6 w-6') }}{{ label }}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/m/sw.js', { scope: '/m/' }).catch(function () {});
+      });
+    }
+  </script>
+{% endblock %}
+{% block footer %}{% endblock %}

@@ -117,6 +117,18 @@ def logout(db: DB, settings: SettingsDep, auth: UserAuth):
     return response
 
 
+def change_password(db, settings, auth, current: str, new: str, confirm: str) -> None:
+    """Set the signed-in user's new password (raises UserError); their other sessions end."""
+    if not verify_password(auth.user.password_hash, current):
+        raise UserError("password_wrong")
+    if new != confirm:
+        raise UserError("password_mismatch")
+    check_password(new, settings)
+    auth.user.password_hash = hash_password(new)
+    db.commit()
+    revoke_user_sessions(db, auth.user.id, except_id=auth.session.id)
+
+
 @router.get("/account/password")
 def password_page(request: Request, auth: UserAuth):
     return render(request, "account_password.html")
@@ -133,16 +145,9 @@ def password_submit(
     new_password_confirm: Annotated[str, Form()] = "",
 ):
     try:
-        if not verify_password(auth.user.password_hash, current_password):
-            raise UserError("password_wrong")
-        if new_password != new_password_confirm:
-            raise UserError("password_mismatch")
-        check_password(new_password, settings)
+        change_password(db, settings, auth, current_password, new_password, new_password_confirm)
     except UserError as exc:
         return render(request, "account_password.html", {"error": f"error.{exc.code}"}, 400)
-    auth.user.password_hash = hash_password(new_password)
-    db.commit()
-    revoke_user_sessions(db, auth.user.id, except_id=auth.session.id)
     return RedirectResponse("/account/password?flash=password_changed", status_code=303)
 
 

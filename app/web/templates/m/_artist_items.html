@@ -1,0 +1,19 @@
+{# needs: rows (ArtistRow), q, next_url #}
+{% for r in rows %}{% set a = r.artist %}
+  <li><a href="/m/artist/{{ a.id }}" class="m-tap flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm hover:bg-slate-100" data-artist="{{ a.id }}">
+    {% if a.image_url %}
+      <img src="{{ a.image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer" class="h-12 w-12 shrink-0 rounded-full object-cover">
+    {% elif r.cover %}
+      <img src="/covers/{{ r.cover }}" alt="" loading="lazy" class="h-12 w-12 shrink-0 rounded-full object-cover">
+    {% else %}
+      <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200 text-lg font-semibold text-slate-500" aria-hidden="true">{{ (a.name[:1] or '?')|upper }}</div>
+    {% endif %}
+    <span class="min-w-0 flex-1 truncate font-medium">{{ a.name }}</span>
+    <span class="shrink-0 text-xs">{% include "_missing_chip.html" %}</span>
+  </a></li>
+{% else %}
+  {% if not next_url %}<li class="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500" data-empty>{{ t('lib.empty_filtered') if q else t('lib.empty') }}</li>{% endif %}
+{% endfor %}
+{% if next_url %}
+  <li><button type="button" class="m-tap w-full rounded-lg border border-slate-300 text-sm" hx-get="{{ next_url }}" hx-target="closest li" hx-swap="outerHTML" data-more>{{ t('m.more') }}</button></li>
+{% endif %}

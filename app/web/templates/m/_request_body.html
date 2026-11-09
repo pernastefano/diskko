@@ -1,0 +1,54 @@
+{# needs: r, group, artist, candidates, files, polling, can_retry, can_delete, choosing #}
+<div id="request-body" {% if polling %}hx-get="/m/requests/{{ r.id }}/body" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
+    {% include "_request_badge.html" %}
+    <span class="text-slate-500">{{ quality_profiles.name(r.quality_key) }}</span>
+    {% if r.upgrade_from %}<span class="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800" data-upgrade>{{ t('requests.upgrade_tag') }}</span>{% endif %}
+  </div>
+  {% if r.error %}<p class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-request-error>{{ r.error }}</p>{% endif %}
+  {% if r.status == 'downloading' %}
+    <div class="mb-3 h-2 w-full overflow-hidden rounded bg-slate-200"><div class="h-full bg-indigo-600" style="width: {{ r.progress|round|int }}%"></div></div>
+  {% endif %}
+
+  {% if choosing %}
+    <h2 class="mb-1 text-lg font-semibold">{{ t('requests.candidates') }}</h2>
+    <p class="mb-2 text-sm text-slate-500">{{ t('m.choose_hint') }}</p>
+    <ul class="mb-4 space-y-2" data-candidates>
+      {% for c in top_candidates %}
+        <li class="rounded-lg border border-slate-200 bg-white p-3 shadow-sm" data-candidate="{{ loop.index0 }}">
+          <div class="flex items-center justify-between gap-2">
+            <span class="min-w-0 truncate text-sm font-medium">{{ quality_profiles.name(c.quality) }}</span>
+            <span class="shrink-0 text-sm tabular-nums text-slate-600">{{ (c.score * 100)|round|int }}%</span>
+          </div>
+          <div class="mt-0.5 text-xs text-slate-500">{{ c.track_count }} {{ t('requests.cand.tracks') }} · {{ (c.total_size / 1048576)|round|int }} MB · {{ c.extensions|join(', ') }}</div>
+          <div class="text-xs text-slate-500">{{ t('requests.cand.slot_free') if c.has_free_slot else t('requests.cand.slot_busy') }} · {{ t('requests.cand.queue', n=c.queue_length) }}</div>
+          <form method="post" action="/m/requests/{{ r.id }}/choose" class="mt-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="index" value="{{ loop.index0 }}">
+            <button class="m-tap w-full rounded-lg bg-indigo-600 text-sm font-medium text-white" data-choose>{{ t('requests.choose') }}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="space-y-2">
+    {% if r.status in ('queued', 'searching', 'candidate_found', 'awaiting_choice', 'downloading', 'downloaded', 'postprocessing', 'importing') %}
+      <form method="post" action="/m/requests/{{ r.id }}/cancel">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="m-tap w-full rounded-lg border border-slate-300 text-sm" data-cancel>{{ t('requests.cancel') }}</button>
+      </form>
+    {% endif %}
+    {% if can_retry %}
+      <form method="post" action="/m/requests/{{ r.id }}/retry">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="m-tap w-full rounded-lg bg-indigo-600 text-sm font-medium text-white" data-retry>{{ t('requests.retry') }}</button>
+      </form>
+    {% endif %}
+    {% if can_delete %}
+      <form method="post" action="/m/requests/{{ r.id }}/delete" onsubmit="return confirm('{{ t('requests.confirm_delete')|e }}')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="m-tap w-full rounded-lg border border-slate-300 text-sm" data-delete>{{ t('requests.delete') }}</button>
+      </form>
+    {% endif %}
+  </div>
+</div>

@@ -662,7 +662,7 @@ def test_the_top_tracks_are_listed_with_players_and_credit(app, admin_client):
     assert html.count("<audio") == 2 and PREVIEW in html
     assert "3:58" in html  # 238 s
     assert "Preview courtesy of Deezer." in html
-    assert 'hx-trigger="every 3s"' not in html
+    assert 'hx-trigger="every 3s [dkIdle()]"' not in html
     with app.state.session_factory() as db:
         assert db.scalar(select(Job).where(Job.type == "fetch_top_tracks")) is None
 
@@ -673,7 +673,7 @@ def test_old_deezer_previews_are_renewed_by_a_job_and_not_offered_meanwhile(app,
     seed_tracks(app, artist_id, age_minutes=30)
     html = admin_client.get(f"/artist/{artist_id}/top").text
     assert "<audio" not in html and "Renewing" in html  # the expired address is not played
-    assert 'hx-trigger="every 3s"' in html and html.count("data-top-track=") == 2
+    assert 'hx-trigger="every 3s [dkIdle()]"' in html and html.count("data-top-track=") == 2
     with app.state.session_factory() as db:
         assert db.scalars(select(Job).where(Job.type == "fetch_top_tracks")).all()
 
@@ -682,7 +682,7 @@ def test_an_artist_never_looked_up_gets_a_job_and_a_loading_message(app, admin_c
     with app.state.session_factory() as db:
         artist_id = make_artist(db, "Radiohead", mbid=MBID).id
     html = admin_client.get(f"/artist/{artist_id}/top").text
-    assert 'data-top-state="loading"' in html and 'hx-trigger="every 3s"' in html
+    assert 'data-top-state="loading"' in html and 'hx-trigger="every 3s [dkIdle()]"' in html
     admin_client.get(f"/artist/{artist_id}/top")
     with app.state.session_factory() as db:
         assert len(db.scalars(select(Job).where(Job.type == "fetch_top_tracks")).all()) == 1

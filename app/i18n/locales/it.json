@@ -980,5 +980,12 @@
   "search.albums_title": "Album su MusicBrainz",
   "search.albums_hint": "Album il cui titolo o artista contiene le tue parole. Per altro usa i campi di MusicBrainz, per esempio tag:dance o tag:rock per un genere.",
   "search.albums_none": "Nessun album trovato per “{q}”.",
-  "search.open_artist": "Apri l'artista"
+  "search.open_artist": "Apri l'artista",
+  "m.open_mobile": "Versione mobile",
+  "m.open_desktop": "Versione desktop",
+  "m.more": "Mostra altri",
+  "m.tracks": "Tracce",
+  "m.choose_needed": "Scegli quale scaricare",
+  "m.choose_hint": "Scegli la fonte da scaricare. Il punteggio pesa il nome, il numero di tracce, la qualità e la disponibilità dell'utente.",
+  "m.open_album": "Apri l'album"
 }
