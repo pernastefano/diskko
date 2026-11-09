@@ -1,0 +1,57 @@
+{# needs: album, group, state (idle|loading|failed|not_configured|unavailable|ready), cmp #}
+<div class="mt-3 w-full rounded-md border border-slate-200 bg-slate-50 p-3 text-sm" data-compare="{{ group.id }}" data-compare-state="{{ state }}"
+     {% if state == 'loading' %}hx-get="/admin/albums/{{ album.id }}/match/compare?rg={{ group.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'idle' %}
+    <button type="button" class="text-indigo-700 hover:underline" hx-post="/admin/albums/{{ album.id }}/match/compare" hx-vals='{"rg": "{{ group.id }}"}' hx-target="closest [data-compare]" hx-swap="outerHTML">{{ t('albummatch.compare') }}</button>
+  {% elif state == 'loading' %}
+    <span class="text-slate-500">{{ t('albummatch.compare.loading') }}</span>
+  {% elif state == 'failed' %}
+    <span class="text-red-700">{{ t('albummatch.compare.failed') }}</span>
+    <button type="button" class="ml-2 text-indigo-700 hover:underline" hx-post="/admin/albums/{{ album.id }}/match/compare" hx-vals='{"rg": "{{ group.id }}"}' hx-target="closest [data-compare]" hx-swap="outerHTML">{{ t('action.retry') }}</button>
+  {% elif state == 'not_configured' %}
+    <span class="text-amber-800">{{ t('error.mb_not_configured') }}</span>
+  {% elif state == 'unavailable' %}
+    <span class="text-slate-500">{{ t('albummatch.compare.unavailable') }}</span>
+  {% else %}
+    {% set v = cmp.verdict %}
+    <div class="mb-2 flex flex-wrap items-center gap-2">
+      <span class="rounded px-2 py-0.5 text-xs font-medium {{ {'good': 'bg-green-100 text-green-800', 'close': 'bg-amber-100 text-amber-800', 'far': 'bg-red-100 text-red-800', 'unknown': 'bg-slate-200 text-slate-700'}[v] }}" data-verdict="{{ v }}">{{ t('albummatch.compare.verdict.' ~ v) }}</span>
+      <span class="text-slate-600" data-compare-summary>{{ t('albummatch.compare.summary', agree=cmp.agreeing, local=cmp.local_total, remote=cmp.remote_total) }}</span>
+    </div>
+    <table class="mb-3 text-sm" data-compare-facts>
+      <thead class="text-left text-xs uppercase tracking-wide text-slate-500"><tr><th class="pr-4"></th><th class="pr-4">{{ t('albummatch.compare.local') }}</th><th>{{ t('albummatch.compare.remote') }}</th></tr></thead>
+      <tbody>
+        {% for f in cmp.facts %}
+          <tr data-fact="{{ f.key }}" data-same="{{ 'yes' if f.same else 'no' }}">
+            <th class="pr-4 text-left font-normal text-slate-500">{{ t('albummatch.compare.fact.' ~ f.key) }}</th>
+            <td class="pr-4 {{ '' if f.same else 'font-medium text-amber-800' }}">{{ f.local }}</td>
+            <td class="{{ '' if f.same else 'font-medium text-amber-800' }}">{{ f.remote }}</td>
+            <td class="pl-2">{{ '✓' if f.same else '≠' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not cmp.remote_total %}
+      <p class="text-slate-500" data-compare-empty>{{ t('albummatch.compare.no_tracks') }}</p>
+    {% else %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm" data-compare-tracks>
+          <thead class="text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr><th class="pr-3">#</th><th class="pr-4">{{ t('albummatch.compare.local') }}</th><th class="pr-3">#</th><th class="pr-4">{{ t('albummatch.compare.remote') }}</th><th></th></tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for r in cmp.rows %}
+              <tr data-row="{{ r.state }}" class="{{ {'same': '', 'differs': 'bg-amber-50', 'local_only': 'bg-red-50', 'remote_only': 'bg-red-50'}[r.state] }}">
+                <td class="pr-3 text-slate-500">{% if r.local %}{{ r.local.disc_no or 1 }}-{{ r.local.track_no or '?' }}{% endif %}</td>
+                <td class="pr-4">{% if r.local %}{{ r.local.title }}{% if r.local.duration %} <span class="text-xs text-slate-500">{{ (r.local.duration // 60)|int }}:{{ '%02d'|format((r.local.duration % 60)|int) }}</span>{% endif %}{% else %}<span class="text-red-700">{{ t('albummatch.compare.no_file') }}</span>{% endif %}</td>
+                <td class="pr-3 text-slate-500">{% if r.remote %}{{ r.remote.disc }}-{{ r.remote.position }}{% endif %}</td>
+                <td class="pr-4">{% if r.remote %}{{ r.remote.title }}{% if r.remote.length_ms %} <span class="text-xs text-slate-500">{{ (r.remote.length_ms // 60000) }}:{{ '%02d'|format(((r.remote.length_ms // 1000) % 60)) }}</span>{% endif %}{% else %}<span class="text-red-700">{{ t('albummatch.compare.not_on_mb') }}</span>{% endif %}</td>
+                <td class="text-xs text-amber-800">{% for reason in r.reasons %}{{ t('albummatch.compare.reason.' ~ reason) }}{{ ', ' if not loop.last }}{% endfor %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>

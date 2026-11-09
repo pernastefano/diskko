@@ -223,3 +223,25 @@ def test_second_admin_sees_same_jobs(admin_client, new_client, make_job):
     other = new_client()
     login(other, "boss")
     assert f"/admin/jobs/{job_id}" in other.get("/admin/jobs").text
+
+
+def test_status_buttons_count_and_filter(admin_client, make_job, app):
+    failed_id = make_job("test.steps")
+    queued_id = make_job("test.steps")
+    fail(app, failed_id)
+    page = admin_client.get("/admin/jobs").text
+    buttons = re.findall(r'data-filter="([a-z]+)"[^>]*>.*?<span[^>]*>(\d+)</span>', page, re.S)
+    assert dict(buttons) == {
+        "all": "2",
+        "queued": "1",
+        "running": "0",
+        "succeeded": "0",
+        "failed": "1",
+        "cancelled": "0",
+    }
+    only = admin_client.get("/admin/jobs?status=failed").text
+    assert 'data-filter="failed" aria-current="true"' in only
+    assert f"/admin/jobs/{failed_id}" in only and f"/admin/jobs/{queued_id}" not in only
+    # a button keeps the other filters
+    typed = admin_client.get("/admin/jobs?type=test.steps&status=queued").text
+    assert 'href="/admin/jobs?type=test.steps&amp;status=failed"' in typed

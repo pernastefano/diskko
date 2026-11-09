@@ -20,10 +20,13 @@ from app.integrations.musicbrainz_client import (
     release_group_query,
 )
 from app.jobs import engine
+from app.jobs.handlers.fetch_tracklist import tracklist_dedupe_key
 from app.jobs.handlers.search_release_groups import search_dedupe_key
-from app.models import Artist, LibraryAlbum, ReleaseGroup
+from app.models import Artist, LibraryAlbum, LibraryTrack, ReleaseGroup, TracklistFetch
 from app.services import album_artist
+from app.services import album_compare as compare_svc
 from app.services import album_match as svc
+from app.services.tracklists import load_tracks
 from app.web.routers.discovery import job_state
 from app.web.routers.jobs import notify_worker
 from app.web.templating import render
@@ -256,3 +259,71 @@ def artist_save(
         )
         notify_worker(request)
     return RedirectResponse(f"/admin/albums/{album.id}/match?flash=artist_moved", status_code=303)
+
+
+# ------------------------------------------------------------------- comparison
+
+
+def _compare_context(
+    request: Request, db: DB, auth, album: LibraryAlbum, group_id: str, *, start: bool
+) -> dict:
+    """Your album against one release group of the artist. The tracks of the group come from
+    MusicBrainz, so when they are not stored yet the page shows "loading" and the job (queued
+    by the POST, never by a GET) fills them in."""
+    group = db.get(ReleaseGroup, int(group_id)) if group_id.isdigit() else None
+    if group is None or group.artist_id != album.artist_id:
+        raise HTTPException(status_code=404, detail="not_found")
+    ctx: dict = {"album": album, "group": group, "state": "ready", "cmp": None}
+    if ":" in group.mbid:  # a fallback provider's album: MusicBrainz has no track list for it
+        ctx["state"] = "unavailable"
+        return ctx
+    if db.get(TracklistFetch, group.id) is None:
+        if not request.app.state.settings.mb_user_agent.strip():
+            ctx["state"] = "not_configured"
+            return ctx
+        key = tracklist_dedupe_key(group.id)
+        state = job_state(db, key)
+        if state == "failed" and not start:
+            ctx["state"] = "failed"
+            return ctx
+        if state != "active":
+            if not start:
+                ctx["state"] = "idle"
+                return ctx
+            engine.enqueue(
+                db,
+                "fetch_tracklist",
+                {"release_group_id": group.id},
+                dedupe_key=key,
+                created_by=auth.user.id,
+            )
+            db.commit()
+            notify_worker(request)
+        ctx["state"] = "loading"
+        return ctx
+    local = list(
+        db.scalars(
+            select(LibraryTrack)
+            .where(LibraryTrack.album_id == album.id)
+            .order_by(LibraryTrack.disc_no, LibraryTrack.track_no, LibraryTrack.title)
+        )
+    )
+    ctx["cmp"] = compare_svc.compare(album, local, group, load_tracks(db, group.id))
+    return ctx
+
+
+@router.get("/{album_id}/match/compare")
+def match_compare(request: Request, db: DB, auth: AdminAuth, album_id: int, rg: str = ""):
+    """The comparison alone; polled while the track list is being fetched."""
+    album = _album_or_404(db, album_id)
+    ctx = _compare_context(request, db, auth, album, rg, start=False)
+    return render(request, "admin/_album_compare.html", ctx)
+
+
+@router.post("/{album_id}/match/compare")
+def match_compare_start(
+    request: Request, db: DB, auth: AdminAuth, album_id: int, rg: Annotated[str, Form()] = ""
+):
+    album = _album_or_404(db, album_id)
+    ctx = _compare_context(request, db, auth, album, rg, start=True)
+    return render(request, "admin/_album_compare.html", ctx)

@@ -7,6 +7,19 @@
   <span class="text-sm text-slate-500" id="albums-total">{{ t('albums.count', n=total) }}</span>
 </div>
 
+{% if user.is_admin %}
+<div class="mb-3 flex flex-wrap items-center gap-3 text-sm" data-check-bar>
+  {% if checking %}
+    <span class="text-slate-500" data-checking>{{ t('albums.checking') }}</span>
+  {% else %}
+    <form method="post" action="/albums/check">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-100" data-check>{{ t('albums.check') }}</button>
+    </form>
+    <span class="max-w-2xl text-xs text-slate-500">{{ t('albums.check_hint') }}</span>
+  {% endif %}
+</div>
+{% endif %}
 <form id="filters" method="get" action="/albums" class="mb-4 flex flex-wrap items-end gap-3 text-sm" x-data>
   <div class="min-w-[12rem] flex-1">
     <label for="q" class="sr-only">{{ t('albums.search') }}</label>
@@ -37,6 +50,13 @@
       <option value="">{{ t('albums.any') }}</option>
       {% for c in categories %}<option value="{{ c }}" {% if p.category == c %}selected{% endif %}>{{ t('category.' ~ c) }}</option>{% endfor %}
       <option value="unmatched" {% if p.category == 'unmatched' %}selected{% endif %}>{{ t('artist.unmatched_group') }}</option>
+    </select>
+  </div>
+  <div>
+    <label for="meta" class="block text-xs text-slate-500">{{ t('albums.meta') }}</label>
+    <select id="meta" name="meta" @change="$el.form.submit()" class="rounded-md border border-slate-300 bg-white px-2 py-2">
+      <option value="">{{ t('albums.any') }}</option>
+      {% for m in metas %}<option value="{{ m }}" {% if p.meta == m %}selected{% endif %}>{{ t('albums.meta.' ~ m) }}</option>{% endfor %}
     </select>
   </div>
   <div>

@@ -9,9 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
-from app.auth.deps import DB, UserAuth
+from app.auth.deps import DB, AdminAuth, UserAuth
 from app.config import Settings
 from app.jobs import engine
+from app.jobs.handlers import check_tracklists
 from app.jobs.handlers.sync_artist import sync_dedupe_key
 from app.models import ACTIVE_STATUSES, Artist, Job, ReleaseGroup, utcnow
 from app.services import audit
@@ -19,6 +20,7 @@ from app.services import downloads as svc
 from app.services.downloads import request_infos, slskd_configured
 from app.services.library_views import (
     ALBUM_SORTS,
+    META_FILTERS,
     PAGE_SIZE,
     SORTS,
     album_facets,
@@ -30,6 +32,7 @@ from app.services.library_views import (
     request_statuses,
 )
 from app.services.musicbrainz.missing import get_missing_types
+from app.web.routers.discovery import job_state
 from app.web.routers.jobs import notify_worker
 from app.web.templating import is_htmx, render
 
@@ -134,8 +137,10 @@ class AlbumParams:
         page: int,
         letter: str = "",
         view: str = "grid",
+        meta: str = "",
     ) -> None:
         self.q = q.strip()[:100]
+        self.meta = meta if meta in META_FILTERS else ""
         initial = letter.strip()[:1]
         self.letter = (
             initial.upper() if initial == "#" or (initial.isascii() and initial.isalpha()) else ""
@@ -149,7 +154,7 @@ class AlbumParams:
 
     @property
     def filtered(self) -> bool:
-        return bool(self.q or self.quality or self.fmt or self.category or self.letter)
+        return bool(self.q or self.quality or self.fmt or self.category or self.letter or self.meta)
 
     def query(self, **overrides: object) -> str:
         values = {
@@ -157,6 +162,7 @@ class AlbumParams:
             "quality": self.quality,
             "fmt": self.fmt,
             "category": self.category,
+            "meta": self.meta,
             "letter": self.letter,
             "view": self.view if self.view != "grid" else "",
             "sort": self.sort if self.sort != "title" else "",
@@ -175,8 +181,9 @@ def _album_params(
     page: int = 1,
     letter: str = "",
     view: str = "grid",
+    meta: str = "",
 ) -> AlbumParams:
-    return AlbumParams(q, quality, fmt, category, sort, page, letter, view)
+    return AlbumParams(q, quality, fmt, category, sort, page, letter, view, meta)
 
 
 def _album_context(request: Request, db: DB, params: AlbumParams) -> dict:
@@ -188,6 +195,7 @@ def _album_context(request: Request, db: DB, params: AlbumParams) -> dict:
         quality=params.quality,
         fmt=params.fmt,
         category=params.category,
+        meta=params.meta,
         letter=params.letter,
         sort=params.sort,
         page=params.page,
@@ -210,10 +218,29 @@ def albums_page(
     ctx = _album_context(request, db, params)
     ctx["profiles"] = list(reversed(request.app.state.quality_profiles.profiles))
     ctx["sorts"] = ALBUM_SORTS
+    ctx["metas"] = META_FILTERS
+    ctx["checking"] = job_state(db, check_tracklists.DEDUPE_KEY) == "active"
     ctx.update(album_facets(db))
     ctx["letters"] = available_album_letters(db)
     ctx["alphabet"] = [*"ABCDEFGHIJKLMNOPQRSTUVWXYZ", "#"]
     return render(request, "albums.html", ctx)
+
+
+@router.post("/albums/check")
+def albums_check(request: Request, db: DB, auth: AdminAuth):
+    """Look up on MusicBrainz how many tracks the albums should have (a job)."""
+    if request.app.state.settings.mb_user_agent.strip():
+        engine.enqueue(
+            db,
+            "check_tracklists",
+            {},
+            dedupe_key=check_tracklists.DEDUPE_KEY,
+            created_by=auth.user.id,
+        )
+        db.commit()
+        notify_worker(request)
+        return RedirectResponse("/albums?flash=check_queued", status_code=303)
+    return RedirectResponse("/albums?flash=check_no_mb", status_code=303)
 
 
 @router.get("/albums/items")

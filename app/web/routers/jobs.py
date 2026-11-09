@@ -38,6 +38,7 @@ def _list_context(db: DB, type_: str, status: str, q: str, routine: str, page: i
         per_page=PER_PAGE,
     )
     pages = max(math.ceil(total / PER_PAGE), 1)
+    counts = engine.status_counts(db, type=type_ or None, search=q, routine=show_routine)
     query = {
         k: v
         for k, v in {
@@ -62,6 +63,13 @@ def _list_context(db: DB, type_: str, status: str, q: str, routine: str, page: i
         "snippets": engine.matching_lines(db, [j.id for j in jobs], q),
         "job_types": registry.job_types(),
         "job_statuses": JOB_STATUSES,
+        "status_counts": counts,
+        "status_total": sum(counts.values()),
+        "status_urls": {
+            s: "/admin/jobs?"
+            + urlencode({k: v for k, v in {**query, "status": s, "page": ""}.items() if v})
+            for s in ("", *JOB_STATUSES)
+        },
         "qs": urlencode(query),
         "qs_without_page": urlencode({k: v for k, v in query.items() if k != "page"}),
     }

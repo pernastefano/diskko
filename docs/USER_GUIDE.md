@@ -39,7 +39,13 @@ so a compilation or a live album you own does not count as a studio album. Searc
 the A–Z bar, tick **Only with missing albums**, sort by name, missing or recently added, and switch
 between grid and list.
 
-**Albums** lists every album you own, with filters for audio **quality**, format and type.
+**Albums** lists every album you own, with filters for audio **quality**, format, type and
+**metadata**: albums not matched to MusicBrainz, matches to be checked, albums with **fewer or
+more tracks** than the MusicBrainz release (often just the wrong release, fixed by matching
+again), without a year, without a cover or whose files carry no MusicBrainz ids. The track
+counts come from MusicBrainz: an administrator reads them with **Check against MusicBrainz**
+(a job, about one album per second); until then *Track count not checked yet* lists the albums
+that were not compared. The search box also finds an album by its year.
 
 **An artist's page** has the picture, a short biography (Wikipedia in your language, Last.fm if
 Wikipedia has nothing), the **top 10 tracks** with 30-second previews, the albums you own and the
@@ -58,7 +64,11 @@ or open **Manage matching**: a page for that album with the artist's release gro
 well they fit, and a **search over MusicBrainz** (by title, by any words in the title or the artist's
 name, or with your own MusicBrainz query, in the artist's releases or in all of MusicBrainz) for
 compilations and albums credited to someone else. **Use this** keeps your choice for good; the page
-also has *Not on MusicBrainz* and *Back to automatic*.
+also has *Not on MusicBrainz* and *Back to automatic*. Before choosing, **Compare** puts your album
+next to the candidate: title, year and number of tracks, then every track side by side (yours with
+the file, MusicBrainz's with its position and length), marking the tracks that differ, the files
+MusicBrainz does not list and the tracks you have no file for. The track list is read from
+MusicBrainz the first time (a few seconds). The same comparison is available for the current match.
 
 The same page has an **Artist** section for an album filed under the wrong artist (a namesake, or a
 similar name): search the artists you have, or type the name of a new one, and **Move here**. The
@@ -146,7 +156,12 @@ before notifications existed do not produce one.
 
 ## Discovering music
 
-**Search** finds any artist on MusicBrainz, even one you do not own. **Open** creates a page with
+**Search** looks first in your library (artists, albums by title, artist or year), then asks
+MusicBrainz for **artists** and for **albums**, even ones you do not own. Album results are the
+albums whose title or artist contains your words; **Open the artist** goes to their discography,
+where you can request the album. For anything else use MusicBrainz fields: `tag:dance` or
+`tag:rock` finds albums by genre tag, `releasegroup:abbey AND artist:beatles` is an exact query.
+DISKKO itself does not store genres, so the library part cannot search by genre. **Open** creates a page with
 their discography, so you can request albums. Artists you open but never add are forgotten after
 90 days. Artist pages also show **similar artists** (Last.fm, or ListenBrainz when Last.fm is not
 set up), with an *In library* badge on those you have.
@@ -170,7 +185,8 @@ types counted as "missing" are the same for everyone and set by an administrator
 - **Settings → Library → Import**: the folder and file name templates for imported albums, and the
   quarantine folder for downloads that cannot be imported.
 - **Settings → Jobs**: how many jobs run at once and how long finished ones and their logs are kept.
-- **Jobs** (top bar): live progress and logs, with cancel and retry. Yellow means a job is running (or about to),
+- **Jobs** (top bar): live progress and logs, with cancel and retry; buttons filter by status
+  (with the number of jobs in each) on top of the type and log search. Yellow means a job is running (or about to),
   red means one failed and you have not looked yet: opening the job list turns it off, and it comes
   back only for new failures. With nothing running the icon is plain.
 - **Artist management**: the review queue for artists MusicBrainz could not match with certainty

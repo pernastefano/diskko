@@ -21,6 +21,17 @@ from app.services.musicbrainz.missing import OWNED_STATUSES
 PAGE_SIZE = 48
 SORTS = ("name", "missing", "recent")
 UNMATCHED = "unmatched"  # pseudo-category of albums with no release group
+# The "metadata" filter of the albums page: what is missing or does not agree with MusicBrainz.
+META_FILTERS = (
+    "no_match",
+    "tentative",
+    "incomplete",
+    "extra",
+    "unchecked",
+    "no_year",
+    "no_cover",
+    "no_mbid",
+)
 
 
 # ---------------------------------------------------------------- artist listing
@@ -170,6 +181,7 @@ def list_albums(
     quality: str = "",
     fmt: str = "",
     category: str = "",
+    meta: str = "",
     letter: str = "",
     sort: str = "title",
     page: int = 1,
@@ -190,12 +202,13 @@ def list_albums(
     if text:
         like = f"%{_escape_like(text.lower())}%"
         key_like = f"%{_escape_like(name_key(text))}%"
-        base = base.where(
-            or_(
-                func.lower(LibraryAlbum.title).like(like, escape="\\"),
-                Artist.name_key.like(key_like, escape="\\"),
-            )
-        )
+        found = [
+            func.lower(LibraryAlbum.title).like(like, escape="\\"),
+            Artist.name_key.like(key_like, escape="\\"),
+        ]
+        if text.isascii() and text.isdigit() and len(text) == 4:  # "1968": the year of the album
+            found.append(LibraryAlbum.year == int(text))
+        base = base.where(or_(*found))
     if letter == "#":
         base = base.where(_album_initial().not_in(_LETTERS))
     elif letter in _LETTERS:
@@ -208,6 +221,9 @@ def list_albums(
         base = base.where(ReleaseGroup.id.is_(None))
     elif category in CATEGORIES:
         base = base.where(ReleaseGroup.category == category)
+
+    if meta in META_FILTERS:
+        base = base.where(_meta_condition(meta))
 
     total = db.scalar(select(func.count()).select_from(base.order_by(None).subquery())) or 0
     rank = case(
@@ -232,6 +248,24 @@ def list_albums(
     page = max(page, 1)
     rows = db.execute(base.order_by(*order).limit(page_size).offset((page - 1) * page_size)).all()
     return [AlbumRow(album=r[0], artist=r[1], group=r[2]) for r in rows], total
+
+
+def _meta_condition(meta: str):
+    """The SQL condition of one "metadata" filter (the release group is the outer-joined one:
+    it is empty for an album that is not matched)."""
+    hint = ReleaseGroup.track_count_hint
+    return {
+        "no_match": ReleaseGroup.id.is_(None),
+        "tentative": LibraryAlbum.match_status == "tentative",
+        "incomplete": hint.is_not(None) & (LibraryAlbum.track_count < hint),
+        "extra": hint.is_not(None) & (LibraryAlbum.track_count > hint),
+        "unchecked": ReleaseGroup.id.is_not(None)
+        & (ReleaseGroup.source == "musicbrainz")
+        & hint.is_(None),
+        "no_year": LibraryAlbum.year.is_(None),
+        "no_cover": ReleaseGroup.id.is_not(None) & (ReleaseGroup.cover_status != "ok"),
+        "no_mbid": LibraryAlbum.mbid_release.is_(None),
+    }[meta]
 
 
 def album_facets(db: Session) -> dict[str, list[str]]:

@@ -16,16 +16,18 @@
       {% for jt in job_types %}<option value="{{ jt }}" {% if jt == type %}selected{% endif %}>{{ jt }}</option>{% endfor %}
     </select>
   </div>
-  <div>
-    <label for="f-status" class="block text-xs text-slate-500">{{ t('jobs.col.status') }}</label>
-    <select id="f-status" name="status" class="rounded border border-slate-300 bg-white px-2 py-1">
-      <option value="">{{ t('jobs.all_statuses') }}</option>
-      {% for s in job_statuses %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ t('job.status.' ~ s) }}</option>{% endfor %}
-    </select>
-  </div>
+  <input type="hidden" name="status" value="{{ status }}">
   <label class="flex items-center gap-2 py-1"><input type="checkbox" name="routine" value="1" {% if show_routine %}checked{% endif %}> {{ t('jobs.show_routine') }}</label>
   <button type="submit" class="rounded border border-slate-300 px-3 py-1 hover:bg-slate-100">{{ t('action.filter') }}</button>
 </form>
+<div class="mb-4 flex flex-wrap gap-1" role="group" aria-label="{{ t('jobs.col.status') }}" data-jobs-status-filters>
+  {% for s in ('',) + job_statuses %}
+    {% set n = status_total if s == '' else status_counts.get(s, 0) %}
+    <a href="{{ status_urls[s] }}" data-filter="{{ s or 'all' }}" {% if s == status %}aria-current="true"{% endif %}
+       class="rounded-md px-3 py-1.5 text-sm {{ 'bg-indigo-600 text-white' if s == status else 'border border-slate-300 hover:bg-slate-100' }}">{{ t('jobs.filter.all') if s == '' else t('job.status.' ~ s) }}
+      <span class="ml-1 text-xs {{ 'opacity-80' if s == status else 'text-slate-500' }}">{{ n }}</span></a>
+  {% endfor %}
+</div>
 {% if q and not q_valid %}<p class="-mt-2 mb-3 text-xs text-amber-700" data-search-short>{{ t('jobs.search_short') }}</p>{% endif %}
 {% if q_valid %}<p class="-mt-2 mb-3 text-xs text-slate-500" data-search-info>{{ t('jobs.search_found', n=total, q=q) }}</p>{% endif %}
 

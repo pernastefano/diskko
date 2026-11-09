@@ -123,6 +123,27 @@ def _like(text: str) -> str:
     return f"%{escaped}%"
 
 
+def _job_conditions(type: str | None, search: str | None, routine: bool) -> list:
+    """The filters of the job list other than the status."""
+    conditions = []
+    if type:
+        conditions.append(Job.type == type)
+    elif not routine:
+        conditions.append(Job.type.not_in(ROUTINE_TYPES))
+    text = (search or "").strip()
+    if len(text) >= SEARCH_MIN:
+        like = _like(text)
+        in_logs = select(JobLog.job_id).where(func.lower(JobLog.message).like(like, escape="\\"))
+        conditions.append(
+            or_(
+                func.lower(Job.type).like(like, escape="\\"),
+                func.lower(func.coalesce(Job.label, "")).like(like, escape="\\"),
+                Job.id.in_(in_logs),
+            )
+        )
+    return conditions
+
+
 def list_jobs(
     db: Session,
     *,
@@ -135,24 +156,9 @@ def list_jobs(
 ) -> tuple[list[Job], int]:
     """A page of jobs, newest first. `search` looks in the type, the label and every log line;
     `routine=False` hides the jobs that run all day (unless a type is asked for)."""
-    conditions = []
-    if type:
-        conditions.append(Job.type == type)
-    elif not routine:
-        conditions.append(Job.type.not_in(ROUTINE_TYPES))
+    conditions = _job_conditions(type, search, routine)
     if status:
         conditions.append(Job.status == status)
-    text = (search or "").strip()
-    if len(text) >= SEARCH_MIN:
-        like = _like(text)
-        in_logs = select(JobLog.job_id).where(func.lower(JobLog.message).like(like, escape="\\"))
-        conditions.append(
-            or_(
-                func.lower(Job.type).like(like, escape="\\"),
-                func.lower(func.coalesce(Job.label, "")).like(like, escape="\\"),
-                Job.id.in_(in_logs),
-            )
-        )
     total = db.scalar(select(func.count(Job.id)).where(*conditions)) or 0
     page = max(page, 1)
     rows = db.scalars(
@@ -163,6 +169,18 @@ def list_jobs(
         .offset((page - 1) * per_page)
     ).all()
     return list(rows), total
+
+
+def status_counts(
+    db: Session, *, type: str | None = None, search: str | None = None, routine: bool = True
+) -> dict[str, int]:
+    """How many jobs each status has under the other filters (the numbers of the status buttons)."""
+    rows = db.execute(
+        select(Job.status, func.count(Job.id))
+        .where(*_job_conditions(type, search, routine))
+        .group_by(Job.status)
+    )
+    return dict(rows.all())
 
 
 def matching_lines(

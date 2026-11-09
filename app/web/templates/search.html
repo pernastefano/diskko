@@ -8,5 +8,30 @@
          class="block w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
   <button class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">{{ t('search.button') }}</button>
 </form>
+{% if q and (local_artists or local_albums) %}
+<section class="mb-6" data-library-results>
+  <h2 class="mb-2 text-lg font-semibold">{{ t('search.library') }}</h2>
+  {% if local_artists %}
+    <h3 class="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('nav.artists') }} <span class="font-normal">({{ local_artist_total }})</span></h3>
+    <div class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2" data-library-artists>
+      {% for r in local_artists %}{% include "_artist_row.html" %}{% endfor %}
+    </div>
+    {% if local_artist_total > local_artists|length %}<p class="mb-3 text-sm"><a class="text-indigo-600 hover:underline" href="/artists?q={{ q|urlencode }}">{{ t('search.library_all', n=local_artist_total) }}</a></p>{% endif %}
+  {% endif %}
+  {% if local_albums %}
+    <h3 class="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{{ t('nav.albums') }} <span class="font-normal">({{ local_album_total }})</span></h3>
+    <div class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2" data-library-albums>
+      {% for r in local_albums %}{% include "_album_row.html" %}{% endfor %}
+    </div>
+    {% if local_album_total > local_albums|length %}<p class="mb-3 text-sm"><a class="text-indigo-600 hover:underline" href="/albums?q={{ q|urlencode }}">{{ t('search.library_all', n=local_album_total) }}</a></p>{% endif %}
+  {% endif %}
+</section>
+{% endif %}
+{% if q|length >= 2 %}<h2 class="mb-2 text-lg font-semibold">{{ t('search.musicbrainz') }}</h2>{% endif %}
 {% include "_search_results.html" %}
+{% if q|length >= 2 and albums.state != 'not_configured' %}
+  <h2 class="mb-2 mt-6 text-lg font-semibold">{{ t('search.albums_title') }}</h2>
+  <p class="mb-2 text-xs text-slate-500">{{ t('search.albums_hint') }}</p>
+  {% with q=albums.q, state=albums.state, rows=albums.rows, retry=albums.retry %}{% include "_search_albums.html" %}{% endwith %}
+{% endif %}
 {% endblock %}
