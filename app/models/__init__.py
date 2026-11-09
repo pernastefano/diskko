@@ -62,6 +62,7 @@ from app.models.library import (
     Artist,
     LibraryAlbum,
     LibraryTrack,
+    RetagReport,
 )
 from app.models.musicbrainz import (
     MATCH_MANUAL,
@@ -190,6 +191,7 @@ __all__ = [
     "JobLog",
     "LibraryAlbum",
     "LibraryTrack",
+    "RetagReport",
     "QualityProfile",
     "Setting",
     "User",

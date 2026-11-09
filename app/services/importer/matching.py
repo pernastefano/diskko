@@ -69,8 +69,9 @@ def _score(fact: FileFacts, track: TrackData) -> float:
     return similarity if similarity >= TITLE_MIN else 0.0
 
 
-def pair_tracks(facts: list[FileFacts], release: ReleaseData) -> dict[int, TrackData] | None:
-    """{index into `facts`: its track}, one to one, or None when some file has no certain track."""
+def pair_partial(facts: list[FileFacts], release: ReleaseData) -> dict[int, TrackData]:
+    """{index into `facts`: its track}, one to one, for the files that have a track they match
+    (some files may have none, some tracks may have no file)."""
     scored = sorted(
         (
             (score, i, j)
@@ -88,6 +89,12 @@ def pair_tracks(facts: list[FileFacts], release: ReleaseData) -> dict[int, Track
         used_files.add(i)
         used_tracks.add(j)
         pairs[i] = release.tracks[j]
+    return pairs
+
+
+def pair_tracks(facts: list[FileFacts], release: ReleaseData) -> dict[int, TrackData] | None:
+    """{index into `facts`: its track}, one to one, or None when some file has no certain track."""
+    pairs = pair_partial(facts, release)
     return pairs if len(pairs) == len(facts) else None
 
 
@@ -110,3 +117,42 @@ def choose_release(
         return None
     best = min(candidates, key=lambda c: c[:4])
     return best[4], best[5]
+
+
+@dataclass
+class Candidate:
+    """A release of the album and how well the files fit it."""
+
+    release: ReleaseData
+    pairs: dict[int, TrackData]  # file index -> track
+
+    @property
+    def missing(self) -> int:
+        """Tracks of the release no file stands for."""
+        return len(self.release.tracks) - len(self.pairs)
+
+
+def rank_releases(
+    releases: list[ReleaseData],
+    facts: list[FileFacts],
+    album_title: str,
+    *,
+    tagged: str | None = None,
+) -> list[Candidate]:
+    """Every release with its pairing, the most likely first: the one that pairs the most files,
+    then the release the files are already tagged with, then the closest in size, the one named
+    like the album, the earliest. Unlike `choose_release` the files and tracks need not agree in
+    number: a missing track or an extra file is something to show, not a reason to stop."""
+    candidates = [Candidate(r, pair_partial(facts, r)) for r in releases]
+
+    def key(c: Candidate):
+        return (
+            -len(c.pairs),
+            c.release.mbid != tagged,
+            abs(len(c.release.tracks) - len(facts)),
+            name_key(c.release.title) != name_key(album_title),
+            c.release.date or "9999",
+            c.release.mbid,
+        )
+
+    return sorted(candidates, key=key)

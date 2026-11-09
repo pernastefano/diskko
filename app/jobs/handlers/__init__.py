@@ -18,6 +18,7 @@ from app.jobs.handlers import (  # noqa: F401
     reclassify_quality,
     refresh_album,
     resolve_previews,
+    retag_album,
     scan_library,
     search_artists,
     search_release_groups,

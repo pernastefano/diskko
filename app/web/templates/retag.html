@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_buttons.html" import btn %}
+{% block title %}{{ t('retag.title') }} · {{ group.title }}{% endblock %}
+{% block content %}
+<a href="/album/{{ group.id }}" class="text-sm text-indigo-600 hover:underline">← {{ group.title }}</a>
+<h1 class="mt-2 text-2xl font-semibold" data-retag-title>{{ t('retag.title') }}</h1>
+<p class="mt-1 text-slate-500">{{ artist.name }} – {{ group.title }}</p>
+{% if page_error %}<p role="alert" class="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-error>{{ t(page_error) }}</p>{% endif %}
+<p class="mt-3 max-w-3xl text-sm text-slate-600">{{ t('retag.intro') }}</p>
+
+{% if problem %}
+  <p class="mt-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-retag-problem>{{ t('retag.error.' ~ problem) }}</p>
+{% else %}
+  <form method="post" action="/album/{{ group.id }}/retag/preview" class="mt-5 max-w-3xl space-y-3 rounded-lg border border-slate-200 p-4" data-retag-options>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% set candidates = report.candidates if report and report.candidates else [] %}
+    {% if candidates|length > 1 %}
+      <label class="block text-sm">
+        <span class="font-medium">{{ t('retag.option.release') }}</span>
+        <select name="release_mbid" class="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm" data-retag-release>
+          <option value="">{{ t('retag.option.release_auto') }}</option>
+          {% for c in candidates %}
+            <option value="{{ c.mbid }}" {{ 'selected' if options.release_mbid == c.mbid }}>{{ c.title }} · {{ c.date or '—' }}{{ ' · ' ~ c.country if c.country }} · {{ t('retag.option.release_tracks', n=c.tracks, paired=c.paired) }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    {% endif %}
+    <label class="flex items-start gap-2 text-sm">
+      <input type="checkbox" name="replace_cover" value="1" class="mt-0.5" {{ 'checked' if options.replace_cover }} data-retag-replace-cover>
+      <span>{{ t('retag.option.replace_cover') }}</span>
+    </label>
+    <label class="flex items-start gap-2 text-sm">
+      <input type="checkbox" name="rename" value="1" class="mt-0.5" {{ 'checked' if options.rename }} data-retag-rename>
+      <span>{{ t('retag.option.rename') }}<span class="block text-xs text-slate-500">{{ t('retag.option.rename_hint') }}</span></span>
+    </label>
+    <div class="max-w-xs"><button type="submit" class="{{ btn('primary') }}" data-retag-preview>{{ t('retag.preview') }}</button></div>
+  </form>
+{% endif %}
+
+<div class="mt-6">
+  {% include "_retag_report.html" %}
+</div>
+{% endblock %}

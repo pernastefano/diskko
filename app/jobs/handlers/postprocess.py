@@ -169,7 +169,7 @@ def build_plan(
     return plan, NameValues(album_artist, album, year)
 
 
-async def _find_cover(ctx: JobContext, group: dict, artist_name: str, images: list[Path]):
+async def find_cover(ctx: JobContext, group: dict, artist_name: str, images: list[Path]):
     """The front cover to embed: Cover Art Archive (500 px), else an image from the download,
     else Deezer. None when there is none."""
     if group["source"] == SOURCE_MUSICBRAINZ and ctx.settings.coverart_enabled:
@@ -178,7 +178,7 @@ async def _find_cover(ctx: JobContext, group: dict, artist_name: str, images: li
                 found = await client.fetch_front(group["mbid"], size=500)
             if found is not None and (mime := sniff_image(found[0])):
                 await ctx.log("Cover from the Cover Art Archive")
-                return Cover(found[0], mime)
+                return Cover(found[0], mime, "coverartarchive")
         except (CoverArtError, ServiceBreakerOpen, ValueError) as exc:
             await ctx.log(f"Cover Art Archive: {exc}", "warning")
     local = pick_cover_file(images)
@@ -186,20 +186,20 @@ async def _find_cover(ctx: JobContext, group: dict, artist_name: str, images: li
         data = await asyncio.to_thread(local.read_bytes)
         if mime := sniff_image(data):
             await ctx.log(f"Cover from the download ({local.name})")
-            return Cover(data, mime)
+            return Cover(data, mime, "folder")
     try:
         async with DeezerCoverSource(ctx.settings, ctx.session_factory) as source:
             found = await source.fetch(group["mbid"], artist_name, group["title"], None)
         if found is not None and (mime := sniff_image(found[0])):
             await ctx.log("Cover from Deezer")
-            return Cover(found[0], mime)
+            return Cover(found[0], mime, "deezer")
     except (ServiceError, ServiceBreakerOpen) as exc:
         await ctx.log(f"Deezer cover: {exc}", "warning")
     await ctx.log("No cover found: the files get none", "warning")
     return None
 
 
-async def _releases(ctx: JobContext, group: dict) -> list[ReleaseData]:
+async def load_releases(ctx: JobContext, group: dict) -> list[ReleaseData]:
     if group["source"] != SOURCE_MUSICBRAINZ:
         return []
     try:
@@ -321,7 +321,7 @@ async def postprocess(ctx: JobContext) -> None:
 
         # ---- the MusicBrainz release this download is, and which file is which track
         facts = facts_of(files)
-        releases = await _releases(ctx, group)
+        releases = await load_releases(ctx, group)
         release = pairs = None
         if releases:
             chosen = choose_release(releases, facts, group["title"])
@@ -339,7 +339,7 @@ async def postprocess(ctx: JobContext) -> None:
                 raise ImportRejected(f"{len(files)} tracks, expected at least {group['hint']}")
         await ctx.progress(30, "Release chosen")
         plan, folder_values = build_plan(facts, release, pairs, group, artist_name)
-        cover = await _find_cover(ctx, group, folder_values.artist, images)
+        cover = await find_cover(ctx, group, folder_values.artist, images)
         await ctx.progress(40, "Cover")
 
         # ---- copy, tag and rename in a hidden folder inside the library

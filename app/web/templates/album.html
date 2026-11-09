@@ -47,6 +47,9 @@
         {% endif %}
         {% if album %}
           <a href="/admin/albums/{{ album.id }}/match" class="{{ btn('secondary') }}" data-album-match data-action="manage-matching">{{ icon('link', 'h-4 w-4') }}{{ t('action.manage_matching') }}</a>
+          {% if group and album.match_status == 'matched' and group.source == 'musicbrainz' %}
+            <a href="/album/{{ group.id }}/retag" class="{{ btn('secondary') }}" data-album-retag data-action="update-tags">{{ icon('tag', 'h-4 w-4') }}{{ t('action.update_tags') }}</a>
+          {% endif %}
         {% endif %}
       </div>
     {% endif %}

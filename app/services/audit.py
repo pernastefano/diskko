@@ -43,6 +43,7 @@ ACTIONS = (
     "album.artist",
     "album.dedupe",
     "album.refresh",
+    "album.retag",
     "library.scan",
 )
 PAGE_SIZE = 50

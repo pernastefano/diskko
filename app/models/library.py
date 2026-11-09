@@ -138,3 +138,22 @@ class LibraryTrack(Base):
     plex_rating_key: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     album: Mapped[LibraryAlbum] = relationship(back_populates="tracks")
+
+
+class RetagReport(Base):
+    """What re-tagging an album would do (a preview) or did (a run): one per album, the last."""
+
+    __tablename__ = "retag_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    album_id: Mapped[int] = mapped_column(
+        ForeignKey("library_albums.id", ondelete="CASCADE"), unique=True
+    )
+    job_id: Mapped[int | None] = mapped_column(
+        ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True
+    )
+    mode: Mapped[str] = mapped_column(String(16))  # preview | applied
+    status: Mapped[str] = mapped_column(String(16), default="ready")  # ready | error
+    options_json: Mapped[str] = mapped_column(Text, default="{}")
+    report_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

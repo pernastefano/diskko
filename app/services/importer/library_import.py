@@ -269,7 +269,7 @@ def _has_audio(folder: Path) -> bool:
     return any(p.suffix.lower() in AUDIO_EXTENSIONS for p in folder.rglob("*") if p.is_file())
 
 
-def _prune_empty(folder: Path, music_dir: Path) -> None:
+def prune_empty(folder: Path, music_dir: Path) -> None:
     """Remove `folder` and its parents while they are empty (never the library root)."""
     root = Path(music_dir).resolve()
     for sub in sorted((d for d in folder.rglob("*") if d.is_dir()), reverse=True):
@@ -306,7 +306,7 @@ def retire_album(
     for path in [p for p in folder.rglob("*") if p.is_file() and _is_sidecar(p)]:
         path.unlink()
     left = [p.name for p in folder.rglob("*") if p.is_file()]
-    _prune_empty(folder, music_dir)
+    prune_empty(folder, music_dir)
     return left
 
 

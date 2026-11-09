@@ -65,6 +65,28 @@ similar name): search the artists you have, or type the name of a new one, and *
 album is matched again under its new artist, and every later scan keeps it there whatever the tags
 or Plex say.
 
+### Updating the tags of an album
+
+Administrators can re-tag an album that is already in the library: **Update tags** on the album
+page (only for albums matched to MusicBrainz with certainty). It works in two steps:
+
+1. **Preview the changes** reads the files and the MusicBrainz release and shows, file by file,
+   the tags now and after (click a file to see them), the tracks of the release that have **no
+   file** in your library (a 10-file album against an 11-track release lists the missing track),
+   files that match no track (they are left alone) and what would happen to the cover. Nothing is
+   written. When several releases fit (the standard and the deluxe edition), pick the one to use
+   and preview again.
+2. **Apply these changes** writes the tags. Every file is written as a copy that is checked and
+   then replaces the original, so an error never leaves a half-written file.
+
+Only the tags DISKKO manages (title, artists, album, track and disc numbers, date, release type,
+MusicBrainz ids) are changed: genre, lyrics, comments, ReplayGain and an existing embedded cover
+stay. Files without a cover get one from the Cover Art Archive (or the album folder, or Deezer);
+*Replace the embedded cover* does it for every file. *Also rename the files and the folder* (library
+read from the music folder only) applies the naming templates of the import; a name that is already
+taken is skipped, and a folder shared with other albums is not renamed. Plex is told to scan the
+album afterwards. Tracks that are missing are never created: download the album again for them.
+
 ### Quality
 
 Every file gets the best **quality profile** it satisfies and an album is as good as its worst

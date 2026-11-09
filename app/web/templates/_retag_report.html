@@ -1,0 +1,108 @@
+{# The report of the last preview or run of an album's tags. Polled while the job runs. #}
+<div id="retag-report" data-retag-state="{{ state }}" {% if state == 'running' %}hx-get="/album/{{ group.id }}/retag/report" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+{% if state == 'running' %}
+  <p class="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600" data-retag-running>
+    {{ t('retag.running') }}{% if job and job.step %} — {{ job.step }}{% endif %}
+    {% if job %}<a href="/admin/jobs/{{ job.id }}" class="ml-2 text-indigo-600 hover:underline">{{ t('retag.job') }}</a>{% endif %}
+  </p>
+{% elif state == 'failed' %}
+  <p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-retag-failed>{{ t('retag.failed') }}{% if job and job.error %}: {{ job.error }}{% endif %}</p>
+{% elif state == 'error' %}
+  <p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-retag-error>{{ t('retag.error.' ~ report.error) if report.error else t('retag.failed') }}</p>
+{% elif state == 'ready' %}
+  {% set s = report.summary or {} %}
+  {% set cover_info = report.cover or {} %}
+  {% if mode == 'applied' %}
+    <p class="rounded border {{ 'border-red-200 bg-red-50 text-red-800' if s.failed else 'border-green-200 bg-green-50 text-green-800' }} px-3 py-2 text-sm font-medium" data-retag-done>{{ t('retag.done', written=s.written, failed=s.failed) }}</p>
+  {% else %}
+    <p class="rounded border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-900" data-retag-preview-note>{{ t('retag.preview_note') }}</p>
+  {% endif %}
+
+  {% if report.release %}
+    <section class="mt-4 rounded-lg border border-slate-200 p-4 text-sm" data-retag-release-box>
+      <h2 class="font-semibold">{{ t('retag.release') }}</h2>
+      <p class="mt-1"><a class="text-indigo-700 hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release/{{ report.release.mbid }}">{{ report.release.title }} ↗</a>
+        <span class="text-slate-500">· {{ report.release.date or '—' }}{{ ' · ' ~ report.release.country if report.release.country }}{{ ' · ' ~ report.release.status if report.release.status }}</span></p>
+      <p class="mt-1 text-slate-600" data-retag-counts>{{ t('retag.tracks_have', paired=report.release.paired, tracks=report.release.tracks) }}</p>
+    </section>
+  {% endif %}
+
+  {% if report.missing %}
+    <section class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-retag-missing>
+      <h2 class="font-semibold">{{ t('retag.missing.title', n=report.missing|length) }}</h2>
+      <p class="mt-1">{{ t('retag.missing.hint') }}</p>
+      <ul class="mt-2 list-disc pl-5">
+        {% for m in report.missing %}
+          <li data-missing-track>{{ m.disc }}-{{ m.position }} · {{ m.title }}{% if m.seconds %} <span class="text-amber-800">({{ m.seconds // 60 }}:{{ '%02d'|format(m.seconds % 60) }})</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if report.extra %}
+    <section class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-retag-extra>
+      <h2 class="font-semibold">{{ t('retag.extra.title', n=report.extra|length) }}</h2>
+      <p class="mt-1">{{ t('retag.extra.hint') }}</p>
+      <ul class="mt-2 list-disc break-all pl-5">{% for name in report.extra %}<li>{{ name }}</li>{% endfor %}</ul>
+    </section>
+  {% endif %}
+
+  <section class="mt-4 rounded-lg border border-slate-200 p-4 text-sm" data-retag-cover>
+    <h2 class="font-semibold">{{ t('retag.cover.title') }}</h2>
+    {% if s.cover_to_embed %}
+      <p class="mt-1">{{ t('retag.cover.embed', n=s.cover_to_embed, source=t('retag.cover.source.' ~ cover_info.source)) }}</p>
+    {% elif cover_info.files_without and not cover_info.source %}
+      <p class="mt-1 text-amber-800">{{ t('retag.cover.not_found', n=cover_info.files_without) }}</p>
+    {% else %}
+      <p class="mt-1 text-slate-600">{{ t('retag.cover.none_needed') }}</p>
+    {% endif %}
+  </section>
+
+  {% if report.folder %}
+    <p class="mt-4 rounded border border-slate-200 px-3 py-2 text-sm" data-retag-folder>{{ t('retag.folder', name=report.folder.to) }}</p>
+  {% endif %}
+  {% for note in report.notes %}
+    {% set parts = note.split(':', 1) %}
+    <p class="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-retag-note>{{ t('retag.note.' ~ parts[0], arg=parts[1] if parts|length > 1 else '') }}</p>
+  {% endfor %}
+
+  <h2 class="mb-2 mt-6 text-lg font-semibold">{{ t('retag.files') }}</h2>
+  <ul class="divide-y divide-slate-200 rounded-lg border border-slate-200 text-sm" data-retag-files>
+    {% for f in report.files %}
+      <li class="px-3 py-2" data-retag-file data-file-state="{{ f.state }}">
+        <details {{ 'open' if f.state == 'failed' }}>
+          <summary class="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1">
+            <span class="min-w-0 break-all font-medium">{{ f.name }}{% if f.rename %} <span class="text-indigo-700">→ {{ f.rename }}</span>{% endif %}</span>
+            {% if f.track %}<span class="text-slate-500">{{ f.track.disc }}-{{ f.track.position }} · {{ f.track.title }}</span>{% endif %}
+            <span class="ml-auto rounded px-2 py-0.5 text-xs font-medium {{ {'same': 'bg-slate-100 text-slate-600', 'change': 'bg-indigo-100 text-indigo-800', 'written': 'bg-green-100 text-green-800', 'failed': 'bg-red-100 text-red-800'}.get(f.state, 'bg-amber-100 text-amber-900') }}">{{ t('retag.state.' ~ f.state) }}{% if f.state == 'change' %} ({{ f.changes|length }}){% endif %}{% if f.cover %} + {{ t('retag.cover.badge') }}{% endif %}</span>
+          </summary>
+          {% if f.error %}<p class="mt-2 break-all text-red-700">{{ f.error }}</p>{% endif %}
+          {% if f.changes %}
+            <table class="mt-2 w-full text-left text-xs">
+              <thead class="text-slate-500"><tr><th class="py-1 pr-3 font-medium">{{ t('retag.changes.field') }}</th><th class="py-1 pr-3 font-medium">{{ t('retag.changes.now') }}</th><th class="py-1 font-medium">{{ t('retag.changes.after') }}</th></tr></thead>
+              <tbody>
+                {% for c in f.changes %}
+                  <tr class="border-t border-slate-100 align-top"><td class="py-1 pr-3 text-slate-600">{{ t('retag.field.' ~ c.field) }}</td><td class="break-all py-1 pr-3 text-red-700">{{ c.old or '—' }}</td><td class="break-all py-1 text-green-700">{{ c.new or '—' }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% elif f.state == 'same' %}
+            <p class="mt-2 text-slate-500">{{ t('retag.same') }}</p>
+          {% endif %}
+        </details>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if mode == 'preview' %}
+    {% if s.to_change or s.cover_to_embed or report.folder or (report.files|selectattr('rename')|list) %}
+      <form method="post" action="/album/{{ group.id }}/retag/apply" class="mt-5 max-w-xs" onsubmit="return confirm({{ t('retag.apply_confirm')|tojson }})">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="{{ btn('primary') }}" data-retag-apply>{{ t('retag.apply') }}</button>
+      </form>
+    {% else %}
+      <p class="mt-5 text-sm text-slate-500" data-retag-nothing>{{ t('retag.nothing') }}</p>
+    {% endif %}
+  {% endif %}
+{% endif %}
+</div>

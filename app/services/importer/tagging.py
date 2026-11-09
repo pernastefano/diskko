@@ -6,6 +6,10 @@ MusicBrainz ids where the release is known, and the front cover is embedded.
 
 Taggable: FLAC, MP3 (ID3v2.4), M4A/MP4, Ogg Vorbis and Opus. Other formats are imported as they
 are. The field names are those Picard writes, so that Plex, Jellyfin and other tools read them.
+
+`keep_other=True` (re-tagging an album that is already in the library) changes only the fields
+written here and leaves everything else alone: genre, lyrics, comments, ReplayGain and the
+embedded cover (unless a new cover is given).
 """
 
 import base64
@@ -35,6 +39,22 @@ from mutagen.oggvorbis import OggVorbis
 
 TAGGABLE = (".flac", ".mp3", ".m4a", ".mp4", ".ogg", ".oga", ".opus")
 _ITUNES = "----:com.apple.iTunes:"
+_VORBIS_MANAGED = {
+    "title", "artist", "albumartist", "album artist", "album", "tracknumber", "discnumber",
+    "date", "year", "tracktotal", "totaltracks", "disctotal", "totaldiscs", "compilation",
+    "releasetype", "musicbrainz_albumid", "musicbrainz_releasegroupid", "musicbrainz_artistid",
+    "musicbrainz_albumartistid", "musicbrainz_trackid",
+}  # fmt: skip
+_ID3_MANAGED = {"TIT2", "TPE1", "TPE2", "TALB", "TRCK", "TPOS", "TDRC", "TYER", "TDAT", "TCMP"}
+_FREE_NAMES = (
+    "MusicBrainz Album Type",
+    "MusicBrainz Album Id",
+    "MusicBrainz Release Group Id",
+    "MusicBrainz Artist Id",
+    "MusicBrainz Album Artist Id",
+    "MusicBrainz Track Id",
+)
+_MP4_MANAGED = {"\xa9nam", "\xa9ART", "aART", "\xa9alb", "\xa9day", "trkn", "disk", "cpil"}
 
 
 class TaggingError(Exception):
@@ -65,6 +85,7 @@ class TrackTags:
 class Cover:
     data: bytes
     mime: str  # image/jpeg or image/png
+    source: str = ""  # where it came from: coverartarchive, folder, deezer
 
 
 def can_tag(path: Path) -> bool:
@@ -113,8 +134,21 @@ def _picture(cover: Cover) -> Picture:
     return picture
 
 
-def _tag_flac(path: Path, tags: TrackTags, cover: Cover | None) -> None:
+def _tag_flac(path: Path, tags: TrackTags, cover: Cover | None, keep_other: bool = False) -> None:
     audio = FLAC(path)
+    if keep_other:
+        for key in [k for k in audio.keys() if k.lower() in _VORBIS_MANAGED]:  # noqa: SIM118
+            del audio[key]
+        if cover is not None:
+            audio.clear_pictures()
+        if audio.tags is None:
+            audio.add_tags()
+        for key, values in _vorbis_fields(tags).items():
+            audio[key] = values
+        if cover is not None:
+            audio.add_picture(_picture(cover))
+        audio.save()
+        return
     replaygain = {
         k: list(v) for k, v in (audio.tags or {}).items() if k.lower().startswith("replaygain_")
     }
@@ -130,9 +164,20 @@ def _tag_flac(path: Path, tags: TrackTags, cover: Cover | None) -> None:
     audio.save()
 
 
-def _tag_ogg(path: Path, tags: TrackTags, cover: Cover | None) -> None:
+def _tag_ogg(path: Path, tags: TrackTags, cover: Cover | None, keep_other: bool = False) -> None:
     opener = OggOpus if path.suffix.lower() == ".opus" else OggVorbis
     audio = opener(path)
+    if keep_other:
+        for key in [k for k in audio.keys() if k.lower() in _VORBIS_MANAGED]:  # noqa: SIM118
+            del audio[key]
+        for key, values in _vorbis_fields(tags).items():
+            audio[key] = values
+        if cover is not None:
+            audio["metadata_block_picture"] = [
+                base64.b64encode(_picture(cover).write()).decode("ascii")
+            ]
+        audio.save()
+        return
     replaygain = {
         k: list(v) for k, v in (audio.tags or {}).items() if k.lower().startswith("replaygain_")
     }
@@ -147,8 +192,9 @@ def _tag_ogg(path: Path, tags: TrackTags, cover: Cover | None) -> None:
     audio.save()
 
 
-def _tag_mp3(path: Path, tags: TrackTags, cover: Cover | None) -> None:
+def _tag_mp3(path: Path, tags: TrackTags, cover: Cover | None, keep_other: bool = False) -> None:
     replaygain = []
+    old = None
     try:
         old = ID3(path)
         replaygain = [
@@ -158,7 +204,19 @@ def _tag_mp3(path: Path, tags: TrackTags, cover: Cover | None) -> None:
         ]
     except ID3NoHeaderError:
         pass
-    new = ID3()
+    if keep_other and old is not None:
+        new = old  # everything stays except what is written below
+        for frame_id in _ID3_MANAGED:
+            new.delall(frame_id)
+        for frame in new.getall("TXXX"):
+            if frame.desc in _FREE_NAMES:
+                new.delall(frame.HashKey)
+        new.delall("UFID:http://musicbrainz.org")
+        if cover is not None:
+            new.delall("APIC")
+        replaygain = []  # still in place
+    else:
+        new = ID3()
     new.add(TIT2(encoding=3, text=tags.title))
     new.add(TPE1(encoding=3, text=tags.artist))
     new.add(TPE2(encoding=3, text=tags.album_artist))
@@ -190,15 +248,23 @@ def _tag_mp3(path: Path, tags: TrackTags, cover: Cover | None) -> None:
     new.save(path, v1=0, v2_version=4)
 
 
-def _tag_mp4(path: Path, tags: TrackTags, cover: Cover | None) -> None:
+def _tag_mp4(path: Path, tags: TrackTags, cover: Cover | None, keep_other: bool = False) -> None:
     audio = MP4(path)
-    replaygain = {
-        k: list(v)
-        for k, v in (audio.tags or {}).items()
-        if k.lower().startswith(_ITUNES.lower() + "replaygain_")
-    }
-    audio.delete()
-    audio = MP4(path)
+    replaygain: dict = {}
+    if keep_other:
+        managed = _MP4_MANAGED | {_ITUNES + name for name in _FREE_NAMES}
+        for key in [k for k in (audio.tags or {}) if k in managed]:
+            del audio.tags[key]
+        if cover is not None and audio.tags is not None:
+            audio.tags.pop("covr", None)
+    else:
+        replaygain = {
+            k: list(v)
+            for k, v in (audio.tags or {}).items()
+            if k.lower().startswith(_ITUNES.lower() + "replaygain_")
+        }
+        audio.delete()
+        audio = MP4(path)
     if audio.tags is None:
         audio.add_tags()
     audio["\xa9nam"] = [tags.title]
@@ -232,18 +298,21 @@ def _tag_mp4(path: Path, tags: TrackTags, cover: Cover | None) -> None:
     audio.save()
 
 
-def write_tags(path: Path, tags: TrackTags, cover: Cover | None = None) -> None:
-    """Replace the tags of `path`. Raises TaggingError."""
+def write_tags(
+    path: Path, tags: TrackTags, cover: Cover | None = None, *, keep_other: bool = False
+) -> None:
+    """Replace the tags of `path` (only the ones written here with `keep_other`).
+    Raises TaggingError."""
     suffix = path.suffix.lower()
     try:
         if suffix == ".flac":
-            _tag_flac(path, tags, cover)
+            _tag_flac(path, tags, cover, keep_other)
         elif suffix in (".ogg", ".oga", ".opus"):
-            _tag_ogg(path, tags, cover)
+            _tag_ogg(path, tags, cover, keep_other)
         elif suffix == ".mp3":
-            _tag_mp3(path, tags, cover)
+            _tag_mp3(path, tags, cover, keep_other)
         elif suffix in (".m4a", ".mp4"):
-            _tag_mp4(path, tags, cover)
+            _tag_mp4(path, tags, cover, keep_other)
         else:
             raise TaggingError(f"cannot tag {suffix} files")
     except TaggingError:

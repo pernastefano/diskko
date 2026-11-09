@@ -4,11 +4,14 @@ Slow things (the MusicBrainz track list, the preview lookup) are jobs: the page 
 shows what it has and polls until they are done.
 """
 
+import json
+import re
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy import select
 
 from app.auth.deps import DB, AdminAuth, UserAuth
 from app.i18n import has_key
@@ -16,14 +19,17 @@ from app.jobs import engine
 from app.jobs.handlers.fetch_tracklist import tracklist_dedupe_key
 from app.jobs.handlers.refresh_album import refresh_dedupe_key
 from app.jobs.handlers.resolve_previews import previews_dedupe_key
+from app.jobs.handlers.retag_album import eligible_error, retag_dedupe_key, save_report
 from app.models import (
     REQ_ACTIVE,
     Artist,
     DownloadRequest,
+    Job,
     LibraryAlbum,
     LibraryTrack,
     PreviewLookup,
     ReleaseGroup,
+    RetagReport,
 )
 from app.services import album_copies, audit
 from app.services import downloads as downloads_svc
@@ -395,3 +401,124 @@ def keep_one_copy(
                 plex_svc.request_refresh(db, settings, items)
                 notify_worker(request)
     return RedirectResponse(f"/album/{group_id}?flash=copies_removed", status_code=303)
+
+
+# ------------------------------------------------------------------ update the tags
+
+
+def _retag_context(db: DB, group: ReleaseGroup, album: LibraryAlbum) -> dict:
+    """The state of the "update tags" page: nothing yet, running, failed, or a report."""
+    row = db.scalar(select(RetagReport).where(RetagReport.album_id == album.id))
+    job = db.get(Job, row.job_id) if row and row.job_id else None
+    state, report, options = "none", {}, {}
+    if row is not None:
+        options = json.loads(row.options_json or "{}")
+        report = json.loads(row.report_json or "{}")
+        if row.status == "running":
+            state = "running" if job is None or job.is_active else "failed"
+        else:
+            state = "error" if row.status == "error" else "ready"
+    return {
+        "group": group,
+        "album": album,
+        "row": row,
+        "state": state,
+        "mode": row.mode if row else None,
+        "report": report,
+        "options": options,
+        "job": job,
+        "problem": eligible_error(album, group),
+        "title": group.title,
+    }
+
+
+def _retag_target(db: DB, group_id: int) -> tuple[ReleaseGroup, LibraryAlbum]:
+    group, album = _owned_group_or_404(db, group_id)
+    return group, album
+
+
+def _enqueue_retag(
+    request: Request,
+    db: DB,
+    auth,
+    group: ReleaseGroup,
+    album: LibraryAlbum,
+    options: dict,
+    apply: bool,
+) -> None:
+    job = engine.enqueue(
+        db,
+        "retag_album",
+        {"album_id": album.id, "release_group_id": group.id, "apply": apply, **options},
+        dedupe_key=retag_dedupe_key(album.id),
+        created_by=auth.user.id,
+    )
+    save_report(db, album.id, job.id, "applied" if apply else "preview", "running", options, {})
+    artist = db.get(Artist, group.artist_id)
+    audit.record(
+        db,
+        auth.user,
+        "album.retag",
+        target_type="album",
+        target_id=group.id,
+        label=f"{artist.name} – {group.title}",
+        details={"mode": "apply" if apply else "preview", **options},
+    )
+    db.commit()
+    notify_worker(request)
+
+
+@router.get("/album/{group_id}/retag")
+def retag_page(request: Request, db: DB, auth: AdminAuth, group_id: int):
+    group, album = _retag_target(db, group_id)
+    artist = db.get(Artist, group.artist_id)
+    ctx = _retag_context(db, group, album) | {"artist": artist}
+    failed = f"error.{request.query_params.get('error', '')}"
+    ctx["page_error"] = failed if has_key(failed) else None
+    return render(request, "retag.html", ctx)
+
+
+@router.get("/album/{group_id}/retag/report")
+def retag_poll(request: Request, db: DB, auth: AdminAuth, group_id: int):
+    group, album = _retag_target(db, group_id)
+    return render(request, "_retag_report.html", _retag_context(db, group, album))
+
+
+@router.post("/album/{group_id}/retag/preview")
+def retag_preview(
+    request: Request,
+    db: DB,
+    auth: AdminAuth,
+    group_id: int,
+    release_mbid: Annotated[str, Form()] = "",
+    rename: Annotated[str, Form()] = "",
+    replace_cover: Annotated[str, Form()] = "",
+):
+    """Queue the job that compares the tags with the MusicBrainz release (nothing is changed)."""
+    group, album = _retag_target(db, group_id)
+    if eligible_error(album, group):
+        return RedirectResponse(f"/album/{group_id}/retag?error=retag_not_eligible", 303)
+    options = {
+        "release_mbid": release_mbid if _is_uuid(release_mbid) else "",
+        "rename": rename == "1",
+        "replace_cover": replace_cover == "1",
+    }
+    _enqueue_retag(request, db, auth, group, album, options, apply=False)
+    return RedirectResponse(f"/album/{group_id}/retag", status_code=303)
+
+
+@router.post("/album/{group_id}/retag/apply")
+def retag_apply(request: Request, db: DB, auth: AdminAuth, group_id: int):
+    """Write what the preview showed. Only possible right after a preview that is ready."""
+    group, album = _retag_target(db, group_id)
+    ctx = _retag_context(db, group, album)
+    if eligible_error(album, group) or ctx["state"] != "ready" or ctx["mode"] != "preview":
+        return RedirectResponse(f"/album/{group_id}/retag?error=retag_no_preview", 303)
+    _enqueue_retag(request, db, auth, group, album, ctx["options"], apply=True)
+    return RedirectResponse(f"/album/{group_id}/retag", status_code=303)
+
+
+def _is_uuid(value: str) -> bool:
+    return bool(
+        re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value)
+    )
