@@ -1,6 +1,6 @@
 [project]
 name = "diskko"
-version = "0.2.1"
+version = "0.3.0"
 description = "Music library manager: missing albums, SLSKD downloads, tagging, Plex rescan"
 requires-python = ">=3.12"
 
