@@ -326,7 +326,7 @@ def test_a_request_waiting_for_a_choice_shows_simple_candidates(user_client, wor
     svc.awaiting_choice(db, req.id)
     db.commit()
     listing = user_client.get("/m/requests").text
-    assert "Choose which one to download" in listing
+    assert "Waiting for your choice" in listing
     html = user_client.get(f"/m/requests/{req.id}").text
     assert html.count("data-choose") == 3 and "user0" not in html  # no user names, no paths
     assert "/admin/jobs" not in html and "data-file=" not in html

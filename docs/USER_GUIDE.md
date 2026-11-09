@@ -130,8 +130,14 @@ page of an album you own, to get a better quality). The request appears under **
 5. **In library**: the album is no longer missing. With Plex as the library source the album is added to DISKKO as soon as Plex has it
    (no need to scan Plex again).
 
-If something cannot be imported (a damaged file, too low a quality, an album that cannot be
-matched), the request shows **Failed** with the reason and the files wait in a quarantine folder.
+When the files do not match a MusicBrainz release on their own (a different edition, odd file
+names, a missing track), nothing is thrown away: the request shows **Choose one** and its page lists
+the releases of the album with how many files match each. Pick the release to tag from, **Import
+with the tags of the files**, or **Do not import** (the download then goes to the quarantine).
+Files named after a vinyl side (`A1 - Title`) are recognised by the side number MusicBrainz gives.
+
+If something else cannot be imported (a damaged file, too low a quality), the request shows
+**Failed** with the reason and the files wait in a quarantine folder.
 When the album's folder already exists, files with the same names are overwritten (a file that
 belongs to another album is never touched). When an **upgrade** replaces an album, the old files, their
 cover and the folders left empty are deleted once the new copy is in place; set `KEEP_REPLACED=true`

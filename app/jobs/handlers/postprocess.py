@@ -47,7 +47,14 @@ from app.services.importer.integrity import (
     find_files,
     pick_cover_file,
 )
-from app.services.importer.matching import FileFacts, choose_release, facts_of
+from app.services.importer.matching import (
+    Candidate,
+    FileFacts,
+    choose_release,
+    facts_of,
+    pair_partial,
+    rank_releases,
+)
 from app.services.importer.naming import NameValues
 from app.services.importer.tagging import Cover, TaggingError, TrackTags, can_tag
 from app.services.quality_profiles import load_profiles
@@ -133,7 +140,7 @@ def build_plan(
 
     plan: list[lib.PlannedFile] = []
     for i, fact in enumerate(facts):
-        track = pairs[i] if pairs is not None else None
+        track = pairs.get(i) if pairs is not None else None
         if track is not None:
             title, number, disc = track.title, track.position, track.disc
             artist = join_credits(track.credits, album_artist)
@@ -211,6 +218,27 @@ async def load_releases(ctx: JobContext, group: dict) -> list[ReleaseData]:
         return await client.browse_releases(group["mbid"]) or []
 
 
+MAX_RELEASE_OPTIONS = 6  # releases offered to the user when none fits on its own
+
+
+def release_option(candidate: Candidate, facts: list[FileFacts]) -> dict:
+    """What the user is shown about a release the download might be: how it fits the files."""
+    release = candidate.release
+    paired_tracks = {id(t) for t in candidate.pairs.values()}
+    return {
+        "mbid": release.mbid,
+        "title": release.title,
+        "date": release.date,
+        "country": release.country,
+        "tracks": len(release.tracks),
+        "paired": len(candidate.pairs),
+        "missing": [t.title for t in release.tracks if id(t) not in paired_tracks],
+        "unmatched": [
+            facts[i].file.path.name for i in range(len(facts)) if i not in candidate.pairs
+        ],
+    }
+
+
 def _already_imported(final: Path, group: dict, count: int, request_id: int, upgrade: bool) -> bool:
     """Is the folder the album of an earlier, interrupted run of this very import?
 
@@ -238,6 +266,7 @@ def _already_imported(final: Path, group: dict, count: int, request_id: int, upg
 @job_handler("postprocess", queue="library", max_attempts=MAX_ATTEMPTS, backoff_base=60)
 async def postprocess(ctx: JobContext) -> None:
     request_id = int(ctx.payload["request_id"])
+    choice = str(ctx.payload.get("release_choice") or "") or None  # what the user answered
 
     def load(db):
         request = db.get(DownloadRequest, request_id)
@@ -286,6 +315,8 @@ async def postprocess(ctx: JobContext) -> None:
             _db(lambda db: downloads_svc.set_status(db, request_id, REQ_POSTPROCESSING))
         )
         source = lib.request_dir(settings, info["dest_dir"], request_id)
+        if choice == downloads_svc.RELEASE_REJECT:
+            raise ImportRejected("you chose not to import this download")
         await ctx.log(f"Checking the download in {source.name}")
         audio, images = await asyncio.to_thread(find_files, source)
         files = await asyncio.to_thread(check_files, source, audio)
@@ -323,14 +354,34 @@ async def postprocess(ctx: JobContext) -> None:
         facts = facts_of(files)
         releases = await load_releases(ctx, group)
         release = pairs = None
-        if releases:
+        if choice == downloads_svc.RELEASE_NONE:
+            await ctx.log("Importing with the tags of the files, as you chose (no release)")
+        elif releases and choice:
+            release = next((r for r in releases if r.mbid == choice), None)
+            if release is None:
+                raise ImportRejected("the release you chose is no longer available")
+            pairs = pair_partial(facts, release)
+            await ctx.log(
+                f"MusicBrainz release: {release.title} ({release.date or 'no date'}), as you "
+                f"chose: {len(pairs)} of {len(files)} file(s) matched a track"
+            )
+        elif releases:
             chosen = choose_release(releases, facts, group["title"])
             if chosen is None:
-                counts = sorted({len(r.tracks) for r in releases})
-                raise ImportRejected(
-                    f"no MusicBrainz release matches these {len(files)} files "
-                    f"(releases have {', '.join(map(str, counts))} tracks, or the titles differ)"
+                # nothing fits on its own: the download is kept and the user is asked, instead of
+                # throwing the work away
+                ranked = rank_releases(releases, facts, group["title"])
+                options = [release_option(c, facts) for c in ranked[:MAX_RELEASE_OPTIONS]]
+                await ctx.run_db(
+                    _db(lambda db: downloads_svc.store_release_options(db, request_id, options))
                 )
+                await ctx.log(
+                    f"No MusicBrainz release matches these {len(files)} files on its own: "
+                    "waiting for you to choose the release",
+                    "warning",
+                )
+                await ctx.progress(100, "Waiting for you")
+                return
             release, pairs = chosen
             await ctx.log(f"MusicBrainz release: {release.title} ({release.date or 'no date'})")
         else:

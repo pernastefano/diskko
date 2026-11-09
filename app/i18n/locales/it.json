@@ -985,7 +985,20 @@
   "m.open_desktop": "Versione desktop",
   "m.more": "Mostra altri",
   "m.tracks": "Tracce",
-  "m.choose_needed": "Scegli quale scaricare",
+  "m.choose_needed": "In attesa della tua scelta",
   "m.choose_hint": "Scegli la fonte da scaricare. Il punteggio pesa il nome, il numero di tracce, la qualità e la disponibilità dell'utente.",
-  "m.open_album": "Apri l'album"
+  "m.open_album": "Apri l'album",
+  "requests.release.title": "Quale uscita è?",
+  "requests.release.intro": "Il download è completo, ma i file non corrispondono da soli a una release di MusicBrainz. Non è stato importato nulla e i file sono conservati. Scegli la release a cui appartengono: le tracce vengono taggate da quella, e un file senza traccia corrispondente mantiene il proprio titolo.",
+  "requests.release.fit": "{paired} file su {files} corrispondono a una traccia",
+  "requests.release.tracks": "{n} tracce",
+  "requests.release.missing": "Nessun file per: {list}",
+  "requests.release.unmatched": "File senza traccia: {list}",
+  "requests.release.use": "Usa questa release",
+  "requests.release.none": "Importa con i tag dei file",
+  "requests.release.none_hint": "Mantiene i titoli e i numeri che i file hanno già.",
+  "requests.release.reject": "Non importare",
+  "requests.release.reject_confirm": "Spostare il download nella cartella di quarantena?",
+  "error.request_bad_release": "Quella release non è tra quelle proposte.",
+  "audit.action.request.release_chosen": "Ha scelto la release di un download"
 }

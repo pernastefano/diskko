@@ -363,6 +363,13 @@ def request_choose(
     return to_mobile(requests_web.request_choose(request, db, auth, request_id, index))
 
 
+@router.post("/requests/{request_id}/release")
+def request_release(
+    request: Request, db: DB, auth: UserAuth, request_id: int, choice: Annotated[str, Form()] = ""
+):
+    return to_mobile(requests_web.request_release(request, db, auth, request_id, choice))
+
+
 @router.post("/requests/{request_id}/cancel")
 def request_cancel(request: Request, db: DB, auth: UserAuth, request_id: int):
     return to_mobile(requests_web.request_cancel(request, db, auth, request_id, ""))

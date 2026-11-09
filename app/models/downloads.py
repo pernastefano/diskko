@@ -90,6 +90,9 @@ class DownloadRequest(Base):
     query_used: Mapped[str | None] = mapped_column(String(255), nullable=True)
     candidates_json: Mapped[str] = mapped_column(Text, default="[]")
     candidate_index: Mapped[int] = mapped_column(Integer, default=-1)  # -1: none chosen yet
+    # While the status is awaiting_choice and this is set, the download is done and waits for the
+    # user to say which MusicBrainz release it is (otherwise the choice is a candidate to download).
+    release_options_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     dest_dir: Mapped[str | None] = mapped_column(String(255), nullable=True)  # under downloads

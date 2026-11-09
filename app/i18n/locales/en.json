@@ -985,7 +985,20 @@
   "m.open_desktop": "Desktop version",
   "m.more": "Show more",
   "m.tracks": "Tracks",
-  "m.choose_needed": "Choose which one to download",
+  "m.choose_needed": "Waiting for your choice",
   "m.choose_hint": "Pick the source to download. The score weighs the name, the number of tracks, the quality and how available the user is.",
-  "m.open_album": "Open the album"
+  "m.open_album": "Open the album",
+  "requests.release.title": "Which release is this?",
+  "requests.release.intro": "The download is complete, but its files do not match a MusicBrainz release on their own. Nothing was imported and the files are kept. Choose the release they belong to: the tracks are tagged from it, and a file with no matching track keeps its own title.",
+  "requests.release.fit": "{paired} of {files} files match a track",
+  "requests.release.tracks": "{n} tracks",
+  "requests.release.missing": "No file for: {list}",
+  "requests.release.unmatched": "Files with no track: {list}",
+  "requests.release.use": "Use this release",
+  "requests.release.none": "Import with the tags of the files",
+  "requests.release.none_hint": "Keeps the titles and numbers the files already have.",
+  "requests.release.reject": "Do not import",
+  "requests.release.reject_confirm": "Move the download to the quarantine folder?",
+  "error.request_bad_release": "That release is not one of those offered.",
+  "audit.action.request.release_chosen": "Chose the release of a download"
 }

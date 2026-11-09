@@ -22,6 +22,9 @@ TITLE_MIN = 0.80  # similarity of file title and track title
 POSITION_TITLE_MIN = 0.55  # ... when disc and track number agree as well
 _DISC_DIR = re.compile(r"(?:cd|disc|disk|dvd)\s*[-_. ]*(\d{1,2})", re.IGNORECASE)
 _LEADING_NUMBER = re.compile(r"^\s*(?:(\d{1,2})\s*[-.]\s*)?(\d{1,3})\s*[-._ )]+\s*")
+# a vinyl rip names its files after the side: "A1 - Title", "B4. Title" (the same "A1" that
+# MusicBrainz gives the track of a vinyl release)
+_SIDE_NUMBER = re.compile(r"^\s*([A-Ha-h]\d{1,2})\s*[-._ )]+\s*")
 
 
 @dataclass
@@ -32,25 +35,32 @@ class FileFacts:
     title: str
     track_no: int | None
     disc_no: int
+    side: str | None = None  # "A1": the number on a vinyl release
 
 
-def _title_from_name(stem: str) -> tuple[str, int | None]:
+def _title_from_name(stem: str) -> tuple[str, int | None, str | None]:
+    """(title, track number, side number like "A1") a file name tells."""
+    side = _SIDE_NUMBER.match(stem)
+    if side and stem[side.end() :].strip():
+        return stem[side.end() :].strip(), None, side.group(1).upper()
     match = _LEADING_NUMBER.match(stem)
     if match and stem[match.end() :].strip():
-        return stem[match.end() :].strip(), int(match.group(2))
-    return stem, None
+        return stem[match.end() :].strip(), int(match.group(2)), None
+    return stem, None, None
 
 
 def facts_of(files: list[DownloadedFile]) -> list[FileFacts]:
     result = []
     for f in files:
-        stem_title, stem_no = _title_from_name(f.path.stem)
+        stem_title, stem_no, side = _title_from_name(f.path.stem)
         disc = f.info.disc_no
         if not disc:
             folder = f.relative.rsplit("/", 1)[0] if "/" in f.relative else ""
             found = _DISC_DIR.search(folder)
             disc = int(found.group(1)) if found else 1
-        result.append(FileFacts(f, f.info.title or stem_title, f.info.track_no or stem_no, disc))
+        result.append(
+            FileFacts(f, f.info.title or stem_title, f.info.track_no or stem_no, disc, side)
+        )
     return result
 
 
@@ -75,7 +85,9 @@ def _similar(a: str, b: str) -> float:
 
 def _score(fact: FileFacts, track: TrackData) -> float:
     similarity = _similar(fact.title, track.title)
-    same_position = fact.track_no == track.position and fact.disc_no == track.disc
+    same_position = (fact.track_no == track.position and fact.disc_no == track.disc) or bool(
+        fact.side and track.number and fact.side == track.number.strip().upper()
+    )
     if same_position and similarity >= POSITION_TITLE_MIN:
         return similarity + 0.5
     return similarity if similarity >= TITLE_MIN else 0.0

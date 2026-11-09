@@ -46,7 +46,45 @@
     </form>
   {% endif %}
 
-  {% if candidates %}
+  {% if choosing_release %}
+    <section class="mb-6" data-release-choice>
+      <h2 class="mb-1 text-lg font-semibold">{{ t('requests.release.title') }}</h2>
+      <p class="mb-3 max-w-3xl text-sm text-slate-600">{{ t('requests.release.intro') }}</p>
+      <ul class="mb-4 space-y-3">
+        {% for o in release_options %}
+          <li class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-release="{{ o.mbid }}">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-medium">{{ o.title }}</div>
+                <div class="text-xs text-slate-500">{{ [o.date, o.country, t('requests.release.tracks', n=o.tracks)]|select|join(' · ') }}
+                  · <a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release/{{ o.mbid }}">MusicBrainz ↗</a></div>
+                <div class="mt-1 text-sm {{ 'text-green-700' if not o.unmatched else 'text-amber-800' }}">{{ t('requests.release.fit', paired=o.paired, files=o.paired + o.unmatched|length) }}</div>
+                {% if o.missing %}<div class="mt-1 text-xs text-slate-500">{{ t('requests.release.missing', list=o.missing[:6]|join(', ') ~ (' …' if o.missing|length > 6 else '')) }}</div>{% endif %}
+                {% if o.unmatched %}<div class="mt-1 text-xs text-slate-500">{{ t('requests.release.unmatched', list=o.unmatched[:6]|join(', ') ~ (' …' if o.unmatched|length > 6 else '')) }}</div>{% endif %}
+              </div>
+              <form method="post" action="/requests/{{ r.id }}/release">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="choice" value="{{ o.mbid }}">
+                <button class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700" data-use-release>{{ t('requests.release.use') }}</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="flex flex-wrap gap-3">
+        <form method="post" action="/requests/{{ r.id }}/release">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="choice" value="none">
+          <button class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-release-none>{{ t('requests.release.none') }}</button>
+          <span class="ml-1 text-xs text-slate-500">{{ t('requests.release.none_hint') }}</span>
+        </form>
+        <form method="post" action="/requests/{{ r.id }}/release" onsubmit="return confirm('{{ t('requests.release.reject_confirm')|e }}')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="choice" value="reject">
+          <button class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-release-reject>{{ t('requests.release.reject') }}</button>
+        </form>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if candidates and not choosing_release %}
     <h2 class="mb-2 text-lg font-semibold">{{ t('requests.candidates') }}</h2>
     {% if choosing %}<p class="mb-2 text-sm text-slate-500">{{ t('requests.choose_hint') }}</p>{% endif %}
     <div class="mb-6 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">

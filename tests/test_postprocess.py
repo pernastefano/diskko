@@ -1,6 +1,7 @@
 """The postprocess job from a finished download to an album in the library."""
 
 import asyncio
+import json
 import os
 
 import pytest
@@ -389,21 +390,42 @@ async def test_the_quality_is_judged_on_the_worst_file(env):
     await assert_rejected(env, "below the minimum", files=files)
 
 
-async def test_a_download_that_matches_no_release_is_refused(env):
-    await assert_rejected(
-        env,
-        "no MusicBrainz release matches these 3 files",
-        files=good_files(),
-        release=release_json([*TITLES, "Bonus Track"]),  # four tracks, three files
+async def test_a_download_that_matches_no_release_waits_for_the_user_instead_of_failing(env):
+    settings, factory, music, downloads = env
+    seed(factory)
+    source = put_download(downloads, good_files())
+    with respx.mock(assert_all_called=False) as mock:
+        mock_music(mock, release_json([*TITLES, "Bonus Track"]))  # four tracks, three files
+        job_id, job = await run_job(settings, factory)
+    assert job.status == "succeeded", logs(factory, job_id)
+    row = request_of(factory)
+    assert row.status == "awaiting_choice" and row.error is None
+    [option] = json.loads(row.release_options_json)
+    assert (option["mbid"], option["tracks"], option["paired"]) == (RELEASE_MBID, 4, 3)
+    assert option["missing"] == ["Bonus Track"] and option["unmatched"] == []
+    assert source.is_dir() and len(list(source.iterdir())) == 3  # the download is kept in place
+    assert not quarantined(downloads).exists() and not any(music.rglob("*.flac"))
+    assert any("waiting for you" in m for m in logs(factory, job_id))
+
+
+async def test_files_that_are_other_tracks_wait_for_the_user_too(env):
+    settings, factory, music, downloads = env
+    seed(factory)
+    put_download(
+        downloads,
+        [
+            (f"{i}.flac", {"title": t, "track": i + 1})
+            for i, t in enumerate(["Opening", "Wrong Song", "The Closer"])
+        ],
     )
-
-
-async def test_files_that_are_other_tracks_are_refused(env):
-    files = [
-        (f"{i}.flac", {"title": t, "track": i + 1})
-        for i, t in enumerate(["Opening", "Wrong Song", "The Closer"])
-    ]
-    await assert_rejected(env, "no MusicBrainz release matches", files=files)
+    with respx.mock(assert_all_called=False) as mock:
+        mock_music(mock)
+        _, job = await run_job(settings, factory)
+    row = request_of(factory)
+    assert job.status == "succeeded" and row.status == "awaiting_choice"
+    [option] = json.loads(row.release_options_json)
+    assert option["paired"] == 2 and option["unmatched"] == ["1.flac"]
+    assert option["missing"] == ["Middle Song"]
 
 
 async def test_an_existing_folder_is_overwritten_file_by_file(env):

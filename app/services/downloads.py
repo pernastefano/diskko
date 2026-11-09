@@ -202,6 +202,44 @@ def candidates_of(request: DownloadRequest) -> list[Candidate]:
     return [Candidate.from_dict(d) for d in json.loads(request.candidates_json or "[]")]
 
 
+def release_options_of(request: DownloadRequest) -> list[dict]:
+    """The releases the finished download may be, when no one fits on its own (else empty)."""
+    try:
+        return list(json.loads(request.release_options_json or "[]"))
+    except ValueError:
+        return []
+
+
+RELEASE_NONE = "none"  # import it with the tags the files have
+RELEASE_REJECT = "reject"  # do not import it: to the quarantine
+
+
+def store_release_options(db: Session, request_id: int, options: list[dict]) -> None:
+    """The download waits for the user: which release is it (or none)?"""
+    request = db.get(DownloadRequest, request_id)
+    if request is None or request.status == REQ_CANCELLED:
+        return
+    request.release_options_json = json.dumps(options)
+    request.status = REQ_AWAITING_CHOICE
+    request.error = None
+    db.flush()
+
+
+def choose_release_option(db: Session, request: DownloadRequest, choice: str) -> str:
+    """The user's answer: a release offered, `none` or `reject`. The request goes back to the
+    import, which is queued by the caller. Returns the choice."""
+    options = release_options_of(request)
+    if request.status != REQ_AWAITING_CHOICE or not options:
+        raise RequestError("request_not_choosing")
+    if choice not in (RELEASE_NONE, RELEASE_REJECT) and choice not in {o["mbid"] for o in options}:
+        raise RequestError("request_bad_release")
+    request.release_options_json = None
+    request.status = REQ_DOWNLOADED
+    request.error = None
+    db.flush()
+    return choice
+
+
 def current_candidate(request: DownloadRequest) -> Candidate | None:
     cands = candidates_of(request)
     return cands[request.candidate_index] if 0 <= request.candidate_index < len(cands) else None

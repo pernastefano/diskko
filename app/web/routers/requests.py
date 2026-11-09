@@ -147,6 +147,7 @@ def _detail_context(db: DB, auth: UserAuth, request: DownloadRequest) -> dict:
         .order_by(Job.id.desc())
         .limit(1)
     )
+    options = svc.release_options_of(request)
     return {
         **row,
         "candidates": svc.candidates_of(request),
@@ -156,7 +157,9 @@ def _detail_context(db: DB, auth: UserAuth, request: DownloadRequest) -> dict:
         "polling": request.status in RUNNING,
         "can_retry": svc.can_retry(request),
         "modes": MODES,
-        "choosing": request.status == REQ_AWAITING_CHOICE,
+        "release_options": options,
+        "choosing": request.status == REQ_AWAITING_CHOICE and not options,
+        "choosing_release": request.status == REQ_AWAITING_CHOICE and bool(options),
     }
 
 
@@ -217,7 +220,7 @@ def request_choose(
 ):
     """Manual mode: download the candidate the user picked."""
     req = _get(db, auth, request_id)
-    if req.status != REQ_AWAITING_CHOICE:
+    if req.status != REQ_AWAITING_CHOICE or svc.release_options_of(req):
         return RedirectResponse(
             f"/requests/{request_id}?error=request_not_choosing", status_code=303
         )
@@ -240,6 +243,42 @@ def request_choose(
         target_id=req.id,
         label=_label(db, req),
         details={"candidate": index, "owner": _owner_name(db, req)},
+    )
+    db.commit()
+    notify_worker(request)
+    return RedirectResponse(f"/requests/{request_id}", status_code=303)
+
+
+@router.post("/requests/{request_id}/release")
+def request_release(
+    request: Request,
+    db: DB,
+    auth: UserAuth,
+    request_id: int,
+    choice: Annotated[str, Form()] = "",
+):
+    """The download is done but no release fit it on its own: the user says which MusicBrainz
+    release it is, to import it with the tags of the files, or not to import it."""
+    req = _get(db, auth, request_id)
+    try:
+        choice = svc.choose_release_option(db, req, choice)
+    except svc.RequestError as exc:
+        return RedirectResponse(f"/requests/{request_id}?error={exc.code}", status_code=303)
+    engine.enqueue(
+        db,
+        "postprocess",
+        {"request_id": req.id, "release_choice": choice},
+        dedupe_key=svc.postprocess_dedupe_key(req.id),
+        created_by=auth.user.id,
+    )
+    audit.record(
+        db,
+        auth.user,
+        "request.release_chosen",
+        target_type="request",
+        target_id=req.id,
+        label=_label(db, req),
+        details={"choice": choice, "owner": _owner_name(db, req)},
     )
     db.commit()
     notify_worker(request)

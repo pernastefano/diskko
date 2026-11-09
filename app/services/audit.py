@@ -25,6 +25,7 @@ ACTIONS = (
     "request.cancelled",
     "request.retried",
     "request.chosen",
+    "request.release_chosen",
     "request.deleted",
     "request.upgrade",
     "user.created",
