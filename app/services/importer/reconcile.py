@@ -93,6 +93,7 @@ def build_state(
             release_option(c.release, c.pairs, files) for c in ranked[:MAX_RELEASE_OPTIONS]
         ],
         "loading": False,
+        "full": True,  # every release of the album was read (an older state read the first 25)
     }
 
 

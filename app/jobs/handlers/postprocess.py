@@ -209,7 +209,7 @@ async def find_cover(ctx: JobContext, group: dict, artist_name: str, images: lis
     return None
 
 
-async def load_releases(ctx: JobContext, group: dict) -> list[ReleaseData]:
+async def load_releases(ctx: JobContext, group: dict, *, force: bool = False) -> list[ReleaseData]:
     if group["source"] != SOURCE_MUSICBRAINZ:
         return []
     try:
@@ -218,7 +218,7 @@ async def load_releases(ctx: JobContext, group: dict) -> list[ReleaseData]:
         await ctx.log("MusicBrainz is not configured: tagging without a release", "warning")
         return []
     async with client:
-        return await client.browse_releases(group["mbid"], everything=True) or []
+        return await client.browse_releases(group["mbid"], everything=True, force=force) or []
 
 
 def _already_imported(final: Path, group: dict, count: int, request_id: int, upgrade: bool) -> bool:

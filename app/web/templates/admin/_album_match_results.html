@@ -23,11 +23,30 @@
               · <a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ g.mbid }}">MusicBrainz ↗</a>
             </div>
           </div>
+          <div class="flex items-center gap-2">
+            <form method="post" action="/admin/albums/{{ album.id }}/match">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="choice" value="mbid:{{ g.mbid }}">
+              <input type="hidden" name="q" value="{{ params.q }}"><input type="hidden" name="mode" value="{{ params.mode }}"><input type="hidden" name="scope" value="{{ params.scope }}">
+              <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-use>{{ t('albummatch.use_only') }}</button>
+            </form>
+            <button type="button" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700" data-versions
+                    hx-post="/admin/albums/{{ album.id }}/match/releases" hx-vals='{"rg": "{{ g.mbid }}", "q": "{{ params.q }}", "mode": "{{ params.mode }}", "scope": "{{ params.scope }}"}' hx-target="#versions-{{ g.mbid }}" hx-swap="innerHTML">{{ t('albummatch.versions') }}</button>
+          </div>
+          <div id="versions-{{ g.mbid }}" class="w-full"></div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if fallbacks %}
+    <h3 class="mb-1 mt-4 text-sm font-semibold text-slate-700">{{ t('albummatch.fallbacks') }}</h3>
+    <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm" data-fallbacks>
+      {% for g in fallbacks %}
+        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3" data-rg="{{ g.id }}">
+          <div class="min-w-0"><span class="font-medium">{{ g.title }}</span>
+            <span class="text-xs text-slate-500">{{ [g.year or '', (t('requests.release.tracks', n=g.track_count_hint) if g.track_count_hint else '')]|select|join(' · ') }}</span></div>
           <form method="post" action="/admin/albums/{{ album.id }}/match">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="choice" value="mbid:{{ g.mbid }}">
-            <input type="hidden" name="q" value="{{ params.q }}"><input type="hidden" name="mode" value="{{ params.mode }}"><input type="hidden" name="scope" value="{{ params.scope }}">
-            <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700" data-use>{{ t('albummatch.use') }}</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="choice" value="{{ g.id }}">
+            <button type="submit" class="rounded-md border border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50" data-use>{{ t('albummatch.use') }}</button>
           </form>
         </li>
       {% endfor %}

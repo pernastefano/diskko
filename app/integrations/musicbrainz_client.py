@@ -186,6 +186,47 @@ def peek_artist_search(
 MAX_RELEASE_PAGES = 3  # of 100 releases, when every release of an album is wanted
 
 
+def _release_params(mbid: str, status: str | None, offset: int, page_size: int) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        "release-group": mbid,
+        "inc": "recordings artist-credits",  # a space becomes the "+" MusicBrainz wants
+        "limit": page_size,
+    }
+    if offset:
+        params["offset"] = offset
+    if status:
+        params["status"] = status
+    return params
+
+
+def peek_group_releases(db: Session, release_group_mbid: str) -> list[ReleaseData] | None:
+    """Every release of a release group as `browse_releases(everything=True)` left it in the
+    cache, or None when it is not there (yet). Reading the cache is local; asking is the job."""
+    now = utcnow()
+    for status in ("official", None):
+        found: list[ReleaseData] = []
+        offset = 0
+        for _ in range(MAX_RELEASE_PAGES):
+            key = cache_key(
+                "release",
+                {**_release_params(release_group_mbid, status, offset, 100), "fmt": "json"},
+            )
+            row = db.get(ApiCache, key)
+            if row is None or row.fetched_at + timedelta(seconds=row.ttl_seconds) <= now:
+                return None
+            if row.status == 404 or not row.response:
+                return None if offset == 0 and status is None else found
+            data = json.loads(row.response)
+            raw_releases = data.get("releases", [])
+            found += [r for raw in raw_releases if (r := _parse_release(raw))]
+            offset += len(raw_releases)
+            if not raw_releases or offset >= int(data.get("release-count") or 0):
+                break
+        if found:
+            return found
+    return []
+
+
 class MusicBrainzClient:
     BACKOFF_BASE = 2.0  # first retry delay in seconds; it doubles at every attempt
 
@@ -349,15 +390,7 @@ class MusicBrainzClient:
             found: list[ReleaseData] = []
             offset = 0
             for _ in range(MAX_RELEASE_PAGES if everything else 1):
-                params: dict[str, Any] = {
-                    "release-group": release_group_mbid,
-                    "inc": "recordings artist-credits",  # a space becomes the "+" MusicBrainz wants
-                    "limit": page_size,
-                }
-                if offset:
-                    params["offset"] = offset
-                if status:
-                    params["status"] = status
+                params = _release_params(release_group_mbid, status, offset, page_size)
                 data = await self._get("release", params, force=force)
                 if data is None:
                     return None if offset == 0 else found

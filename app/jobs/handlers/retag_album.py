@@ -62,7 +62,7 @@ def eligible_error(album: LibraryAlbum | None, group: ReleaseGroup | None) -> st
     """Why this album cannot be re-tagged (a key of retag.error.*), or None."""
     if album is None or group is None:
         return "not_found"
-    if album.match_status != "matched":
+    if album.match_status not in ("matched", "manual"):  # certain, or chosen by an admin
         return "not_matched"
     if group.source != SOURCE_MUSICBRAINZ:
         return "not_musicbrainz"

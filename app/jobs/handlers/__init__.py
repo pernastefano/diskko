@@ -8,6 +8,7 @@ from app.jobs.handlers import (  # noqa: F401
     fetch_artist_images,
     fetch_artist_profile,
     fetch_covers,
+    fetch_group_releases,
     fetch_similar,
     fetch_top_tracks,
     fetch_tracklist,

@@ -29,8 +29,10 @@
     </form>
   </section>
 {% elif not options %}
+  {% include "_reconcile_reload.html" %}
   <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-no-releases>{{ t('reconcile.no_releases') }}</p>
 {% else %}
+  {% include "_reconcile_reload.html" %}
   <h2 class="mb-2 mt-6 text-lg font-semibold">{{ t('reconcile.releases') }}</h2>
   <ul class="mb-4 flex flex-wrap gap-2" data-release-tabs>
     {% for o in options %}

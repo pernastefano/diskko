@@ -1,0 +1,7 @@
+<section class="mt-4 flex flex-wrap items-center gap-3 rounded-lg border {{ 'border-amber-200 bg-amber-50 text-amber-900' if not state.full else 'border-slate-200 bg-white text-slate-600' }} px-4 py-3 text-sm" data-reload>
+  <p class="min-w-0 flex-1">{% if not state.full %}{{ t('reconcile.stale') }}{% else %}{{ t('reconcile.reload_hint', n=options|length) }}{% endif %}</p>
+  <form method="post" action="/requests/{{ r.id }}/reconcile/reload">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="rounded-md border border-indigo-300 px-3 py-1.5 font-medium text-indigo-700 hover:bg-indigo-50" data-reload-releases>{{ t('reconcile.reload') }}</button>
+  </form>
+</section>

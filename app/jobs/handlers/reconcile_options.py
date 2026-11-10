@@ -45,7 +45,7 @@ async def reconcile_options(ctx: JobContext) -> None:
     group, files = info["group"], info["files"]
     await ctx.log(f"Reading the releases of {group['title']}")
     try:
-        releases = await load_releases(ctx, group)
+        releases = await load_releases(ctx, group, force=bool(ctx.payload.get("force")))
     except MusicBrainzError:
         raise  # the engine tries again later
     if not releases:

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.orm import Session
 
+from app.integrations.musicbrainz_client import ArtistHit
 from app.models import (
     AlbumArtistOverride,
     AlbumMatchOverride,
@@ -57,6 +58,17 @@ def find_artists(db: Session, text: str, *, exclude_id: int | None = None) -> li
     if exclude_id is not None:
         stmt = stmt.where(Artist.id != exclude_id)
     return [ArtistChoice(artist=a, albums=n) for a, n in db.execute(stmt)]
+
+
+def reassign_to_hit(db: Session, album: LibraryAlbum, user: User, hit: ArtistHit) -> Artist:
+    """Move an album to the artist of a MusicBrainz search result: the artist that already has
+    that MBID, or a new one made from the result. The caller commits."""
+    from app.services.discovery import open_external_artist
+
+    target, _ = open_external_artist(
+        db, hit.mbid, hit.name, country=hit.country, disambiguation=hit.disambiguation
+    )
+    return reassign(db, album, user, artist_id=target.id)
 
 
 def reassign(

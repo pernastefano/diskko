@@ -111,15 +111,14 @@ def test_the_match_page_is_for_administrators(admin_client, user_client, world, 
         assert user_client.get(url(world["album"], path)).status_code in (403, 405)
 
 
-def test_the_page_shows_the_album_and_ranks_the_artists_release_groups(admin_client, world):
+def test_the_page_shows_the_album_and_no_discography_list(admin_client, world):
     text = admin_client.get(url(world["album"])).text
     assert (
         "Greatest Hits Live" in text
         and "The Band" in text
         and 'data-match-status="unmatched"' in text
     )
-    assert text.count("data-rg=") == 6 and "Show all 8" in text  # the likeliest six first
-    assert admin_client.get(url(world["album"]) + "?all=1").text.count("data-rg=") == 8
+    assert "data-rg=" not in text and "data-candidates" not in text  # no discography list
     assert 'value="Greatest Hits Live"' in text  # the search starts from the title
 
 

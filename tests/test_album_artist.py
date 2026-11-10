@@ -177,16 +177,19 @@ def test_the_artist_section_finds_and_moves(admin_client, user_client, db, names
     page = admin_client.get(url).text
     assert (
         "data-artist-search" in page
-        and "data-artist-new" in page
+        and 'value="Nirvana"' in page  # the field starts from the artist the album has now
         and "data-artist-choices" not in page
     )
-    found = admin_client.get(url + "?artist_q=nirv").text
+    found = admin_client.get(
+        url + "?artist_q=nirv"
+    ).text  # no MusicBrainz contact: only the library
+    assert 'data-artist-state="not_configured"' in found and "data-artist-reset" in found
     assert f'data-artist="{namesakes["right"].id}"' in found
     assert f'data-artist="{namesakes["wrong"].id}"' not in found  # it is the current one
     r = post(
         admin_client,
         f"{url.replace('/match', '')}/artist",
-        {"artist_id": str(namesakes["right"].id)},
+        {"target": f"local:{namesakes['right'].id}", "artist_q": "nirv"},
         page=url,
     )
     assert r.status_code == 303 and r.headers["location"] == f"{url}?flash=artist_moved"

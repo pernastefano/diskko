@@ -60,25 +60,31 @@ and an **info** button (the *i* icon) with everything readable from the file: si
 bitrate and its mode, sample rate, bit depth, channels, duration, encoder, ReplayGain, embedded cover
 and all the tags. The player lives on the album page: going to another page stops it. If the album
 is not owned, tracks have a 30-second preview from iTunes or Deezer when one exists. Administrators can **refresh the metadata**
-or open **Manage matching**: a page for that album with the artist's release groups ranked by how
-well they fit, and a **search over MusicBrainz** (by title, by any words in the title or the artist's
-name, or with your own MusicBrainz query, in the artist's releases or in all of MusicBrainz) for
-compilations and albums credited to someone else. **Use this** keeps your choice for good; the page
-also has *Not on MusicBrainz* and *Back to automatic*. Before choosing, **Compare** puts your album
-next to the candidate: title, year and number of tracks, then every track side by side (yours with
-the file, MusicBrainz's with its position and length), marking the tracks that differ, the files
-MusicBrainz does not list and the tracks you have no file for. The track list is read from
-MusicBrainz the first time (a few seconds). The same comparison is available for the current match.
+or open **Manage matching**: a page for that album with three parts.
 
-The same page has an **Artist** section for an album filed under the wrong artist (a namesake, or a
-similar name): search the artists you have, or type the name of a new one, and **Move here**. The
-album is matched again under its new artist, and every later scan keeps it there whatever the tags
-or Plex say.
+- **The album and its current match**, with **Compare with the current match**: title, year and
+  number of tracks, then every track side by side (yours with the file, MusicBrainz's with its
+  position and length), marking the tracks that differ, the files MusicBrainz does not list and the
+  tracks you have no file for. Also *Not on MusicBrainz* and *Back to automatic*.
+- **Artist**, for an album filed under the wrong artist (a namesake, or a similar name). Write the
+  artist's name in the one field and **Search**: MusicBrainz is searched and every result is listed
+  (with the artists you already have), plus **Create a new artist** with the name you wrote. Pick
+  one and press **Move the album here**; nothing changes before that, and **Cancel** puts the
+  original artist back in the field. The album is matched again under its new artist, and every
+  later scan keeps it there whatever the tags or Plex say.
+- **Album**: write the album's name and the release groups MusicBrainz finds are listed (in the
+  artist's releases or in all of MusicBrainz; by title, by any words, or with your own MusicBrainz
+  query). Albums that only a fallback provider knows are listed too. **Show versions** reads the
+  releases (editions) of a group, which can have different numbers of tracks, and puts each next to
+  your files: how many files have a track there, then track by track. **Use this release** keeps your
+  choice for good and, with *update tags and file names* ticked, rewrites the tags and the file names
+  from that release (a job, like **Update tags** below). **Use the album only** keeps the choice
+  without touching the files.
 
 ### Updating the tags of an album
 
 Administrators can re-tag an album that is already in the library: **Update tags** on the album
-page (only for albums matched to MusicBrainz with certainty). It works in two steps:
+page (only for albums matched to MusicBrainz with certainty, or chosen by hand). It works in two steps:
 
 1. **Preview the changes** reads the files and the MusicBrainz release and shows, file by file,
    the tags now and after (click a file to see them), the tracks of the release that have **no

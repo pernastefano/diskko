@@ -122,12 +122,12 @@ def test_a_title_in_another_place_is_paired_and_flagged():
 # ---------------------------------------------------------------------- the page
 
 
-def test_the_candidates_show_the_track_counts_and_a_compare_button(admin_client, world, db):
-    world["group"].track_count_hint = 11
+def test_the_current_match_can_be_compared_from_the_page(admin_client, world, db):
+    world["album"].release_group_id = world["group"].id
+    world["album"].match_status = "manual"
     db.commit()
     html = admin_client.get(f"/admin/albums/{world['album'].id}/match").text
-    assert "data-compare-button" in html and f'hx-vals=\'{{"rg": "{world["group"].id}"}}\'' in html
-    assert "11 tracks on MusicBrainz, you have 10" in html
+    assert "data-current-compare" in html and f'"rg": "{world["group"].id}"' in html
 
 
 def test_comparing_reads_the_track_list_with_a_job_then_shows_both_sides(

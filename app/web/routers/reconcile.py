@@ -155,6 +155,29 @@ def reconcile_rebuild(request: Request, db: DB, auth: UserAuth, request_id: int)
     return RedirectResponse(f"/requests/{request_id}", status_code=303)
 
 
+@router.post("/requests/{request_id}/reconcile/reload")
+def reconcile_reload(request: Request, db: DB, auth: UserAuth, request_id: int):
+    """Read the releases of the album from MusicBrainz again (all of them, not from the cache):
+    the list kept so far may be an older, shorter one. The files and the album stay."""
+    req = _get(db, auth, request_id)
+    group = db.get(ReleaseGroup, req.release_group_id)
+    try:
+        svc.switch_group(db, req, group)
+    except svc.RequestError as exc:
+        db.rollback()
+        return _error(request_id, exc.code)
+    engine.enqueue(
+        db,
+        "reconcile_options",
+        {"request_id": req.id, "force": True},
+        dedupe_key=reconcile_dedupe_key(req.id),
+        created_by=auth.user.id,
+    )
+    db.commit()
+    notify_worker(request)
+    return RedirectResponse(_page(request_id), status_code=303)
+
+
 @router.post("/requests/{request_id}/reconcile/find")
 def reconcile_find(
     request: Request,

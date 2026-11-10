@@ -15,18 +15,27 @@ from sqlalchemy import select
 
 from app.auth.deps import DB, AdminAuth, require_admin
 from app.integrations.musicbrainz_client import (
+    ArtistHit,
     ReleaseGroupHit,
+    peek_artist_search,
+    peek_group_releases,
     peek_release_group_search,
     release_group_query,
 )
 from app.jobs import engine
+from app.jobs.handlers.fetch_group_releases import group_releases_dedupe_key
 from app.jobs.handlers.fetch_tracklist import tracklist_dedupe_key
+from app.jobs.handlers.retag_album import eligible_error
+from app.jobs.handlers.search_artists import SEARCH_LIMIT as ARTIST_SEARCH_LIMIT
+from app.jobs.handlers.search_artists import search_dedupe_key as artist_search_key
 from app.jobs.handlers.search_release_groups import search_dedupe_key
 from app.models import Artist, LibraryAlbum, LibraryTrack, ReleaseGroup, TracklistFetch
-from app.services import album_artist
+from app.services import album_artist, release_compare
 from app.services import album_compare as compare_svc
 from app.services import album_match as svc
+from app.services.discovery import valid_mbid
 from app.services.tracklists import load_tracks
+from app.web.routers.albums import _enqueue_retag
 from app.web.routers.discovery import job_state
 from app.web.routers.jobs import notify_worker
 from app.web.templating import render
@@ -35,7 +44,6 @@ router = APIRouter(prefix="/admin/albums", dependencies=[Depends(require_admin)]
 
 MODES = ("title", "anything")
 SCOPES = ("artist", "all")
-LOCAL_SHOWN = 6  # artist release groups shown before "show all"
 
 
 def _album_or_404(db: DB, album_id: int) -> LibraryAlbum:
@@ -88,32 +96,94 @@ def _annotate(db: DB, album: LibraryAlbum, hits: list[ReleaseGroupHit]) -> list[
     return [{"hit": h, "known_id": mine.get(h.data.mbid)} for h in hits]
 
 
+def _artist_state(request: Request, db: DB, album: LibraryAlbum, text: str) -> dict:
+    """The artist search: {'state': idle|not_configured|searching|failed|results, 'rows': [...]}.
+    A row is a MusicBrainz result (with the artist of the library that already has its MBID, if
+    any) or an artist of the library that has no MBID yet. Reading never asks MusicBrainz."""
+    if not text:
+        return {"state": "idle", "rows": []}
+    local = album_artist.find_artists(db, text, exclude_id=album.artist_id)
+    hits: list[ArtistHit] | None = None
+    state = "results"
+    if not request.app.state.settings.mb_user_agent.strip():
+        state = "not_configured"
+    else:
+        hits = peek_artist_search(db, text, ARTIST_SEARCH_LIMIT)
+        if hits is None:
+            job = job_state(db, artist_search_key(text))
+            state = {"active": "searching", "failed": "failed"}.get(job, "idle")
+    rows: list[dict] = []
+    seen: set[int] = set()
+    for hit in hits or []:
+        known = db.scalar(select(Artist).where(Artist.mbid == hit.mbid))
+        if known is not None:
+            seen.add(known.id)
+        rows.append(
+            {
+                "kind": "mb",
+                "hit": hit,
+                "artist": known,
+                "current": known is not None and known.id == album.artist_id,
+                "albums": 0,
+            }
+        )
+    for choice in local:
+        if choice.artist.id not in seen:
+            rows.append(
+                {
+                    "kind": "local",
+                    "hit": None,
+                    "artist": choice.artist,
+                    "current": False,
+                    "albums": choice.albums,
+                }
+            )
+    return {"state": state, "rows": rows}
+
+
+def _fallback_groups(db: DB, album: LibraryAlbum, text: str) -> list[ReleaseGroup]:
+    """The artist's albums that only a fallback provider knows (their id has a colon) and that
+    are alike the text: MusicBrainz cannot find them, but they can be the match."""
+    from rapidfuzz import fuzz
+
+    from app.services.musicbrainz.titles import album_key
+
+    key = album_key(text)
+    if not key:
+        return []
+    groups = db.scalars(
+        select(ReleaseGroup).where(
+            ReleaseGroup.artist_id == album.artist_id, ReleaseGroup.mbid.like("%:%")
+        )
+    )
+    scored = [(fuzz.partial_ratio(key, album_key(g.title)), g) for g in groups]
+    return [g for score, g in sorted(scored, key=lambda x: (-x[0], x[1].id)) if score >= 70][:10]
+
+
 def _context(
     request: Request,
     db: DB,
     album: LibraryAlbum,
     params: SearchParams,
-    show_all: bool = False,
     artist_q: str = "",
 ) -> dict:
     artist = db.get(Artist, album.artist_id)
     group = db.get(ReleaseGroup, album.release_group_id) if album.release_group_id else None
-    candidates = svc.local_candidates(db, album)
     search = _search_state(request, db, params)
+    artist_text = artist_q.strip()[:100]
+    artist_search = _artist_state(request, db, album, artist_text)
     return {
         "album": album,
         "artist": artist,
-        "artist_q": artist_q,
-        "artist_choices": album_artist.find_artists(db, artist_q, exclude_id=album.artist_id)
-        if artist_q.strip()
-        else [],
+        "artist_q": artist_text,
+        "artist_field": artist_text or artist.name,
+        "artist_state": artist_search["state"],
+        "artist_rows": artist_search["rows"],
         "group": group,
-        "candidates": candidates if show_all else candidates[:LOCAL_SHOWN],
-        "candidates_total": len(candidates),
-        "show_all": show_all,
         "params": params,
         "state": search["state"],
         "rows": _annotate(db, album, search["hits"]),
+        "fallbacks": _fallback_groups(db, album, params.q) if params.q else [],
         "form_query": urlencode(params.form()),
         "modes": MODES,
         "scopes": SCOPES,
@@ -138,12 +208,11 @@ def match_page(
     q: str = "",
     mode: str = "title",
     scope: str = "",
-    all: str = "",
     artist_q: str = "",
 ):
     album = _album_or_404(db, album_id)
     params = _page_params(db, album, q, mode, scope)
-    ctx = _context(request, db, album, params, all == "1", artist_q.strip()[:100])
+    ctx = _context(request, db, album, params, artist_q)
     return render(request, "admin/album_match.html", ctx)
 
 
@@ -197,9 +266,12 @@ def match_save(
     q: Annotated[str, Form()] = "",
     mode: Annotated[str, Form()] = "title",
     scope: Annotated[str, Form()] = "artist",
+    release: Annotated[str, Form()] = "",
+    retag: Annotated[str, Form()] = "",
 ):
     """The decision: a release group of the artist, a search result ("mbid:<id>"), "none" (not on
-    MusicBrainz) or "auto" (undo)."""
+    MusicBrainz) or "auto" (undo). With a release (an edition of the group) and `retag`, the
+    tags and the file names are updated from that release too (a job)."""
     album = _album_or_404(db, album_id)
     artist = db.get(Artist, album.artist_id)
     params = _page_params(db, album, q, mode, scope)
@@ -223,7 +295,58 @@ def match_save(
         ctx["error"] = f"error.{exc.code}"
         return render(request, "admin/album_match.html", ctx, status_code=400)
     db.commit()
-    return RedirectResponse(f"{_album_page(db, album)}?flash=match_saved", status_code=303)
+    flash = "match_saved"
+    if retag == "1" and valid_mbid(release):
+        db.refresh(album)
+        group = db.get(ReleaseGroup, album.release_group_id) if album.release_group_id else None
+        if group is not None and not eligible_error(album, group):
+            _enqueue_retag(
+                request,
+                db,
+                auth,
+                group,
+                album,
+                {"rename": True, "replace_cover": False, "release_mbid": release.lower()},
+                apply=True,
+            )
+            flash = "match_saved_retag"
+    return RedirectResponse(f"{_album_page(db, album)}?flash={flash}", status_code=303)
+
+
+@router.post("/{album_id}/artist/search")
+def artist_search(
+    request: Request, db: DB, auth: AdminAuth, album_id: int, artist_q: Annotated[str, Form()] = ""
+):
+    """Queue the search of the artist's name on MusicBrainz (a job); the page shows the answer."""
+    album = _album_or_404(db, album_id)
+    text = " ".join(artist_q.split())[:100]
+    target = f"/admin/albums/{album.id}/match?{urlencode({'artist_q': text})}#artist"
+    if text and request.app.state.settings.mb_user_agent.strip():
+        key = artist_search_key(text)
+        if peek_artist_search(db, text, ARTIST_SEARCH_LIMIT) is None and (
+            job_state(db, key) != "active"
+        ):
+            engine.enqueue(
+                db,
+                "search_artists",
+                {"query": text},
+                dedupe_key=key,
+                created_by=auth.user.id,
+                label=f"{album.title}: {text}"[:255],
+            )
+            db.commit()
+            notify_worker(request)
+    return RedirectResponse(target, status_code=303)
+
+
+@router.get("/{album_id}/artist/results")
+def artist_results(request: Request, db: DB, album_id: int, artist_q: str = ""):
+    """The artist results alone; polled while the search job runs."""
+    album = _album_or_404(db, album_id)
+    params = _page_params(db, album, "", "title", "")
+    return render(
+        request, "admin/_album_artist_results.html", _context(request, db, album, params, artist_q)
+    )
 
 
 @router.post("/{album_id}/artist")
@@ -232,24 +355,45 @@ def artist_save(
     db: DB,
     auth: AdminAuth,
     album_id: int,
+    target: Annotated[str, Form()] = "",
+    artist_q: Annotated[str, Form()] = "",
     artist_id: Annotated[str, Form()] = "",
     new_name: Annotated[str, Form()] = "",
 ):
-    """Give the album to another artist: one that exists, or a new one by name."""
+    """Give the album to another artist: `target` is "local:<id>" (an artist of the library),
+    "mb:<mbid>" (a MusicBrainz search result, which becomes an artist of the library) or "new"
+    (a new artist named like `artist_q`, without a MusicBrainz identity). The older fields
+    `artist_id` and `new_name` do the same for a known artist and a new one."""
     album = _album_or_404(db, album_id)
-    chosen = int(artist_id) if artist_id.isdigit() and artist_id.isascii() else None
+    text = " ".join(artist_q.split())[:100]
     try:
-        target = album_artist.reassign(
-            db, album, auth.user, artist_id=chosen, new_name="" if chosen else new_name
-        )
+        if target.startswith("mb:"):
+            hit = next(
+                (
+                    h
+                    for h in peek_artist_search(db, text, ARTIST_SEARCH_LIMIT) or []
+                    if h.mbid == target[3:].lower()
+                ),
+                None,
+            )
+            if hit is None:  # the cached answer is gone: the choice cannot be trusted
+                raise album_artist.ArtistChoiceError("search_expired")
+            moved = album_artist.reassign_to_hit(db, album, auth.user, hit)
+        else:
+            raw = target[6:] if target.startswith("local:") else artist_id
+            chosen = int(raw) if raw.isdigit() and raw.isascii() else None
+            name = new_name or (text if target == "new" else "")
+            moved = album_artist.reassign(
+                db, album, auth.user, artist_id=chosen, new_name="" if chosen else name
+            )
     except album_artist.ArtistChoiceError as exc:
         db.rollback()
         params = _page_params(db, album, "", "title", "")
-        ctx = _context(request, db, album, params)
+        ctx = _context(request, db, album, params, text)
         ctx["error"] = f"error.{exc.code}"
         return render(request, "admin/album_match.html", ctx, status_code=400)
     db.commit()
-    if request.app.state.settings.mb_user_agent.strip() and target.metadata_synced_at is None:
+    if request.app.state.settings.mb_user_agent.strip() and moved.metadata_synced_at is None:
         engine.enqueue(  # a new artist gets its MusicBrainz identity
             db,
             "sync_pending_artists",
@@ -259,6 +403,93 @@ def artist_save(
         )
         notify_worker(request)
     return RedirectResponse(f"/admin/albums/{album.id}/match?flash=artist_moved", status_code=303)
+
+
+# ---------------------------------------------------- the releases of a release group
+
+
+def _releases_context(
+    request: Request, db: DB, auth, album: LibraryAlbum, mbid: str, *, start: bool
+) -> dict:
+    """The releases (editions) of a release group, each against the album's files. MusicBrainz
+    is asked by a job (queued by the POST, never by a GET); the page shows "loading" meanwhile."""
+    if not valid_mbid(mbid):
+        raise HTTPException(status_code=404, detail="not_found")
+    mbid = mbid.lower()
+    ctx: dict = {"album": album, "rg_mbid": mbid, "state": "ready", "fits": [], "params": None}
+    if not request.app.state.settings.mb_user_agent.strip():
+        ctx["state"] = "not_configured"
+        return ctx
+    releases = peek_group_releases(db, mbid)
+    if releases is None:
+        key = group_releases_dedupe_key(mbid)
+        state = job_state(db, key)
+        if state == "failed" and not start:
+            ctx["state"] = "failed"
+            return ctx
+        if state != "active":
+            if not start:
+                ctx["state"] = "idle"
+                return ctx
+            engine.enqueue(
+                db,
+                "fetch_group_releases",
+                {"release_group_mbid": mbid},
+                dedupe_key=key,
+                created_by=auth.user.id,
+            )
+            db.commit()
+            notify_worker(request)
+        ctx["state"] = "loading"
+        return ctx
+    local = list(
+        db.scalars(
+            select(LibraryTrack)
+            .where(LibraryTrack.album_id == album.id)
+            .order_by(LibraryTrack.disc_no, LibraryTrack.track_no, LibraryTrack.title)
+        )
+    )
+    ctx["fits"] = release_compare.rank(album, local, releases)
+    ctx["total"] = len(releases)
+    return ctx
+
+
+def _releases_response(request, db, auth, album, mbid, q, mode, scope, *, start):
+    ctx = _releases_context(request, db, auth, album, mbid, start=start)
+    ctx["params"] = _page_params(db, album, q, mode, scope)
+    ctx["form_query"] = urlencode(ctx["params"].form())
+    return render(request, "admin/_album_releases.html", ctx)
+
+
+@router.get("/{album_id}/match/releases")
+def match_releases(
+    request: Request,
+    db: DB,
+    auth: AdminAuth,
+    album_id: int,
+    rg: str = "",
+    q: str = "",
+    mode: str = "title",
+    scope: str = "",
+):
+    """The releases alone; polled while the job reads them."""
+    album = _album_or_404(db, album_id)
+    return _releases_response(request, db, auth, album, rg, q, mode, scope, start=False)
+
+
+@router.post("/{album_id}/match/releases")
+def match_releases_start(
+    request: Request,
+    db: DB,
+    auth: AdminAuth,
+    album_id: int,
+    rg: Annotated[str, Form()] = "",
+    q: Annotated[str, Form()] = "",
+    mode: Annotated[str, Form()] = "title",
+    scope: Annotated[str, Form()] = "",
+):
+    album = _album_or_404(db, album_id)
+    return _releases_response(request, db, auth, album, rg, q, mode, scope, start=True)
 
 
 # ------------------------------------------------------------------- comparison

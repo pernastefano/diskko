@@ -14,7 +14,7 @@ from app.integrations.musicbrainz_client import (
     release_group_search_key,
 )
 from app.jobs.worker import JobWorker
-from app.models import Job, ReleaseGroup, utcnow
+from app.models import DownloadRequest, Job, ReleaseGroup, utcnow
 from app.services import downloads as svc
 from tests import test_postprocess
 from tests.conftest import MB_BASE, MB_UA, post
@@ -269,6 +269,45 @@ async def test_using_the_other_album_moves_the_request_and_reads_its_releases(en
     assert state["loading"] is False and len(state["options"]) == 1
     assert state["options"][0]["title"] == "Another Album" and state["options"][0]["paired"] == 3
     assert request_of(factory).status == "awaiting_choice"
+
+
+async def test_the_releases_can_be_read_again_and_an_old_short_list_says_so(env, admin_client):
+    settings, factory, music, downloads = env
+    await park(env)
+    page = admin_client.get("/requests/1/reconcile").text
+    assert "data-reload-releases" in page and "data-reload" in page
+    assert "first releases of the album" not in page  # a state made now holds every release
+
+    with factory() as db:  # a list made by an older version has no mark
+        req = db.get(DownloadRequest, 1)
+        state = json.loads(req.release_options_json)
+        state.pop("full")
+        req.release_options_json = json.dumps(state)
+        db.commit()
+    assert "first releases of the album" in admin_client.get("/requests/1/reconcile").text
+
+    r = post(admin_client, "/requests/1/reconcile/reload", {}, page="/requests/1/reconcile")
+    assert r.status_code == 303 and r.headers["location"] == "/requests/1/reconcile"
+    state = state_of(factory)
+    assert state["loading"] is True and state["options"] == [] and state["files"]
+    with factory() as db:
+        job = db.query(Job).filter_by(type="reconcile_options").one()
+        assert json.loads(job.payload_json) == {"request_id": 1, "force": True}
+
+    worker = JobWorker(settings.model_copy(update={"job_poll_interval": 0.02}), factory)
+    await worker.start()
+    worker.notify()
+    try:
+        with respx.mock(assert_all_called=False) as mock:
+            mock.get(f"{MB_BASE}/release").respond(json=release_json(TITLES, title="Album"))
+            for _ in range(500):
+                state = await asyncio.to_thread(state_of, factory)
+                if not state["loading"]:
+                    break
+                await asyncio.sleep(0.02)
+    finally:
+        await worker.stop()
+    assert state["loading"] is False and state["options"] and state["full"] is True
 
 
 async def test_an_answer_that_is_not_in_the_cache_is_refused(env, admin_client):

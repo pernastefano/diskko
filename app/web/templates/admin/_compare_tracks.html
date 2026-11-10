@@ -1,0 +1,19 @@
+{# needs: cmp #}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm" data-compare-tracks>
+          <thead class="text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr><th class="pr-3">#</th><th class="pr-4">{{ t('albummatch.compare.local') }}</th><th class="pr-3">#</th><th class="pr-4">{{ t('albummatch.compare.remote') }}</th><th></th></tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for r in cmp.rows %}
+              <tr data-row="{{ r.state }}" class="{{ {'same': '', 'differs': 'bg-amber-50', 'local_only': 'bg-red-50', 'remote_only': 'bg-red-50'}[r.state] }}">
+                <td class="pr-3 text-slate-500">{% if r.local %}{{ r.local.disc_no or 1 }}-{{ r.local.track_no or '?' }}{% endif %}</td>
+                <td class="pr-4">{% if r.local %}{{ r.local.title }}{% if r.local.duration %} <span class="text-xs text-slate-500">{{ (r.local.duration // 60)|int }}:{{ '%02d'|format((r.local.duration % 60)|int) }}</span>{% endif %}{% else %}<span class="text-red-700">{{ t('albummatch.compare.no_file') }}</span>{% endif %}</td>
+                <td class="pr-3 text-slate-500">{% if r.remote %}{{ r.remote.disc }}-{{ r.remote.position }}{% endif %}</td>
+                <td class="pr-4">{% if r.remote %}{{ r.remote.title }}{% if r.remote.length_ms %} <span class="text-xs text-slate-500">{{ (r.remote.length_ms // 60000) }}:{{ '%02d'|format(((r.remote.length_ms // 1000) % 60)) }}</span>{% endif %}{% else %}<span class="text-red-700">{{ t('albummatch.compare.not_on_mb') }}</span>{% endif %}</td>
+                <td class="text-xs text-amber-800">{% for reason in r.reasons %}{{ t('albummatch.compare.reason.' ~ reason) }}{{ ', ' if not loop.last }}{% endfor %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
