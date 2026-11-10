@@ -12,6 +12,7 @@ from app.models import (
     MB_RESOLVED,
     Artist,
     LibraryAlbum,
+    ReleaseGroup,
     SimilarArtist,
     SimilarFetch,
     utcnow,
@@ -177,3 +178,62 @@ def purge_external_artists(db: Session, days: int) -> int:
         db.delete(db.get(Artist, artist_id))
     db.commit()
     return len(ids)
+
+
+# ----------------------------------------------------------------- similar albums
+
+SIMILAR_ALBUMS_MAX = 12
+SIMILAR_ALBUMS_PER_ARTIST = 2
+
+
+@dataclass
+class SimilarAlbum:
+    group: ReleaseGroup
+    artist: Artist
+    score: float  # of the similar artist it comes from
+    in_library: bool
+
+
+def list_similar_albums(
+    db: Session,
+    artist_id: int,
+    *,
+    exclude_group_id: int | None = None,
+    limit: int = SIMILAR_ALBUMS_MAX,
+    per_artist: int = SIMILAR_ALBUMS_PER_ARTIST,
+) -> list[SimilarAlbum]:
+    """Albums of the artists similar to `artist_id` that the database already knows: no new
+    lookup. From each artist the owned albums come first, then the newest; the artists with
+    the best score come first."""
+    artists = {s.artist_id: s for s in list_similar(db, artist_id) if s.artist_id}
+    artists.pop(artist_id, None)
+    if not artists:
+        return []
+    groups = db.scalars(
+        select(ReleaseGroup).where(
+            ReleaseGroup.artist_id.in_(list(artists)), ReleaseGroup.category == "album"
+        )
+    ).all()
+    owned = set(
+        db.scalars(
+            select(LibraryAlbum.release_group_id).where(
+                LibraryAlbum.release_group_id.in_([g.id for g in groups]),
+                LibraryAlbum.match_status.in_(("matched", "tentative", "manual")),
+            )
+        )
+    )
+    by_artist: dict[int, list[ReleaseGroup]] = {}
+    for g in groups:
+        if g.id != exclude_group_id:
+            by_artist.setdefault(g.artist_id, []).append(g)
+    rows = {a.id: a for a in db.scalars(select(Artist).where(Artist.id.in_(list(by_artist))))}
+    picked: list[SimilarAlbum] = []
+    for artist_key, item in sorted(artists.items(), key=lambda kv: -kv[1].score):
+        mine = sorted(
+            by_artist.get(artist_key, []),
+            key=lambda g: (g.id not in owned, -(g.year or 0), g.title),
+        )
+        picked += [
+            SimilarAlbum(g, rows[artist_key], item.score, g.id in owned) for g in mine[:per_artist]
+        ]
+    return picked[:limit]

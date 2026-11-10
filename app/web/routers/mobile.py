@@ -244,6 +244,15 @@ def album_tracks(request: Request, db: DB, auth: UserAuth, group_id: int, refres
     return page(request, "_tracks.html", ctx, "albums")
 
 
+@router.post("/album/{group_id}/similar")
+@router.get("/album/{group_id}/similar")
+def album_similar(request: Request, db: DB, auth: UserAuth, group_id: int):
+    ctx = discovery_web._similar_albums_context(
+        request, db, auth, discovery_web._group_or_404(db, group_id)
+    )
+    return page(request, "_similar_albums.html", ctx, "albums")
+
+
 @router.get("/album/local/{album_id}")
 def local_album(request: Request, db: DB, auth: UserAuth, album_id: int):
     """An album of the library that MusicBrainz could not be matched to: its tracks."""

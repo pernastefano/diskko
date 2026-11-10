@@ -190,7 +190,9 @@ where you can request the album. For anything else use MusicBrainz fields: `tag:
 DISKKO itself does not store genres, so the library part cannot search by genre. **Open** creates a page with
 their discography, so you can request albums. Artists you open but never add are forgotten after
 90 days. Artist pages also show **similar artists** (Last.fm, or ListenBrainz when Last.fm is not
-set up), with an *In library* badge on those you have.
+set up), with an *In library* badge on those you have. Album pages show **similar albums**: up to
+two albums (the ones you own first, then the newest) of each similar artist DISKKO already knows
+(open a similar artist to add its albums to the list). No other lookup is made.
 
 ## The mobile version
 

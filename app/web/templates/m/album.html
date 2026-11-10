@@ -44,6 +44,12 @@
 {% else %}
   {% include "m/_tracks.html" %}
 {% endif %}
+{% if group and mode != 'local' %}
+  <h2 class="mb-2 mt-6 text-lg font-semibold">{{ t('album.similar') }}</h2>
+  <div id="similar-albums" hx-post="/m/album/{{ group.id }}/similar" hx-trigger="load" hx-swap="outerHTML">
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-5 text-center text-sm text-slate-500">{{ t('similar.loading') }}</p>
+  </div>
+{% endif %}
 {% if player %}
   {% set _ = player.update({'labels': {
       'play': t('player.play'), 'pause': t('player.pause'), 'repeat': t('player.repeat'),

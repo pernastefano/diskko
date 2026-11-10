@@ -32,12 +32,14 @@ from app.models import (
     STATUS_FAILED,
     Artist,
     Job,
+    ReleaseGroup,
     SimilarArtist,
     utcnow,
 )
 from app.services.discovery import (
     clean_query,
     list_similar,
+    list_similar_albums,
     open_external_artist,
     similar_is_fresh,
     valid_mbid,
@@ -384,3 +386,30 @@ def similar_open(
         raise HTTPException(status_code=404, detail="not_found")
     artist, created = open_external_artist(db, row.mbid, row.name)
     return _open_artist(request, db, auth, artist, created)
+
+
+# ------------------------------------------------------------- similar albums
+
+
+def _similar_albums_context(request: Request, db: DB, auth: UserAuth, group: ReleaseGroup):
+    """The albums of the artists similar to the album's artist: the same list (and the same job)
+    as the artist page, then the albums of those artists the database knows."""
+    artist = _artist_or_404(db, group.artist_id)
+    ctx = _similar_context(request, db, auth, artist)
+    ctx.update(group=group, albums=list_similar_albums(db, artist.id, exclude_group_id=group.id))
+    return ctx
+
+
+def _group_or_404(db: DB, group_id: int) -> ReleaseGroup:
+    group = db.get(ReleaseGroup, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="not_found")
+    return group
+
+
+@router.post("/album/{group_id}/similar")
+@router.get("/album/{group_id}/similar")
+def similar_albums(request: Request, db: DB, auth: UserAuth, group_id: int):
+    """POST when the album page opens (queues the artists' job if needed), GET while polled."""
+    ctx = _similar_albums_context(request, db, auth, _group_or_404(db, group_id))
+    return render(request, "_similar_albums.html", ctx)

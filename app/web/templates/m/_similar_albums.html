@@ -1,0 +1,29 @@
+{# needs: group, artist, state (ready|loading|unavailable|failed), albums #}
+<div id="similar-albums" {% if state == 'loading' %}hx-get="/m/album/{{ group.id }}/similar" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'loading' %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-5 text-center text-sm text-slate-500" data-similar-albums-state="loading">{{ t('similar.loading') }}</p>
+  {% elif state == 'unavailable' %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-5 text-center text-sm text-slate-500" data-similar-albums-state="unavailable">{{ t('similar.unavailable') }}</p>
+  {% elif state == 'failed' %}
+    <p class="rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800" data-similar-albums-state="failed">{{ t('similar.failed') }}</p>
+  {% elif not albums %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-5 text-center text-sm text-slate-500" data-similar-albums-state="empty">{{ t('similar.albums.none') }}</p>
+  {% else %}
+    <ul class="space-y-2" data-similar-albums-state="ready">
+      {% for a in albums %}
+        <li>
+          <a href="/m/album/{{ a.group.id }}" class="m-tap flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm" data-similar-album="{{ a.group.id }}">
+            {% if a.group.cover_path %}<img src="/covers/{{ a.group.cover_path }}" alt="" loading="lazy" class="h-10 w-10 shrink-0 rounded object-cover">
+            {% else %}<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-slate-200 font-semibold text-slate-500" aria-hidden="true">{{ (a.group.title[:1] or '?')|upper }}</div>{% endif %}
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium text-indigo-700">{{ a.group.title }}</span>
+              <span class="block truncate text-xs text-slate-500">{{ a.artist.name }}{% if a.group.year %} · {{ a.group.year }}{% endif %}</span>
+            </span>
+            {% if a.in_library %}<span class="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800" data-in-library>{{ t('badge.in_library') }}</span>{% endif %}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-1 text-xs text-slate-500">{{ t('similar.albums.credit') }}</p>
+  {% endif %}
+</div>

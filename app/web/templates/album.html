@@ -87,6 +87,12 @@
   {# asks for what is missing (the track list, the previews) once the page is open #}
   <div hx-post="/album/{{ group.id }}/tracks" hx-trigger="load" hx-target="#album-tracks" hx-swap="outerHTML" class="hidden"></div>
 {% endif %}
+{% if group and mode != 'local' %}
+  <h2 class="mb-3 mt-8 text-xl font-semibold">{{ t('album.similar') }}</h2>
+  <div id="similar-albums" hx-post="/album/{{ group.id }}/similar" hx-trigger="load" hx-swap="outerHTML">
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">{{ t('similar.loading') }}</p>
+  </div>
+{% endif %}
 {% if player %}
   {% set _ = player.update({'labels': {
     'play': t('player.play'), 'pause': t('player.pause'), 'repeat': t('player.repeat'),

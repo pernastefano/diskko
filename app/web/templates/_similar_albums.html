@@ -1,0 +1,29 @@
+{% from "_covers.html" import cover %}
+{# needs: group, artist, state (ready|loading|unavailable|failed), albums #}
+<div id="similar-albums" {% if state == 'loading' %}hx-get="/album/{{ group.id }}/similar" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if state == 'loading' %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500" data-similar-albums-state="loading">{{ t('similar.loading') }}</p>
+  {% elif state == 'unavailable' %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500" data-similar-albums-state="unavailable">{{ t('similar.unavailable') }}</p>
+  {% elif state == 'failed' %}
+    <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-similar-albums-state="failed">{{ t('similar.failed') }}</p>
+  {% elif not albums %}
+    <p class="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500" data-similar-albums-state="empty">{{ t('similar.albums.none') }}</p>
+  {% else %}
+    <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6" data-similar-albums-state="ready">
+      {% for a in albums %}
+        <li>
+          <a href="/album/{{ a.group.id }}" class="group block overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:border-indigo-300" data-similar-album="{{ a.group.id }}">
+            {{ cover(a.group, 'aspect-square w-full', a.group.title) }}
+            <div class="p-2">
+              <div class="truncate text-sm font-medium group-hover:text-indigo-700" title="{{ a.group.title }}">{{ a.group.title }}</div>
+              <div class="truncate text-xs text-slate-500" title="{{ a.artist.name }}">{{ a.artist.name }}{% if a.group.year %} · {{ a.group.year }}{% endif %}</div>
+              {% if a.in_library %}<span class="mt-1 inline-block rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800" data-in-library>{{ t('badge.in_library') }}</span>{% endif %}
+            </div>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-2 text-xs text-slate-500">{{ t('similar.albums.credit') }}</p>
+  {% endif %}
+</div>
