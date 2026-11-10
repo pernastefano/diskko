@@ -28,8 +28,23 @@ def choose_release(releases: list[ReleaseData]) -> ReleaseData | None:
     return min(candidates, key=lambda r: (r.date or "9999", r.mbid))
 
 
-def store_tracklist(db: Session, release_group_id: int, release: ReleaseData | None) -> int:
-    """Replace the stored tracks (the caller commits). Also fills the track count hint."""
+def pick_release(
+    db: Session, release_group_id: int, releases: list[ReleaseData]
+) -> ReleaseData | None:
+    """The release an admin pinned for this group when it is still listed, else the usual one."""
+    fetch = db.get(TracklistFetch, release_group_id)
+    if fetch is not None and fetch.pinned and fetch.release_mbid:
+        for r in releases:
+            if r.mbid == fetch.release_mbid and r.tracks:
+                return r
+    return choose_release(releases)
+
+
+def store_tracklist(
+    db: Session, release_group_id: int, release: ReleaseData | None, *, pin: bool | None = None
+) -> int:
+    """Replace the stored tracks (the caller commits). Also fills the track count hint.
+    `pin` True keeps this release on later refreshes, False lets them choose again."""
     db.execute(delete(ReleaseTrack).where(ReleaseTrack.release_group_id == release_group_id))
     seen: set[tuple[int, int]] = set()
     count = 0
@@ -61,6 +76,10 @@ def store_tracklist(db: Session, release_group_id: int, release: ReleaseData | N
     fetch.fetched_at = utcnow()
     fetch.release_mbid = release.mbid if release else None
     fetch.track_count = count
+    if pin is not None:
+        fetch.pinned = pin
+    elif fetch.pinned is None:
+        fetch.pinned = False
     db.add(fetch)
     group = db.get(ReleaseGroup, release_group_id)
     if group is not None and count:

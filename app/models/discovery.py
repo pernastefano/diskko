@@ -2,7 +2,17 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, utcnow
@@ -110,3 +120,5 @@ class TracklistFetch(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     release_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
     track_count: Mapped[int] = mapped_column(Integer, default=0)
+    # True when an admin chose this release by hand: a refresh keeps it.
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")

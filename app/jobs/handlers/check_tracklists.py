@@ -17,7 +17,7 @@ from app.jobs.errors import PermanentJobError
 from app.jobs.registry import job_handler
 from app.models import LibraryAlbum, ReleaseGroup, TracklistFetch, utcnow
 from app.services.musicbrainz.missing import OWNED_STATUSES
-from app.services.tracklists import REFRESH, choose_release, store_tracklist
+from app.services.tracklists import REFRESH, pick_release, store_tracklist
 
 DEDUPE_KEY = "check_tracklists"
 MAX_IN_A_ROW = 5  # failures in a row that mean MusicBrainz is not answering: stop and retry later
@@ -67,10 +67,9 @@ async def check_tracklists(ctx: JobContext) -> None:
                     raise  # the engine tries again later
                 continue
             in_a_row = 0
-            release = choose_release(releases or [])
 
-            def save(db, group_id=group_id, release=release):
-                store_tracklist(db, group_id, release)
+            def save(db, group_id=group_id, releases=releases):
+                store_tracklist(db, group_id, pick_release(db, group_id, releases or []))
                 db.commit()
 
             await ctx.run_db(save)

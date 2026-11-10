@@ -6,7 +6,7 @@ import respx
 from sqlalchemy import select
 
 from app.integrations.musicbrainz_client import peek_artist_search, peek_group_releases
-from app.models import Artist, Job, LibraryAlbum, RetagReport
+from app.models import Artist, Job, LibraryAlbum, RetagReport, TracklistFetch
 from tests import test_album_compare as base
 from tests.conftest import post
 from tests.mbdata import ARETHA, LADY_SOUL_RG
@@ -229,3 +229,35 @@ def test_an_album_of_another_source_is_listed_and_can_be_used(admin_client, worl
 def test_only_an_admin_uses_these_routes(user_client, world):
     assert user_client.get(page(world) + f"/releases?rg={LADY_SOUL_RG}").status_code == 403
     assert user_client.get(page(world) + "/../artist/results").status_code in (403, 404)
+
+
+def test_the_release_used_becomes_the_tracklist_of_the_album_and_survives_a_refresh(
+    app, admin_client, world, db
+):
+    from app.services.tracklists import choose_release, load_tracks, pick_release
+
+    group = world["group"]
+    group.mbid = LADY_SOUL_RG  # the releases of this group are the ones on record
+    db.commit()
+    start_versions(admin_client, world)
+    with respx.mock(assert_all_called=False) as mock:
+        mount_releases(mock)
+        drain(app)
+    with app.state.session_factory() as s:
+        releases = peek_group_releases(s, LADY_SOUL_RG)
+    usual = choose_release(releases)
+    other = next(r for r in releases if r.tracks and len(r.tracks) != len(usual.tracks))
+    r = post(
+        admin_client,
+        page(world),
+        {"choice": str(group.id), "release": other.mbid},
+        page=page(world),
+    )
+    assert r.status_code == 303
+    db.expire_all()
+    fetch = db.get(TracklistFetch, group.id)
+    assert fetch.release_mbid == other.mbid and fetch.pinned
+    assert len(load_tracks(db, group.id)) == len(other.tracks)
+    assert pick_release(db, group.id, releases).mbid == other.mbid  # a refresh keeps it
+    fetch.pinned = False
+    assert pick_release(db, group.id, releases).mbid == usual.mbid

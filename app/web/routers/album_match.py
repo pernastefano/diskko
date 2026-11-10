@@ -34,7 +34,7 @@ from app.services import album_artist, release_compare
 from app.services import album_compare as compare_svc
 from app.services import album_match as svc
 from app.services.discovery import valid_mbid
-from app.services.tracklists import load_tracks
+from app.services.tracklists import load_tracks, store_tracklist
 from app.web.routers.albums import _enqueue_retag
 from app.web.routers.discovery import job_state
 from app.web.routers.jobs import notify_worker
@@ -296,20 +296,33 @@ def match_save(
         return render(request, "admin/album_match.html", ctx, status_code=400)
     db.commit()
     flash = "match_saved"
-    if retag == "1" and valid_mbid(release):
-        db.refresh(album)
-        group = db.get(ReleaseGroup, album.release_group_id) if album.release_group_id else None
-        if group is not None and not eligible_error(album, group):
-            _enqueue_retag(
-                request,
-                db,
-                auth,
-                group,
-                album,
-                {"rename": True, "replace_cover": False, "release_mbid": release.lower()},
-                apply=True,
-            )
-            flash = "match_saved_retag"
+    db.refresh(album)
+    group = db.get(ReleaseGroup, album.release_group_id) if album.release_group_id else None
+    if group is not None and valid_mbid(release) and ":" not in group.mbid:
+        # The edition chosen by hand becomes the album's track list (and stays so on refreshes).
+        chosen = next(
+            (r for r in peek_group_releases(db, group.mbid) or [] if r.mbid == release.lower()),
+            None,
+        )
+        if chosen is not None and chosen.tracks:
+            store_tracklist(db, group.id, chosen, pin=True)
+            db.commit()
+    if (
+        retag == "1"
+        and valid_mbid(release)
+        and group is not None
+        and not eligible_error(album, group)
+    ):
+        _enqueue_retag(
+            request,
+            db,
+            auth,
+            group,
+            album,
+            {"rename": True, "replace_cover": False, "release_mbid": release.lower()},
+            apply=True,
+        )
+        flash = "match_saved_retag"
     return RedirectResponse(f"{_album_page(db, album)}?flash={flash}", status_code=303)
 
 
