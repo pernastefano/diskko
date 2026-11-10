@@ -3,6 +3,7 @@
 {% block content %}
 <h1 class="mb-1 text-2xl font-semibold">{{ t('requests.title') }}</h1>
 <p class="mb-4 text-sm text-slate-500">{{ t('requests.intro_all') if all_users else t('requests.intro') }}</p>
+{% if user.is_admin %}<p class="-mt-2 mb-4 text-sm"><a href="/admin/quarantine" class="text-indigo-600 hover:underline" data-quarantine-link>{{ t('quarantine.link') }}</a></p>{% endif %}
 
 <form method="get" action="/requests" class="mb-4 flex flex-wrap items-end gap-3" data-requests-filters>
   <div class="flex flex-wrap gap-1" role="group" aria-label="{{ t('requests.filter.status') }}">

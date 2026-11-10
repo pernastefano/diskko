@@ -96,12 +96,12 @@ def make_request(factory, *, mode="auto", quality="flac_standard", query=None, t
         return request.id
 
 
-def enqueue_search(factory, request_id):
+def enqueue_search(factory, request_id, payload=None):
     with factory() as db:
         engine.enqueue(
             db,
             "slskd_search",
-            {"request_id": request_id},
+            {"request_id": request_id, **(payload or {})},
             dedupe_key=svc.search_dedupe_key(request_id),
         )
 
@@ -132,12 +132,12 @@ def _jobs_in_flight(factory):
         )
 
 
-async def run(settings, factory, fake, request_id, **kw):
+async def run(settings, factory, fake, request_id, payload=None, **kw):
     with respx.mock(assert_all_called=False) as mock:
         fake.mount(mock)
         worker = JobWorker(settings, factory)
         await worker.start()
-        enqueue_search(factory, request_id)
+        enqueue_search(factory, request_id, payload)
         worker.notify()
         try:
             return await settle(factory, request_id, **kw)
@@ -343,6 +343,51 @@ async def test_a_manual_text_is_never_widened(jsettings, session_factory, fake):
     request = await run(jsettings, session_factory, fake, request_id)
     assert request.status == REQ_NO_RESULTS and len(posts(fake, "/searches")) == 1
     assert request.query_used == "franklin"
+
+
+async def test_a_search_by_hand_lists_every_folder_with_audio_whatever_its_name(
+    jsettings, session_factory, fake
+):
+    other = flac_album("bob", "Somebody Else\\Another Record", count=3)
+    fake.searches_by_text = {
+        "any words": [other, flac_album("alice", GOOD), flac_album("alice", GOOD + " 2")]
+    }
+    request_id = make_request(session_factory)  # auto mode, but a hand search always asks
+    request = await run(
+        jsettings, session_factory, fake, request_id, {"browse": True, "query": "any words"}
+    )
+    assert request.status == REQ_AWAITING_CHOICE and request.query_used == "any words"
+    found = svc.candidates_of(request)
+    assert sorted((c.username, c.track_count) for c in found) == [
+        ("alice", 10),
+        ("alice", 10),  # the same user's two folders are both listed
+        ("bob", 3),
+    ]
+    assert len(posts(fake, "/searches")) == 1  # only the typed text, never widened
+    assert [b["responseLimit"] for b in fake.search_bodies] == [300]
+
+
+async def test_the_candidates_carry_the_detail_of_their_files(jsettings, session_factory, fake):
+    fake.searches_by_text = {"aretha franklin lady soul": [flac_album("alice", GOOD)]}
+    request_id = make_request(session_factory, mode="manual")
+    request = await run(jsettings, session_factory, fake, request_id)
+    [cand] = svc.candidates_of(request)
+    first = cand.files[0]
+    assert {"filename", "size", "subdir", "bit_rate", "length"} <= set(first)
+
+
+async def test_more_than_the_shown_candidates_are_kept_for_the_choice(
+    jsettings, session_factory, fake
+):
+    fake.searches_by_text = {
+        "aretha franklin lady soul": [
+            flac_album(f"user{i}", GOOD)
+            for i in range(9)  # nine users have it
+        ]
+    }
+    request_id = make_request(session_factory, mode="manual")
+    request = await run(jsettings, session_factory, fake, request_id)
+    assert len(svc.candidates_of(request)) == 9 > jsettings.slskd_candidates
 
 
 async def test_the_minimum_quality_decides_what_is_a_candidate(jsettings, session_factory, fake):

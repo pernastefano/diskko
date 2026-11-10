@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ t('quarantine.title') }}{% endblock %}
+{% block content %}
+<h1 class="mb-1 text-2xl font-semibold">{{ t('quarantine.title') }}</h1>
+<p class="mb-4 max-w-3xl text-sm text-slate-500">{{ t('quarantine.intro') }}</p>
+{% if request.query_params.get('error') %}
+  <p role="alert" class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-error>{{ t('error.' ~ request.query_params.get('error')) }}</p>
+{% endif %}
+
+{% if not entries %}
+  <p class="rounded-lg border border-slate-200 bg-white px-4 py-6 text-center text-slate-500" data-empty>{{ t('quarantine.empty') }}</p>
+{% else %}
+  <form method="post" action="/admin/quarantine/delete" x-data="{ picked: [] }" data-quarantine-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+      <label class="flex items-center gap-2"><input type="checkbox" @change="picked = $event.target.checked ? [{% for e in entries %}'{{ e.name }}'{{ ',' if not loop.last }}{% endfor %}] : []" data-select-all> {{ t('quarantine.select_all') }}</label>
+      <button type="submit" :disabled="picked.length === 0" onclick="return confirm('{{ t('quarantine.confirm_delete')|e }}')" class="rounded-md border border-red-300 px-3 py-1.5 text-red-700 hover:bg-red-50 disabled:opacity-40" data-delete-selected>{{ t('quarantine.delete_selected') }}</button>
+    </div>
+    <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm">
+      {% for e in entries %}
+        <li class="px-4 py-3" data-entry="{{ e.name }}">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="flex min-w-0 flex-1 items-start gap-3">
+              <input type="checkbox" name="names" value="{{ e.name }}" x-model="picked" class="mt-1" aria-label="{{ e.name }}">
+              <div class="min-w-0">
+                <div class="font-medium">{% if albums[e.name] %}{{ albums[e.name] }}{% else %}{{ t('quarantine.no_request') }}{% endif %}
+                  <span class="font-normal text-slate-500">· #{{ e.name }}</span></div>
+                <div class="text-xs text-slate-500">{{ e.when|fmt_dt if e.when }} · {{ t('lib.tracks_count', n=e.files|length) }} · {{ '%.0f'|format(e.size / 1048576) }} MB</div>
+                {% if e.reason %}<div class="mt-1 break-words text-sm text-red-700" data-reason>{{ e.reason }}</div>{% endif %}
+                <details class="mt-1 text-xs text-slate-500"><summary class="cursor-pointer">{{ t('requests.cand.files') }}</summary>
+                  <ul class="mt-1 space-y-0.5">{% for name, size in e.files %}<li class="break-all">{{ name }} · {{ '%.1f'|format(size / 1048576) }} MB</li>{% endfor %}</ul></details>
+              </div>
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
+              {% if e.restorable %}
+                <button type="submit" formaction="/admin/quarantine/{{ e.name }}/reimport" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700" data-reimport>{{ t('quarantine.reimport') }}</button>
+              {% else %}
+                <span class="text-xs text-slate-500" title="{{ t('quarantine.no_request_hint') }}">{{ t('quarantine.only_delete') }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </form>
+{% endif %}
+{% endblock %}

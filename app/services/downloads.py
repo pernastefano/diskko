@@ -31,7 +31,7 @@ from app.models import (
 )
 from app.services.app_settings import get_setting
 from app.services.candidate_selection import Candidate, Wanted, group_by_subdir
-from app.services.notifications import notify_request
+from app.services.notifications import notify_request, resolve_choice
 from app.services.quality_profiles import default_key, load_profiles
 
 DEST_ROOT = "diskko"  # under the downloads folder: <downloads>/diskko/<request id>/...
@@ -202,42 +202,101 @@ def candidates_of(request: DownloadRequest) -> list[Candidate]:
     return [Candidate.from_dict(d) for d in json.loads(request.candidates_json or "[]")]
 
 
+def release_state_of(request: DownloadRequest) -> dict:
+    """What a download that waits for the user keeps: {"group", "files", "options", "loading"}
+    (an older request kept just the list of options)."""
+    try:
+        data = json.loads(request.release_options_json or "[]")
+    except ValueError:
+        data = []
+    if isinstance(data, list):
+        data = {"options": data}
+    return {"group": None, "files": [], "options": [], "loading": False, **data}
+
+
 def release_options_of(request: DownloadRequest) -> list[dict]:
     """The releases the finished download may be, when no one fits on its own (else empty)."""
-    try:
-        return list(json.loads(request.release_options_json or "[]"))
-    except ValueError:
-        return []
+    return list(release_state_of(request)["options"])
 
 
 RELEASE_NONE = "none"  # import it with the tags the files have
 RELEASE_REJECT = "reject"  # do not import it: to the quarantine
+RELEASE_RECONCILE = "reconcile"  # not an answer: match the files by hand (ask even if one fits)
 
 
-def store_release_options(db: Session, request_id: int, options: list[dict]) -> None:
-    """The download waits for the user: which release is it (or none)?"""
+def store_release_options(db: Session, request_id: int, state: dict | list[dict]) -> None:
+    """The download waits for the user: which release is it (or none)? `state` is what
+    `reconcile.build_state` makes (or just the list of options)."""
     request = db.get(DownloadRequest, request_id)
     if request is None or request.status == REQ_CANCELLED:
         return
-    request.release_options_json = json.dumps(options)
+    request.release_options_json = json.dumps(state)
     request.status = REQ_AWAITING_CHOICE
     request.error = None
     db.flush()
+    notify_request(db, request, REQ_AWAITING_CHOICE)  # the owner is asked, as for a source
 
 
-def choose_release_option(db: Session, request: DownloadRequest, choice: str) -> str:
-    """The user's answer: a release offered, `none` or `reject`. The request goes back to the
-    import, which is queued by the caller. Returns the choice."""
-    options = release_options_of(request)
-    if request.status != REQ_AWAITING_CHOICE or not options:
+def choose_release_option(
+    db: Session, request: DownloadRequest, choice: str, mapping: dict[str, str] | None = None
+) -> str:
+    """The user's answer: a release offered, `none` or `reject`; with a release, the pairing of
+    files and tracks the user set ({file name: track key}) is checked against it. The request
+    goes back to the import, which is queued by the caller. Returns the choice."""
+    state = release_state_of(request)
+    options = state["options"]
+    if request.status != REQ_AWAITING_CHOICE or not options or state["loading"]:
         raise RequestError("request_not_choosing")
     if choice not in (RELEASE_NONE, RELEASE_REJECT) and choice not in {o["mbid"] for o in options}:
         raise RequestError("request_bad_release")
+    if mapping:
+        chosen = next(o for o in options if o["mbid"] == choice)
+        keys = {t["key"] for t in chosen["track_list"]}
+        known = {f["name"] for f in state["files"]}
+        used = [k for k in mapping.values() if k]
+        if (
+            any(k not in keys for k in used)
+            or any(name not in known for name in mapping)
+            or len(used) != len(set(used))
+        ):
+            raise RequestError("request_bad_mapping")
     request.release_options_json = None
     request.status = REQ_DOWNLOADED
     request.error = None
     db.flush()
+    resolve_choice(db, request.id)
     return choice
+
+
+def begin_reconcile(db: Session, request: DownloadRequest) -> None:
+    """Match the files with MusicBrainz again from scratch (the import job rebuilds the pairing
+    and asks). The caller queues the job."""
+    if request.status != REQ_AWAITING_CHOICE or not release_state_of(request)["options"]:
+        raise RequestError("request_not_choosing")
+    request.release_options_json = None
+    request.status = REQ_DOWNLOADED
+    request.error = None
+    db.flush()
+    resolve_choice(db, request.id)
+
+
+def switch_group(db: Session, request: DownloadRequest, group) -> None:
+    """The user says the files are another album (release group) than the one requested: the
+    request follows it, and a job reads that album's releases (the state is `loading` until then).
+    The caller queues the job."""
+    state = release_state_of(request)
+    if request.status != REQ_AWAITING_CHOICE or not state["files"] or state["loading"]:
+        raise RequestError("request_not_choosing")
+    if group.id != request.release_group_id and other_active_request(db, request, group.id):
+        raise RequestError("request_group_busy")
+    request.release_group_id = group.id
+    state.update(
+        group={"id": group.id, "mbid": group.mbid, "title": group.title},
+        options=[],
+        loading=True,
+    )
+    request.release_options_json = json.dumps(state)
+    db.flush()
 
 
 def current_candidate(request: DownloadRequest) -> Candidate | None:
@@ -262,6 +321,8 @@ def set_status(
         setattr(request, key, value)
     if status in REQ_FINISHED:
         request.finished_at = utcnow()
+    else:
+        request.finished_at = None  # a finished request taken up again (a new search)
     db.flush()
     notify_request(db, request, status)  # the owner hears about completed, failed...
     return request
@@ -285,6 +346,7 @@ def choose_candidate(db: Session, request: DownloadRequest, index: int) -> None:
     request.status = REQ_CANDIDATE_FOUND
     request.error = None
     db.flush()
+    resolve_choice(db, request.id)
 
 
 def cancel_request(db: Session, request: DownloadRequest) -> list[int]:
@@ -294,6 +356,7 @@ def cancel_request(db: Session, request: DownloadRequest) -> list[int]:
     request.status = REQ_CANCELLED
     request.finished_at = utcnow()
     db.flush()
+    resolve_choice(db, request.id)
     keys = [
         search_dedupe_key(request.id),
         monitor_dedupe_key(request.id),
@@ -467,6 +530,22 @@ def mark_downloaded(db: Session, request_id: int) -> None:
 
 def downloading(db: Session, request_id: int) -> None:
     set_status(db, request_id, REQ_DOWNLOADING)
+
+
+def other_active_request(
+    db: Session, request: DownloadRequest, release_group_id: int | None = None
+) -> bool:
+    """Is another request of the same album running? (Only one may be, whoever made it.)"""
+    return (
+        db.scalar(
+            select(DownloadRequest.id).where(
+                DownloadRequest.release_group_id == (release_group_id or request.release_group_id),
+                DownloadRequest.id != request.id,
+                DownloadRequest.status.in_(REQ_ACTIVE),
+            )
+        )
+        is not None
+    )
 
 
 def searching(db: Session, request_id: int) -> None:

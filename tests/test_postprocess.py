@@ -400,9 +400,14 @@ async def test_a_download_that_matches_no_release_waits_for_the_user_instead_of_
     assert job.status == "succeeded", logs(factory, job_id)
     row = request_of(factory)
     assert row.status == "awaiting_choice" and row.error is None
-    [option] = json.loads(row.release_options_json)
+    [option] = json.loads(row.release_options_json)["options"]
     assert (option["mbid"], option["tracks"], option["paired"]) == (RELEASE_MBID, 4, 3)
     assert option["missing"] == ["Bonus Track"] and option["unmatched"] == []
+    state = json.loads(row.release_options_json)
+    assert [f["title"] for f in state["files"]] == TITLES and state["loading"] is False
+    assert state["group"]["title"] == "Album Title"
+    assert [t["title"] for t in option["track_list"]][-1] == "Bonus Track"
+    assert len(option["pairs"]) == 3  # which file stands for which track
     assert source.is_dir() and len(list(source.iterdir())) == 3  # the download is kept in place
     assert not quarantined(downloads).exists() and not any(music.rglob("*.flac"))
     assert any("waiting for you" in m for m in logs(factory, job_id))
@@ -423,7 +428,7 @@ async def test_files_that_are_other_tracks_wait_for_the_user_too(env):
         _, job = await run_job(settings, factory)
     row = request_of(factory)
     assert job.status == "succeeded" and row.status == "awaiting_choice"
-    [option] = json.loads(row.release_options_json)
+    [option] = json.loads(row.release_options_json)["options"]
     assert option["paired"] == 2 and option["unmatched"] == ["1.flac"]
     assert option["missing"] == ["Middle Song"]
 

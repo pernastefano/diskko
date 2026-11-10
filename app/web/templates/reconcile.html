@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ t('reconcile.title') }} · {{ group.title }}{% endblock %}
+{% block content %}
+<a href="/requests/{{ r.id }}" class="text-sm text-indigo-600 hover:underline">← {{ group.title }}</a>
+<h1 class="mt-2 text-2xl font-semibold">{{ t('reconcile.title') }}</h1>
+<p class="mt-1 max-w-3xl text-sm text-slate-500">{{ t('reconcile.intro') }}</p>
+{% if request.query_params.get('error') %}
+  <p role="alert" class="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" data-error>{{ t('error.' ~ request.query_params.get('error')) }}</p>
+{% endif %}
+
+<section class="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-reconcile-album>
+  <div class="text-xs uppercase tracking-wide text-slate-500">{{ t('reconcile.album') }}</div>
+  <div class="text-lg font-medium">{{ artist.name }} – {{ group.title }}{% if group.year %} <span class="text-slate-500">({{ group.year }})</span>{% endif %}
+    <a class="ml-1 text-sm text-slate-500 hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ group.mbid }}">MusicBrainz ↗</a></div>
+</section>
+
+{% if state.loading %}
+  <p class="mt-4 text-sm text-slate-500" data-loading hx-get="/requests/{{ r.id }}/reconcile" hx-trigger="every 3s" hx-select="#reconcile-body" hx-target="#reconcile-body" hx-swap="outerHTML">{{ t('reconcile.loading') }}</p>
+{% endif %}
+
+<div id="reconcile-body">
+{% if state.loading %}
+{% elif not state.files %}
+  <section class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-needs-rebuild>
+    <p>{{ t('reconcile.no_files') }}</p>
+    <form method="post" action="/requests/{{ r.id }}/reconcile/rebuild" class="mt-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="rounded-md bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700" data-rebuild>{{ t('reconcile.rebuild') }}</button>
+    </form>
+  </section>
+{% elif not options %}
+  <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-no-releases>{{ t('reconcile.no_releases') }}</p>
+{% else %}
+  <h2 class="mb-2 mt-6 text-lg font-semibold">{{ t('reconcile.releases') }}</h2>
+  <ul class="mb-4 flex flex-wrap gap-2" data-release-tabs>
+    {% for o in options %}
+      <li><a href="/requests/{{ r.id }}/reconcile?release={{ o.mbid }}" data-release-tab="{{ o.mbid }}" {% if o.mbid == chosen.mbid %}aria-current="true"{% endif %}
+             class="block rounded-md px-3 py-1.5 text-sm {{ 'bg-indigo-600 text-white' if o.mbid == chosen.mbid else 'border border-slate-300 hover:bg-slate-100' }}">
+        {{ o.title }}{% if o.date %} · {{ o.date[:4] }}{% endif %}{% if o.country %} · {{ o.country }}{% endif %} · {{ t('requests.release.fit', paired=o.paired, files=state.files|length) }}</a></li>
+    {% endfor %}
+  </ul>
+
+  <form method="post" action="/requests/{{ r.id }}/reconcile/import" data-mapping-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="release" value="{{ chosen.mbid }}">
+    <p class="mb-2 text-sm text-slate-500">{{ chosen.title }} · {{ t('requests.release.tracks', n=chosen.tracks) }}
+      · <a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release/{{ chosen.mbid }}">MusicBrainz ↗</a></p>
+    <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <tr><th class="px-3 py-2">{{ t('reconcile.col.file') }}</th><th class="px-3 py-2">{{ t('reconcile.col.tags') }}</th>
+              <th class="px-3 py-2 text-right">{{ t('requests.cand.length') }}</th><th class="px-3 py-2">{{ t('reconcile.col.track') }}</th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for f in state.files %}
+            {% set fi = loop.index0 %}{% set picked = chosen.pairs.get(f.name, '') %}
+            <tr data-file="{{ fi }}" class="{{ '' if picked else 'bg-amber-50' }}">
+              <td class="max-w-xs break-all px-3 py-2">{{ f.name }}<div class="text-xs text-slate-500">{{ f.ext|upper }}{% if f.size %} · {{ '%.1f'|format(f.size / 1048576) }} MB{% endif %}</div></td>
+              <td class="px-3 py-2 text-xs text-slate-600">{{ f.title }}{% if f.side %} · {{ f.side }}{% elif f.track_no %} · #{{ f.track_no }}{% endif %}{% if f.disc_no > 1 %} · CD {{ f.disc_no }}{% endif %}</td>
+              <td class="px-3 py-2 text-right tabular-nums text-slate-500">{% if f.seconds %}{{ f.seconds // 60 }}:{{ '%02d' % (f.seconds % 60) }}{% endif %}</td>
+              <td class="px-3 py-2">
+                <select name="map" class="w-full min-w-[16rem] rounded-md border border-slate-300 bg-white px-2 py-1 text-sm" data-track-select aria-label="{{ t('reconcile.col.track') }}">
+                  <option value="{{ fi }}|" {% if not picked %}selected{% endif %}>{{ t('reconcile.no_track') }}</option>
+                  {% for tr in chosen.track_list %}
+                    <option value="{{ fi }}|{{ tr.key }}" {% if tr.key == picked %}selected{% endif %}>{{ tr.number or tr.position }}{% if state.files|map(attribute='disc_no')|max > 1 or tr.disc > 1 %} (CD {{ tr.disc }}){% endif %} · {{ tr.title }}{% if tr.seconds %} · {{ tr.seconds // 60 }}:{{ '%02d' % (tr.seconds % 60) }}{% endif %}</option>
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if chosen.missing %}<p class="mt-2 text-xs text-slate-500" data-missing>{{ t('requests.release.missing', list=chosen.missing|join(', ')) }}</p>{% endif %}
+    <p class="mt-2 text-xs text-slate-500">{{ t('reconcile.hint') }}</p>
+    <button class="mt-3 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700" data-import-mapping>{{ t('reconcile.import') }}</button>
+  </form>
+{% endif %}
+</div>
+
+{% if waiting and not state.loading %}
+<section class="mt-8" id="find" data-find-album>
+  <h2 class="mb-1 text-lg font-semibold">{{ t('reconcile.find.title') }}</h2>
+  <p class="mb-3 max-w-3xl text-sm text-slate-500">{{ t('reconcile.find.intro') }}</p>
+  <form method="post" action="/requests/{{ r.id }}/reconcile/find" class="mb-3 flex flex-wrap items-end gap-3 text-sm" data-find-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="min-w-[14rem] flex-1">
+      <label for="fq" class="block text-xs text-slate-500">{{ t('albummatch.query') }}</label>
+      <input id="fq" name="q" type="search" value="{{ q }}" required maxlength="200" autocomplete="off" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm">
+    </div>
+    <div>
+      <label for="fmode" class="block text-xs text-slate-500">{{ t('albummatch.mode') }}</label>
+      <select id="fmode" name="mode" class="mt-1 rounded-md border border-slate-300 bg-white px-2 py-2">
+        {% for m in modes %}<option value="{{ m }}" {% if mode == m %}selected{% endif %}>{{ t('albummatch.mode.' ~ m) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="fscope" class="block text-xs text-slate-500">{{ t('albummatch.scope') }}</label>
+      <select id="fscope" name="scope" class="mt-1 rounded-md border border-slate-300 bg-white px-2 py-2">
+        {% for s in scopes %}<option value="{{ s }}" {% if scope == s %}selected{% endif %} {% if s == 'artist' and not can_scope %}disabled{% endif %}>{{ t('albummatch.scope.' ~ s) }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="rounded-md bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-700" data-find>{{ t('albummatch.search_button') }}</button>
+  </form>
+  {% include "_reconcile_search.html" %}
+</section>
+
+<section class="mt-8 flex flex-wrap gap-3" data-other-answers>
+  <form method="post" action="/requests/{{ r.id }}/release">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="choice" value="none">
+    <button class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-release-none>{{ t('requests.release.none') }}</button>
+  </form>
+  <form method="post" action="/requests/{{ r.id }}/release" onsubmit="return confirm('{{ t('requests.release.reject_confirm')|e }}')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="choice" value="reject">
+    <button class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100" data-release-reject>{{ t('requests.release.reject') }}</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

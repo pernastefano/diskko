@@ -48,14 +48,17 @@ from app.services.importer.integrity import (
     pick_cover_file,
 )
 from app.services.importer.matching import (
-    Candidate,
     FileFacts,
     choose_release,
     facts_of,
     pair_partial,
-    rank_releases,
 )
 from app.services.importer.naming import NameValues
+from app.services.importer.reconcile import (
+    build_state,
+    file_infos,
+    pairs_from_mapping,
+)
 from app.services.importer.tagging import Cover, TaggingError, TrackTags, can_tag
 from app.services.quality_profiles import load_profiles
 
@@ -218,27 +221,6 @@ async def load_releases(ctx: JobContext, group: dict) -> list[ReleaseData]:
         return await client.browse_releases(group["mbid"]) or []
 
 
-MAX_RELEASE_OPTIONS = 6  # releases offered to the user when none fits on its own
-
-
-def release_option(candidate: Candidate, facts: list[FileFacts]) -> dict:
-    """What the user is shown about a release the download might be: how it fits the files."""
-    release = candidate.release
-    paired_tracks = {id(t) for t in candidate.pairs.values()}
-    return {
-        "mbid": release.mbid,
-        "title": release.title,
-        "date": release.date,
-        "country": release.country,
-        "tracks": len(release.tracks),
-        "paired": len(candidate.pairs),
-        "missing": [t.title for t in release.tracks if id(t) not in paired_tracks],
-        "unmatched": [
-            facts[i].file.path.name for i in range(len(facts)) if i not in candidate.pairs
-        ],
-    }
-
-
 def _already_imported(final: Path, group: dict, count: int, request_id: int, upgrade: bool) -> bool:
     """Is the folder the album of an earlier, interrupted run of this very import?
 
@@ -267,6 +249,7 @@ def _already_imported(final: Path, group: dict, count: int, request_id: int, upg
 async def postprocess(ctx: JobContext) -> None:
     request_id = int(ctx.payload["request_id"])
     choice = str(ctx.payload.get("release_choice") or "") or None  # what the user answered
+    mapping = ctx.payload.get("mapping") or None  # {file: track} as the user set it
 
     def load(db):
         request = db.get(DownloadRequest, request_id)
@@ -356,24 +339,26 @@ async def postprocess(ctx: JobContext) -> None:
         release = pairs = None
         if choice == downloads_svc.RELEASE_NONE:
             await ctx.log("Importing with the tags of the files, as you chose (no release)")
-        elif releases and choice:
+        elif releases and choice and choice != downloads_svc.RELEASE_RECONCILE:
             release = next((r for r in releases if r.mbid == choice), None)
             if release is None:
                 raise ImportRejected("the release you chose is no longer available")
-            pairs = pair_partial(facts, release)
+            if mapping:
+                pairs = pairs_from_mapping(file_infos(facts), release, mapping)
+            else:
+                pairs = pair_partial(facts, release)
             await ctx.log(
                 f"MusicBrainz release: {release.title} ({release.date or 'no date'}), as you "
                 f"chose: {len(pairs)} of {len(files)} file(s) matched a track"
             )
         elif releases:
             chosen = choose_release(releases, facts, group["title"])
-            if chosen is None:
-                # nothing fits on its own: the download is kept and the user is asked, instead of
-                # throwing the work away
-                ranked = rank_releases(releases, facts, group["title"])
-                options = [release_option(c, facts) for c in ranked[:MAX_RELEASE_OPTIONS]]
+            if chosen is None or choice == downloads_svc.RELEASE_RECONCILE:
+                # nothing fits on its own (or the user wants to see): the download is kept and the
+                # user is asked, instead of throwing the work away
+                state = build_state(group, file_infos(facts), releases, group["title"])
                 await ctx.run_db(
-                    _db(lambda db: downloads_svc.store_release_options(db, request_id, options))
+                    _db(lambda db: downloads_svc.store_release_options(db, request_id, state))
                 )
                 await ctx.log(
                     f"No MusicBrainz release matches these {len(files)} files on its own: "

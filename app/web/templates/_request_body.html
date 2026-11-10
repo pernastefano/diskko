@@ -51,6 +51,7 @@
     <section class="mb-6" data-release-choice>
       <h2 class="mb-1 text-lg font-semibold">{{ t('requests.release.title') }}</h2>
       <p class="mb-3 max-w-3xl text-sm text-slate-600">{{ t('requests.release.intro') }}</p>
+      <p class="mb-3"><a href="/requests/{{ r.id }}/reconcile" class="inline-flex rounded-md border border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50" data-reconcile-link>{{ t('requests.reconcile') }}</a></p>
       <ul class="mb-4 space-y-3">
         {% for o in release_options %}
           <li class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-release="{{ o.mbid }}">
@@ -85,17 +86,32 @@
     </section>
   {% endif %}
 
+  {% if slskd_ready and (choosing or r.status == 'no_results') %}
+    <form method="post" action="/requests/{{ r.id }}/search" class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-network-search>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="min-w-0 flex-1">
+        <label for="net-query" class="block text-xs text-slate-500">{{ t('requests.net_search') }}</label>
+        <input id="net-query" name="query" required maxlength="255" value="{{ r.query_used.split(' | ')[-1] if r.query_used else '' }}" autocomplete="off"
+               class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm">
+        <p class="mt-1 text-xs text-slate-500">{{ t('requests.net_search_hint') }}</p>
+      </div>
+      <button class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700" data-network-search-button>{{ t('requests.net_search_button') }}</button>
+    </form>
+  {% endif %}
+
   {% if candidates and not choosing_release %}
-    <h2 class="mb-2 text-lg font-semibold">{{ t('requests.candidates') }}</h2>
+    {% set shown = request.app.state.settings.slskd_candidates %}
+    <h2 class="mb-2 text-lg font-semibold">{{ t('requests.candidates') }} <span class="text-sm font-normal text-slate-500">({{ candidates|length }})</span></h2>
     {% if choosing %}<p class="mb-2 text-sm text-slate-500">{{ t('requests.choose_hint') }}</p>{% endif %}
-    <div class="mb-6 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="mb-6 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm" x-data="{ all: false }">
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
           <tr><th class="px-3 py-2">#</th><th class="px-3 py-2">{{ t('requests.cand.source') }}</th><th class="px-3 py-2">{{ t('requests.cand.quality') }}</th>
               <th class="px-3 py-2">{{ t('requests.cand.tracks') }}</th><th class="px-3 py-2">{{ t('requests.cand.score') }}</th><th class="px-3 py-2">{{ t('requests.cand.availability') }}</th><th></th></tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for c in candidates %}
+        {% for c in candidates %}
+          <tbody class="divide-y divide-slate-100 border-t border-slate-100" x-data="{ open: false }"
+                 {% if loop.index > shown %}x-show="all" x-cloak{% endif %} data-candidate-group="{{ loop.index0 }}">
             <tr data-candidate="{{ loop.index0 }}" {% if loop.index0 == r.candidate_index %}class="bg-blue-50"{% endif %}>
               <td class="px-3 py-2 text-slate-500">{{ loop.index }}</td>
               <td class="px-3 py-2"><div class="font-medium">{{ c.username }}</div><div class="max-w-xs truncate text-xs text-slate-500" title="{{ c.directory }}">{{ c.directory.split('\\')[-1] }}</div></td>
@@ -103,16 +119,41 @@
               <td class="px-3 py-2">{{ c.track_count }} · {{ (c.total_size / 1048576)|round|int }} MB</td>
               <td class="px-3 py-2 tabular-nums" title="{{ c.breakdown|tojson }}">{{ (c.score * 100)|round|int }}%</td>
               <td class="px-3 py-2 text-xs text-slate-600">{{ t('requests.cand.slot_free') if c.has_free_slot else t('requests.cand.slot_busy') }} · {{ t('requests.cand.queue', n=c.queue_length) }}</td>
-              <td class="px-3 py-2 text-right">
+              <td class="whitespace-nowrap px-3 py-2 text-right">
+                <button type="button" @click="open = !open" :aria-expanded="open" class="mr-1 rounded-md border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100" data-candidate-files>
+                  <span x-show="!open">{{ t('requests.cand.files') }}</span><span x-show="open" x-cloak>{{ t('requests.cand.hide_files') }}</span></button>
                 {% if choosing %}
-                  <form method="post" action="/requests/{{ r.id }}/choose"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="index" value="{{ loop.index0 }}">
+                  <form method="post" action="/requests/{{ r.id }}/choose" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="index" value="{{ loop.index0 }}">
                     <button class="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700" data-choose>{{ t('requests.choose') }}</button></form>
                 {% elif loop.index0 == r.candidate_index %}<span class="text-xs font-medium text-blue-700">{{ t('requests.cand.current') }}</span>{% endif %}
               </td>
             </tr>
-          {% endfor %}
-        </tbody>
+            <tr x-show="open" x-cloak data-candidate-detail="{{ loop.index0 }}">
+              <td></td>
+              <td colspan="6" class="px-3 pb-3">
+                <div class="break-all text-xs text-slate-500">{{ c.directory }} · {{ t('requests.cand.speed', n=((c.upload_speed or 0) / 1048576)|round(1)) }}{% if c.notes %} · {% for n in c.notes %}{{ t('requests.cand.note.' ~ n) }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}</div>
+                <table class="mt-2 w-full max-w-3xl text-xs">
+                  <thead class="text-left uppercase tracking-wide text-slate-500"><tr><th class="py-1 pr-3">{{ t('requests.cand.file') }}</th><th class="py-1 pr-3 text-right">{{ t('requests.cand.size') }}</th><th class="py-1 pr-3 text-right">{{ t('requests.cand.bitrate') }}</th><th class="py-1 text-right">{{ t('requests.cand.length') }}</th></tr></thead>
+                  <tbody class="divide-y divide-slate-100">
+                    {% for f in c.files %}
+                      <tr><td class="break-all py-1 pr-3">{{ (f.subdir ~ ' / ' if f.subdir) }}{{ f.filename.split('\\')[-1] }}</td>
+                          <td class="whitespace-nowrap py-1 pr-3 text-right tabular-nums">{{ '%.1f'|format(f.size / 1048576) }} MB</td>
+                          <td class="whitespace-nowrap py-1 pr-3 text-right tabular-nums">{% if f.bit_rate %}{{ f.bit_rate }} kbps{% else %}—{% endif %}</td>
+                          <td class="whitespace-nowrap py-1 text-right tabular-nums">{% if f.length %}{{ f.length // 60 }}:{{ '%02d' % (f.length % 60) }}{% else %}—{% endif %}</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        {% endfor %}
       </table>
+      {% if candidates|length > shown %}
+        <div class="border-t border-slate-100 px-3 py-2 text-center text-sm">
+          <button type="button" class="text-indigo-700 hover:underline" @click="all = !all" data-show-all>
+            <span x-show="!all">{{ t('requests.cand.show_all', n=candidates|length) }}</span><span x-show="all" x-cloak>{{ t('requests.cand.show_fewer', n=shown) }}</span></button>
+        </div>
+      {% endif %}
     </div>
   {% endif %}
 

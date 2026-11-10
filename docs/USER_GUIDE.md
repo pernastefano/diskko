@@ -136,8 +136,22 @@ the releases of the album with how many files match each. Pick the release to ta
 with the tags of the files**, or **Do not import** (the download then goes to the quarantine).
 Files named after a vinyl side (`A1 - Title`) are recognised by the side number MusicBrainz gives.
 
+**Match by hand** (on the request page) shows the files next to the tracks of a release, with the
+pairing the engine would make: change the track of any file, leave a file out (it keeps its title),
+pick another release of the album, or, when MusicBrainz gave the wrong album, search MusicBrainz for
+another one and use it (the request then follows that album). Nothing is imported until you press
+**Import with this matching**.
+
+Whenever a request waits for you, in manual mode or because the files do not match, you get a
+notification in the bell. When you choose a source to download, **Files** shows what the folder holds
+(names, sizes, bitrates, lengths) and **Show all** the folders beyond the first few; **Search the
+network by hand** looks with your own words, like SLSKD itself, and lists every folder with audio.
+
 If something else cannot be imported (a damaged file, too low a quality), the request shows
-**Failed** with the reason and the files wait in a quarantine folder.
+**Failed** with the reason and the files wait in a quarantine folder. Administrators open it from
+the **Quarantine** link on the Requests page: **Match and import** takes a folder back and asks how to
+match it with MusicBrainz (the quality is not asked again), and **Delete selected** removes the
+folders that cannot be rescued.
 When the album's folder already exists, files with the same names are overwritten (a file that
 belongs to another album is never touched). When an **upgrade** replaces an album, the old files, their
 cover and the folders left empty are deleted once the new copy is in place; set `KEEP_REPLACED=true`

@@ -28,6 +28,10 @@ MAX_ATTEMPTS = 2
 PAUSE_BETWEEN_SEARCHES = 3.0  # the Soulseek server does not like a search storm
 BROAD_RESPONSE_LIMIT = 300  # a broad search ("Adams") has many answers; the name check picks
 BROAD_FILE_LIMIT = 30000
+POOL = (
+    40  # candidates kept for a manual choice: the page shows the first few and the rest on demand
+)
+BROWSE_LIMIT = 80  # folders a free search keeps
 TRIED_SEPARATOR = " | "  # the texts tried, kept in the request when nothing was found
 
 
@@ -52,6 +56,8 @@ def _load(request_id: int):
 @job_handler("slskd_search", queue="slskd", max_attempts=MAX_ATTEMPTS, backoff_base=60)
 async def slskd_search(ctx: JobContext) -> None:
     request_id = int(ctx.payload["request_id"])
+    browse = bool(ctx.payload.get("browse"))  # a search by hand, with the user's own text
+    typed = " ".join(str(ctx.payload.get("query") or "").split())
     data = await ctx.run_db(_load(request_id))
     if data is None:
         raise PermanentJobError(f"download request {request_id} not found")
@@ -80,7 +86,12 @@ async def slskd_search(ctx: JobContext) -> None:
 
     await ctx.run_db(mark_searching)
     wanted, artist, album = data["wanted"], data["artist"], data["album"]
-    plan = [SearchStep(data["override"])] if data["override"] else search_plan(artist, album)
+    if browse and typed:
+        plan = [SearchStep(typed, True)]
+    elif data["override"]:
+        plan = [SearchStep(data["override"])]
+    else:
+        plan = search_plan(artist, album)
     profiles = await ctx.run_db(load_profiles)
     settings = ctx.settings
     timeout = settings.slskd_search_timeout
@@ -114,7 +125,11 @@ async def slskd_search(ctx: JobContext) -> None:
                     f"{len(responses)} user(s) answered ({info.file_count} file(s), {info.state})"
                 )
                 candidates = select_candidates(
-                    responses, wanted, profiles, limit=settings.slskd_candidates
+                    responses,
+                    wanted,
+                    profiles,
+                    limit=BROWSE_LIMIT if browse else max(settings.slskd_candidates, POOL),
+                    browse=browse,
                 )
                 used = query
                 if candidates:
@@ -147,7 +162,7 @@ async def slskd_search(ctx: JobContext) -> None:
         await ctx.progress(100, "No results")
         return
 
-    manual = data["mode"] == MODE_MANUAL
+    manual = browse or data["mode"] == MODE_MANUAL  # a search by hand always waits for you
 
     def save(db):
         svc.store_candidates(db, request_id, candidates, used)

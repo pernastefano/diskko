@@ -254,9 +254,15 @@ def select_candidates(
     *,
     limit: int = 5,
     min_score: float = MIN_SCORE,
+    browse: bool = False,
 ) -> list[Candidate]:
-    """The best candidates, best first (at most `limit`, none below `min_score`)."""
-    minimum_rank = profiles.rank(wanted.min_quality) if wanted.min_quality else -1
+    """The best candidates, best first (at most `limit`, none below `min_score`).
+
+    `browse` is the free search of someone looking at the network by hand: every folder with audio
+    is listed, whatever its name, size or quality, ranked by how well it fits (no gates)."""
+    if browse:
+        min_score = 0.0
+    minimum_rank = profiles.rank(wanted.min_quality) if wanted.min_quality and not browse else -1
     ranks = [p.rank for p in profiles.profiles]
     low, high = min(ranks), max(ranks)
 
@@ -266,7 +272,7 @@ def select_candidates(
         if not group.audio:
             continue
         sim_album, sim_artist = _name_score(group, wanted)
-        if sim_album < NAME_GATE:
+        if sim_album < NAME_GATE and not browse:
             continue
         named.append((group, 0.7 * sim_album + 0.3 * sim_artist))
 
@@ -274,7 +280,7 @@ def select_candidates(
     candidates: list[Candidate] = []
     for group, name_score in named:
         count = len(group.audio)
-        if expected:
+        if expected and not browse:
             slack = 1 if expected >= 6 else 0
             if count < expected - slack or count > max(expected * 1.6, expected + 6):
                 continue
@@ -329,7 +335,16 @@ def select_candidates(
         if score < min_score:
             continue
         files = [
-            {"filename": f.filename, "size": f.size, "subdir": sub}
+            {
+                "filename": f.filename,
+                "size": f.size,
+                "subdir": sub,
+                # what the user sees of the file before choosing (SLSKD's own listing)
+                "bit_rate": f.bit_rate,
+                "length": f.length,
+                "bit_depth": f.bit_depth,
+                "sample_rate": f.sample_rate,
+            }
             for f, sub in sorted(group.audio, key=lambda fs: fs[0].filename.lower())
         ]
         candidates.append(
@@ -350,13 +365,15 @@ def select_candidates(
             )
         )
 
-    # one user may offer the same album twice (two folders): keep the better one
-    best_by_user: dict[str, Candidate] = {}
-    for cand in sorted(candidates, key=lambda c: -c.score):
-        best_by_user.setdefault(cand.username, cand)
-    ranked = sorted(
-        best_by_user.values(), key=lambda c: (-c.score, c.queue_length, c.username.lower())
-    )
+    # one user may offer the same album twice (two folders): keep the better one (a free search
+    # shows every folder: that is what looking at the network by hand is for)
+    kept = candidates
+    if not browse:
+        best_by_user: dict[str, Candidate] = {}
+        for cand in sorted(candidates, key=lambda c: -c.score):
+            best_by_user.setdefault(cand.username, cand)
+        kept = list(best_by_user.values())
+    ranked = sorted(kept, key=lambda c: (-c.score, c.queue_length, c.username.lower(), c.directory))
     return ranked[:limit]
 
 

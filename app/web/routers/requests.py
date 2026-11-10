@@ -128,7 +128,7 @@ def requests_page(
     )
 
 
-def _detail_context(db: DB, auth: UserAuth, request: DownloadRequest) -> dict:
+def _detail_context(db: DB, auth: UserAuth, request: DownloadRequest, settings=None) -> dict:
     row = _row(db, request)
     files = list(
         db.scalars(
@@ -157,6 +157,7 @@ def _detail_context(db: DB, auth: UserAuth, request: DownloadRequest) -> dict:
         "polling": request.status in RUNNING,
         "can_retry": svc.can_retry(request),
         "modes": MODES,
+        "slskd_ready": bool(settings and svc.slskd_configured(settings)),
         "release_options": options,
         "choosing": request.status == REQ_AWAITING_CHOICE and not options,
         "choosing_release": request.status == REQ_AWAITING_CHOICE and bool(options),
@@ -166,7 +167,9 @@ def _detail_context(db: DB, auth: UserAuth, request: DownloadRequest) -> dict:
 @router.get("/requests/{request_id}")
 def request_detail(request: Request, db: DB, auth: UserAuth, request_id: int):
     return render(
-        request, "request_detail.html", _detail_context(db, auth, _get(db, auth, request_id))
+        request,
+        "request_detail.html",
+        _detail_context(db, auth, _get(db, auth, request_id), request.app.state.settings),
     )
 
 
@@ -174,7 +177,9 @@ def request_detail(request: Request, db: DB, auth: UserAuth, request_id: int):
 def request_body(request: Request, db: DB, auth: UserAuth, request_id: int):
     """The detail without the page around it; polled while the request runs."""
     return render(
-        request, "_request_body.html", _detail_context(db, auth, _get(db, auth, request_id))
+        request,
+        "_request_body.html",
+        _detail_context(db, auth, _get(db, auth, request_id), request.app.state.settings),
     )
 
 
@@ -228,6 +233,11 @@ def request_choose(
         svc.choose_candidate(db, req, index)
     except svc.RequestError as exc:
         return RedirectResponse(f"/requests/{request_id}?error={exc.code}", status_code=303)
+    # a folder picked by hand may be below the minimum quality: the person who chose it accepts that
+    profiles = request.app.state.quality_profiles
+    picked = svc.candidates_of(req)[index]
+    if profiles.rank(picked.quality) < profiles.rank(req.quality_key):
+        req.quality_key = picked.quality
     engine.enqueue(
         db,
         "download_monitor",
@@ -243,6 +253,52 @@ def request_choose(
         target_id=req.id,
         label=_label(db, req),
         details={"candidate": index, "owner": _owner_name(db, req)},
+    )
+    db.commit()
+    notify_worker(request)
+    return RedirectResponse(f"/requests/{request_id}", status_code=303)
+
+
+@router.post("/requests/{request_id}/search")
+def request_network_search(
+    request: Request,
+    db: DB,
+    auth: UserAuth,
+    request_id: int,
+    query: Annotated[str, Form()] = "",
+):
+    """Search the Soulseek network by hand with the user's own words, as on SLSKD: every folder
+    with audio comes back for the user to choose from (a job; the page follows it)."""
+    req = _get(db, auth, request_id)
+    text = " ".join(query.split())[:255]
+    settings = request.app.state.settings
+    searchable = req.status in ("no_results", REQ_AWAITING_CHOICE) and not svc.release_options_of(
+        req
+    )
+    if not searchable or not text or not svc.slskd_configured(settings):
+        return RedirectResponse(
+            f"/requests/{request_id}?error=request_not_searchable", status_code=303
+        )
+    if svc.other_active_request(db, req):
+        return RedirectResponse(
+            f"/requests/{request_id}?error=request_search_busy", status_code=303
+        )
+    svc.searching(db, req.id)
+    engine.enqueue(
+        db,
+        "slskd_search",
+        {"request_id": req.id, "browse": True, "query": text},
+        dedupe_key=svc.search_dedupe_key(req.id),
+        created_by=auth.user.id,
+    )
+    audit.record(
+        db,
+        auth.user,
+        "request.searched",
+        target_type="request",
+        target_id=req.id,
+        label=_label(db, req),
+        details={"query": text, "owner": _owner_name(db, req)},
     )
     db.commit()
     notify_worker(request)

@@ -35,12 +35,16 @@ def notify_request(db: Session, request: DownloadRequest, status: str) -> Notifi
     kind = KIND_OF_STATUS.get(status)
     if kind is None:
         return None
-    exists = db.scalar(
-        select(Notification.id).where(
-            Notification.request_id == request.id, Notification.kind == kind
-        )
+    seen = db.scalar(
+        select(Notification).where(Notification.request_id == request.id, Notification.kind == kind)
     )
-    if exists:
+    if seen is not None and kind == NOTE_NEEDS_CHOICE and seen.read_at is not None:
+        # a request may ask again (the source, then the release, then another album): the notice
+        # you read or answered is news again
+        seen.read_at, seen.created_at = None, utcnow()
+        db.flush()
+        return seen
+    if seen is not None:
         return None
     group = db.get(ReleaseGroup, request.release_group_id)
     artist = db.get(Artist, group.artist_id) if group else None
@@ -55,6 +59,20 @@ def notify_request(db: Session, request: DownloadRequest, status: str) -> Notifi
     db.add(note)
     db.flush()
     return note
+
+
+def resolve_choice(db: Session, request_id: int) -> None:
+    """The user answered what a request was waiting for: its notification is no longer news.
+    The caller commits."""
+    db.execute(
+        update(Notification)
+        .where(
+            Notification.request_id == request_id,
+            Notification.kind == NOTE_NEEDS_CHOICE,
+            Notification.read_at.is_(None),
+        )
+        .values(read_at=utcnow())
+    )
 
 
 def unread_count(db: Session, user_id: int) -> int:

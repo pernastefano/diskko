@@ -1,0 +1,31 @@
+{# needs: r, search (state idle|not_configured|searching|failed|results, hits), q, form_query #}
+<div id="find-results" {% if search.state == 'searching' %}hx-get="/requests/{{ r.id }}/reconcile/results?{{ form_query }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if search.state == 'idle' %}
+    {% if searched %}<p class="text-sm text-slate-500" data-find-state="idle">{{ t('albummatch.search_hint') }}</p>{% endif %}
+  {% elif search.state == 'not_configured' %}
+    <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" data-find-state="not_configured">{{ t('error.mb_not_configured') }}</p>
+  {% elif search.state == 'searching' %}
+    <p class="text-sm text-slate-500" data-find-state="searching">{{ t('search.searching') }}</p>
+  {% elif search.state == 'failed' %}
+    <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" data-find-state="failed">{{ t('search.failed') }}</p>
+  {% elif not search.hits %}
+    <p class="text-sm text-slate-500" data-find-state="none">{{ t('search.none', q=q) }}</p>
+  {% else %}
+    <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm" data-find-state="results">
+      {% for h in search.hits %}{% set g = h.data %}
+        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3" data-rg-mbid="{{ g.mbid }}">
+          <div class="min-w-0">
+            <div class="font-medium">{{ g.title }}{% if g.disambiguation %} <span class="font-normal text-slate-500">({{ g.disambiguation }})</span>{% endif %}</div>
+            <div class="text-xs text-slate-500">{{ h.artist_name or '—' }} · {{ [g.year or '', t('category.' ~ g.category)]|select|join(' · ') }}
+              · <a class="hover:underline" rel="noopener noreferrer" target="_blank" href="https://musicbrainz.org/release-group/{{ g.mbid }}">MusicBrainz ↗</a></div>
+          </div>
+          <form method="post" action="/requests/{{ r.id }}/reconcile/group">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="choice" value="mbid:{{ g.mbid }}">
+            <input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="mode" value="{{ mode }}"><input type="hidden" name="scope" value="{{ scope }}">
+            <button class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700" data-use-album>{{ t('reconcile.use_album') }}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>

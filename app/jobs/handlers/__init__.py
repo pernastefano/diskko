@@ -17,6 +17,7 @@ from app.jobs.handlers import (  # noqa: F401
     postprocess,
     queue_covers,
     reclassify_quality,
+    reconcile_options,
     refresh_album,
     resolve_previews,
     retag_album,
