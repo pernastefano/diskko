@@ -183,6 +183,9 @@ def peek_artist_search(
     return [hit for raw in data.get("artists", []) if (hit := _parse_artist(raw))]
 
 
+MAX_RELEASE_PAGES = 3  # of 100 releases, when every release of an album is wanted
+
+
 class MusicBrainzClient:
     BACKOFF_BASE = 2.0  # first retry delay in seconds; it doubles at every attempt
 
@@ -330,28 +333,41 @@ class MusicBrainzClient:
         return wikidata_id((data or {}).get("relations") or [])
 
     async def browse_releases(
-        self, release_group_mbid: str, *, force: bool = False
+        self, release_group_mbid: str, *, force: bool = False, everything: bool = False
     ) -> list[ReleaseData] | None:
         """The releases of a release group with their tracks (official ones when there are any).
 
         GET /release?release-group=<mbid>&inc=recordings: each release has media[], each medium
         tracks[] {position, number, title, length (ms), recording {id}}. None if MusicBrainz does
-        not know the group. One page of 25 is plenty: only a representative release is needed.
+        not know the group. By default one page of 25 is read: a representative release is all a
+        track list needs. With `everything` the pages follow one another (up to
+        MAX_RELEASE_PAGES of 100): matching files with the right release needs the one with the
+        right number of tracks, and an album with many editions has it past the first 25.
         """
+        page_size = 100 if everything else 25
         for status in ("official", None):
-            params: dict[str, Any] = {
-                "release-group": release_group_mbid,
-                "inc": "recordings artist-credits",  # a space becomes the "+" MusicBrainz wants
-                "limit": 25,
-            }
-            if status:
-                params["status"] = status
-            data = await self._get("release", params, force=force)
-            if data is None:
-                return None
-            releases = [r for raw in data.get("releases", []) if (r := _parse_release(raw))]
-            if releases:
-                return releases
+            found: list[ReleaseData] = []
+            offset = 0
+            for _ in range(MAX_RELEASE_PAGES if everything else 1):
+                params: dict[str, Any] = {
+                    "release-group": release_group_mbid,
+                    "inc": "recordings artist-credits",  # a space becomes the "+" MusicBrainz wants
+                    "limit": page_size,
+                }
+                if offset:
+                    params["offset"] = offset
+                if status:
+                    params["status"] = status
+                data = await self._get("release", params, force=force)
+                if data is None:
+                    return None if offset == 0 else found
+                raw_releases = data.get("releases", [])
+                found += [r for raw in raw_releases if (r := _parse_release(raw))]
+                offset += len(raw_releases)
+                if not raw_releases or offset >= int(data.get("release-count") or 0):
+                    break
+            if found:
+                return found
         return []
 
     async def lookup_release_group(

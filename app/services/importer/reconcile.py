@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from app.integrations.musicbrainz_client import ReleaseData, TrackData
 from app.services.importer.matching import FileFacts, pair_partial, rank_releases
 
-MAX_RELEASE_OPTIONS = 6  # releases offered for one album
+MAX_RELEASE_OPTIONS = 40  # releases offered for one album (the best fitting first)
 
 
 def track_key(track: TrackData) -> str:

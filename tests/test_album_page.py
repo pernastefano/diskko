@@ -164,6 +164,28 @@ async def test_browse_releases_without_official_ones_asks_for_any(settings, sess
     assert len(releases) == 15 and "status" in seen[0] and "status" not in seen[1]
 
 
+async def test_browse_releases_everything_follows_the_pages(settings, session_factory):
+    seen = []
+    page = mb_load("releases_lady_soul.json")["releases"]
+
+    def answer(request):
+        params = dict(request.url.params)
+        seen.append(params)
+        offset = int(params.get("offset", 0))
+        return httpx.Response(
+            200, json={"release-count": 130, "releases": page[:5] if offset < 100 else page[:2]}
+        )
+
+    with respx.mock() as mock:
+        mock.get(f"{MB}/release").mock(side_effect=answer)
+        async with MusicBrainzClient(settings, session_factory) as client:
+            releases = await client.browse_releases("g", everything=True)
+    # the answers hold 5 releases, not 100: each page starts where the last one ended, and the
+    # reading stops after MAX_RELEASE_PAGES pages
+    assert [p.get("offset") for p in seen] == [None, "5", "10"]
+    assert all(p["limit"] == "100" for p in seen) and len(releases) == 15
+
+
 async def test_browse_releases_of_an_unknown_group(settings, session_factory):
     with respx.mock() as mock:
         mock.get(f"{MB}/release").respond(404)

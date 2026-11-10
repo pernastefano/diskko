@@ -218,7 +218,7 @@ async def load_releases(ctx: JobContext, group: dict) -> list[ReleaseData]:
         await ctx.log("MusicBrainz is not configured: tagging without a release", "warning")
         return []
     async with client:
-        return await client.browse_releases(group["mbid"]) or []
+        return await client.browse_releases(group["mbid"], everything=True) or []
 
 
 def _already_imported(final: Path, group: dict, count: int, request_id: int, upgrade: bool) -> bool:

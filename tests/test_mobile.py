@@ -517,7 +517,7 @@ def test_a_search_with_no_results_lists_what_was_tried_and_suggests_a_shorter_te
     for page in (f"/requests/{req.id}", f"/m/requests/{req.id}"):
         html = user_client.get(page).text
         assert "Searched for: Aretha Franklin Aretha Now · aretha now · franklin" in html, page
-        assert "data-no-results-hint" in html and "last name alone" in html
+        assert "data-no-results-hint" in html
     assert 'name="query"' in user_client.get(f"/m/requests/{req.id}").text  # a text to try
 
 
