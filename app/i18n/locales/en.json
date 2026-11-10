@@ -1002,7 +1002,7 @@
   "error.request_bad_release": "That release is not one of those offered.",
   "audit.action.request.release_chosen": "Chose the release of a download",
   "requests.tried": "Searched for: {list}",
-  "requests.no_results_hint": "Nothing on the network matched. Soulseek can hide some artist and album names, so try again with a shorter text: the artist's last name alone (for example “Adams”) or only the album title. The folders that are not this album are discarded for you.",
+  "requests.no_results_hint": "Nothing on the network matched.",
   "requests.net_search": "Search the network by hand",
   "requests.net_search_hint": "Like the search of SLSKD: type any words and every folder with audio is listed, whatever its name or quality. Choose the one to download.",
   "requests.net_search_button": "Search",

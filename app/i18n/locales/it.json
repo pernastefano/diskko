@@ -1002,7 +1002,7 @@
   "error.request_bad_release": "Quella release non è tra quelle proposte.",
   "audit.action.request.release_chosen": "Ha scelto la release di un download",
   "requests.tried": "Cercato: {list}",
-  "requests.no_results_hint": "Nessuna cartella sulla rete corrisponde. Soulseek può nascondere alcuni nomi di artisti e album: riprova con un testo più corto, solo il cognome dell'artista (per esempio «Adams») o solo il titolo dell'album. Le cartelle che non sono questo album vengono scartate per te.",
+  "requests.no_results_hint": "Nessuna cartella sulla rete corrisponde.",
   "requests.net_search": "Cerca nella rete a mano",
   "requests.net_search_hint": "Come la ricerca di SLSKD: scrivi le parole che vuoi e vengono elencate tutte le cartelle con audio, qualunque nome o qualità abbiano. Scegli quella da scaricare.",
   "requests.net_search_button": "Cerca",
